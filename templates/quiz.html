@@ -1,0 +1,62 @@
+{% if card %}
+<div id="quiz-panel" class="rounded-lg border border-emerald-500/40 bg-slate-900/70 p-6 shadow-lg">
+  <header class="flex items-center justify-between">
+    <h2 class="text-lg font-semibold text-slate-100">Next Card</h2>
+    <span class="text-xs uppercase tracking-wide text-emerald-300">Due now</span>
+  </header>
+  <div class="mt-4 space-y-4">
+    <div>
+      <p class="text-xs uppercase tracking-wide text-slate-400">Front</p>
+      <p class="mt-1 text-xl font-semibold text-emerald-200">{{ card.front }}</p>
+    </div>
+    {% if revealed %}
+      <div>
+        <p class="text-xs uppercase tracking-wide text-slate-400">Back</p>
+        <p class="mt-1 text-lg text-slate-100">{{ card.back }}</p>
+      </div>
+      {% if card.example %}
+        <div>
+          <p class="text-xs uppercase tracking-wide text-slate-400">Example</p>
+          <p class="mt-1 text-slate-300">{{ card.example }}</p>
+        </div>
+      {% endif %}
+      <div class="flex gap-3 pt-4">
+        <button
+          type="button"
+          class="w-full rounded-md border border-red-400/60 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
+          hx-post="/grade/{{ card.id }}/again"
+          hx-target="#quiz-panel"
+          hx-swap="outerHTML"
+        >
+          Again
+        </button>
+        <button
+          type="button"
+          class="w-full rounded-md border border-emerald-400/60 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+          hx-post="/grade/{{ card.id }}/good"
+          hx-target="#quiz-panel"
+          hx-swap="outerHTML"
+        >
+          Good
+        </button>
+      </div>
+    {% else %}
+      <div class="pt-4">
+        <button
+          type="button"
+          class="w-full rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 shadow-md transition hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+          hx-get="/reveal/{{ card.id }}"
+          hx-target="#quiz-panel"
+          hx-swap="outerHTML"
+        >
+          Reveal Answer
+        </button>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div id="quiz-panel" class="rounded-lg border border-slate-700 bg-slate-900/40 p-6 text-center text-sm text-slate-300">
+  No cards are due. Add or review cards to begin.
+</div>
+{% endif %}

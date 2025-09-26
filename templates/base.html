@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Spanish Vibes{% endblock %}</title>
+    <!-- CDN Tailwind is fine for dev; swap to a compiled build before production. -->
+    <script src="https://cdn.tailwindcss.com" defer></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10" crossorigin="anonymous" defer></script>
+  </head>
+  <body class="bg-slate-900 text-slate-100 min-h-screen">
+    <main class="mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-12">
+      <header class="mb-8 text-center">
+        <h1 class="text-3xl font-semibold tracking-tight">Spanish Vibes</h1>
+        <p class="mt-2 text-sm text-slate-300">A tiny A2 spaced-repetition trainer.</p>
+      </header>
+      <section class="flex-1">
+        {% block content %}
+        <p class="text-slate-200">Content loading soon.</p>
+        {% endblock %}
+      </section>
+    </main>
+  </body>
+</html>
