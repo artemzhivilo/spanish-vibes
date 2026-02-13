@@ -1,0 +1,48 @@
+{% if session %}
+<div class="rounded-2xl bg-[#1a2d35] p-8 shadow-lg shadow-black/20 ring-1 ring-emerald-500/20 text-center">
+  <p class="text-4xl mb-2">🎉</p>
+  <h2 class="text-2xl font-black text-slate-50">Session Complete</h2>
+
+  <div class="mt-6 grid grid-cols-2 gap-4 text-center">
+    <div class="rounded-xl bg-[#0f1a1f] p-4">
+      <p class="text-3xl font-black text-emerald-300">{{ session.cards_answered }}</p>
+      <p class="text-xs uppercase tracking-widest text-slate-500 font-bold mt-1">Cards</p>
+    </div>
+    <div class="rounded-xl bg-[#0f1a1f] p-4">
+      <p class="text-3xl font-black text-emerald-300">{{ accuracy }}%</p>
+      <p class="text-xs uppercase tracking-widest text-slate-500 font-bold mt-1">Accuracy</p>
+    </div>
+    <div class="rounded-xl bg-[#0f1a1f] p-4">
+      <p class="text-3xl font-black text-amber-400">🔥 {{ session.longest_streak }}</p>
+      <p class="text-xs uppercase tracking-widest text-slate-500 font-bold mt-1">Best Streak</p>
+    </div>
+    <div class="rounded-xl bg-[#0f1a1f] p-4">
+      <p class="text-3xl font-black text-amber-400">+{{ session.xp_earned }}</p>
+      <p class="text-xs uppercase tracking-widest text-slate-500 font-bold mt-1">XP Earned</p>
+    </div>
+  </div>
+
+  {% if concepts_mastered is defined %}
+  <div class="mt-4 rounded-xl bg-[#0f1a1f] p-4">
+    <p class="text-sm text-slate-400">Concepts Mastered</p>
+    <p class="text-2xl font-black text-emerald-300">{{ concepts_mastered }}/{{ total_concepts }}</p>
+  </div>
+  {% endif %}
+
+  <div class="mt-6 flex flex-col gap-3">
+    <a href="/flow" class="w-full rounded-xl bg-emerald-500 px-6 py-3.5 text-base font-black text-emerald-950 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 text-center">
+      Start Another Session
+    </a>
+    <a href="/" class="w-full rounded-xl bg-slate-700 px-6 py-3 text-base font-bold text-slate-200 transition hover:bg-slate-600 text-center">
+      Back to Home
+    </a>
+  </div>
+</div>
+{% elif message is defined and message %}
+<div class="rounded-2xl bg-[#1a2d35] p-8 shadow-lg shadow-black/20 text-center">
+  <p class="text-lg text-slate-400">{{ message }}</p>
+  <a href="/" class="mt-4 inline-block rounded-xl bg-emerald-500 px-6 py-3 text-base font-black text-emerald-950 transition hover:bg-emerald-400">
+    Back to Home
+  </a>
+</div>
+{% endif %}

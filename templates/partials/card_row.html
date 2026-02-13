@@ -1,6 +1,16 @@
+{% set decks = deck_lookup if deck_lookup is defined else {} %}
+{% set deck_obj = decks.get(card.deck_id) if decks else None %}
+{% set deck_name = deck_obj.name if deck_obj else 'Deck #' ~ card.deck_id %}
 <tr id="card-{{ card.id }}" class="bg-slate-900/40 hover:bg-slate-900/70">
-  <td class="px-4 py-3 font-medium text-slate-100">{{ card.front }}</td>
-  <td class="px-4 py-3 text-slate-200">{{ card.back }}</td>
-  <td class="px-4 py-3 text-slate-300">{{ card.example or "—" }}</td>
-  <td class="px-4 py-3 text-slate-300">{{ card.due_at.replace("T", " ") }}</td>
+  <td class="px-4 py-3 font-medium text-slate-100">{{ deck_name }}</td>
+  {% if card.kind == 'vocab' %}
+    <td class="px-4 py-3 text-slate-200">{{ card.spanish }}</td>
+    <td class="px-4 py-3 text-slate-200">{{ card.english }}</td>
+    <td class="px-4 py-3 text-slate-300">{{ card.example or '—' }}</td>
+  {% else %}
+    <td class="px-4 py-3 text-slate-200">{{ card.infinitive }} ({{ card.tense }})</td>
+    <td class="px-4 py-3 text-slate-200">{{ card.answer }}</td>
+    <td class="px-4 py-3 text-slate-300">{{ card.person }}</td>
+  {% endif %}
+  <td class="px-4 py-3 text-slate-300">{{ card.due_at.replace('T', ' ') }}</td>
 </tr>

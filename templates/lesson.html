@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<section class="grid gap-6">
+  <header class="rounded-2xl bg-[#1a2d35] px-6 py-6 shadow-lg shadow-black/20">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <a href="/lessons" class="text-xs text-slate-500 transition hover:text-slate-300">Lessons</a>
+          <span class="text-xs text-slate-600">/</span>
+          <span class="text-xs text-slate-400">Chapter {{ lesson.slug[:4]|replace('ch', '') | int }}</span>
+        </div>
+        <h1 class="text-3xl font-bold text-slate-50">
+          <span class="text-emerald-400">{{ lesson.slug|chapter_label }}</span>
+          {{ lesson.title }}
+        </h1>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
+        <span class="rounded-full bg-emerald-500/15 px-4 py-1.5 font-bold text-emerald-300">{{ lesson.difficulty }}</span>
+        <span class="rounded-full bg-sky-500/15 px-4 py-1.5 font-bold text-sky-300">Level {{ lesson.level_score }}</span>
+      </div>
+    </div>
+  </header>
+
+  <article class="lesson-prose max-w-none rounded-2xl bg-[#1a2d35] px-6 py-6 shadow-lg shadow-black/20">
+    {{ content_html|safe }}
+  </article>
+
+  <!-- Practice section at bottom -->
+  <div class="rounded-2xl bg-[#1a2d35] px-6 py-6 shadow-lg shadow-black/20">
+    <h2 class="text-xl font-bold text-slate-50 mb-4">Practice This Lesson</h2>
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <button
+        hx-get="/quiz?lesson={{ lesson.slug }}&kind=vocab"
+        hx-target="#lesson-practice-panel"
+        hx-swap="innerHTML"
+        class="rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-black text-emerald-950 shadow shadow-emerald-500/25 transition hover:bg-emerald-400 hover:scale-[1.02] active:scale-[0.98]">
+        Practice Vocab
+      </button>
+      <button
+        hx-get="/quiz?lesson={{ lesson.slug }}&kind=fillblank"
+        hx-target="#lesson-practice-panel"
+        hx-swap="innerHTML"
+        class="rounded-full bg-sky-500 px-5 py-2.5 text-sm font-black text-sky-950 shadow shadow-sky-500/25 transition hover:bg-sky-400 hover:scale-[1.02] active:scale-[0.98]">
+        Practice Fill-in
+      </button>
+      <a href="/practice?lesson={{ lesson.slug }}&kind=vocab"
+         class="rounded-full bg-[#0f1a1f] px-4 py-2.5 text-sm font-bold text-slate-400 transition hover:text-slate-200 hover:bg-[#162028]"
+         title="Open full practice page">
+        Full Page
+        <svg class="ml-1 inline h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+      </a>
+    </div>
+    <div id="lesson-practice-panel" class="practice-slot"></div>
+  </div>
+
+  <!-- Prev / Next lesson navigation -->
+  <div class="flex items-center justify-between gap-4">
+    {% if prev_slug %}
+      <a href="/lesson/{{ prev_slug }}" class="group flex items-center gap-2 rounded-2xl bg-[#1a2d35] px-5 py-4 shadow-lg shadow-black/20 transition hover:bg-[#1e3640] hover:-translate-x-0.5 flex-1">
+        <svg class="h-5 w-5 text-slate-500 transition group-hover:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+        <div>
+          <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Previous</p>
+          <p class="text-sm font-bold text-slate-200 group-hover:text-emerald-300 transition">{{ prev_slug|chapter_label }}</p>
+        </div>
+      </a>
+    {% else %}
+      <div class="flex-1"></div>
+    {% endif %}
+
+    <a href="/lessons" class="rounded-full bg-[#0f1a1f] p-3 text-slate-500 transition hover:text-slate-200 hover:bg-[#162028]" title="All Lessons">
+      <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+    </a>
+
+    {% if next_slug %}
+      <a href="/lesson/{{ next_slug }}" class="group flex items-center justify-end gap-2 rounded-2xl bg-[#1a2d35] px-5 py-4 shadow-lg shadow-black/20 transition hover:bg-[#1e3640] hover:translate-x-0.5 flex-1">
+        <div class="text-right">
+          <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Next Lesson</p>
+          <p class="text-sm font-bold text-slate-200 group-hover:text-emerald-300 transition">{{ next_slug|chapter_label }}</p>
+        </div>
+        <svg class="h-5 w-5 text-slate-500 transition group-hover:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+      </a>
+    {% else %}
+      <div class="flex-1"></div>
+    {% endif %}
+  </div>
+
+  <div class="text-center pb-2">
+    <form method="post" action="/lesson/{{ lesson.slug }}/refresh" class="inline">
+      <button type="submit" class="text-xs text-slate-600 transition hover:text-slate-400">Refresh lesson cache</button>
+    </form>
+  </div>
+</section>
+
+<script>
+/* ── Interactive exercise handlers (widgets are server-rendered) ── */
+(function() {
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  /* MCQ click handler */
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.ew-opt');
+    if (!btn) return;
+    var widget = btn.closest('.exercise-widget');
+    if (widget.classList.contains('answered')) return;
+
+    var answer = btn.dataset.answer;
+    var value = btn.dataset.value;
+    var isCorrect = value.trim().toLowerCase() === answer.trim().toLowerCase();
+    var fb = widget.querySelector('.ew-feedback');
+
+    var allBtns = widget.querySelectorAll('.ew-opt');
+    for (var i = 0; i < allBtns.length; i++) {
+      allBtns[i].disabled = true;
+      if (allBtns[i].dataset.value.trim().toLowerCase() === answer.trim().toLowerCase()) {
+        allBtns[i].classList.add('ew-opt-correct');
+      } else if (allBtns[i] === btn && !isCorrect) {
+        allBtns[i].classList.add('ew-opt-wrong');
+      } else {
+        allBtns[i].classList.add('ew-opt-dim');
+      }
+    }
+
+    fb.hidden = false;
+    if (isCorrect) {
+      fb.className = 'ew-feedback ew-fb-correct';
+      fb.textContent = '\u2713 ' + btn.dataset.correct;
+    } else {
+      fb.className = 'ew-feedback ew-fb-wrong';
+      fb.textContent = '\u2717 ' + btn.dataset.incorrect;
+    }
+    widget.classList.add('answered');
+  });
+
+  /* Fill-in-blank handler */
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.ew-check');
+    if (!btn) return;
+    var widget = btn.closest('.exercise-widget');
+    var input = widget.querySelector('.ew-input');
+    var userAnswer = (input.value || '').trim();
+    if (!userAnswer) { input.focus(); return; }
+
+    var answer = btn.dataset.answer;
+    var isCorrect = userAnswer.toLowerCase() === answer.trim().toLowerCase();
+    var fb = widget.querySelector('.ew-feedback');
+
+    fb.hidden = false;
+    if (isCorrect) {
+      fb.className = 'ew-feedback ew-fb-correct';
+      fb.textContent = '\u2713 ' + btn.dataset.correct;
+      input.classList.add('ew-input-correct');
+    } else {
+      fb.className = 'ew-feedback ew-fb-wrong';
+      fb.innerHTML = '\u2717 ' + esc(btn.dataset.incorrect) + '<br><span class="ew-fb-answer">Answer: <strong>' + esc(answer) + '</strong></span>';
+      input.classList.add('ew-input-wrong');
+    }
+    input.disabled = true;
+    btn.disabled = true;
+    btn.classList.add('ew-check-done');
+  });
+
+  /* Enter key on fill-in inputs */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && e.target.classList.contains('ew-input') && !e.target.disabled) {
+      var widget = e.target.closest('.exercise-widget');
+      var checkBtn = widget.querySelector('.ew-check');
+      if (checkBtn) checkBtn.click();
+    }
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Spanish Vibes · Stats{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-2xl font-black text-slate-50">Study Statistics</h2>
+      <p class="text-sm text-slate-400 mt-1">Your learning journey at a glance</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="/flow/concepts" class="rounded-full bg-sky-500/15 px-4 py-2 text-sm font-bold text-sky-300 transition hover:bg-sky-500/25">Concepts</a>
+      <a href="/flow" class="rounded-full bg-amber-500/15 px-4 py-2 text-sm font-bold text-amber-300 transition hover:bg-amber-500/25">Flow</a>
+    </div>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="rounded-xl bg-[#1a2d35] p-4 text-center">
+      <p class="text-2xl font-black text-sky-400">{{ total_sessions }}</p>
+      <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Sessions</p>
+    </div>
+    <div class="rounded-xl bg-[#1a2d35] p-4 text-center">
+      <p class="text-2xl font-black text-amber-400">{{ total_cards }}</p>
+      <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Cards Answered</p>
+    </div>
+    <div class="rounded-xl bg-[#1a2d35] p-4 text-center">
+      <p class="text-2xl font-black {% if overall_accuracy >= 80 %}text-emerald-400{% elif overall_accuracy >= 50 %}text-amber-400{% else %}text-red-400{% endif %}">{{ overall_accuracy }}%</p>
+      <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Accuracy</p>
+    </div>
+    <div class="rounded-xl bg-[#1a2d35] p-4 text-center">
+      <p class="text-2xl font-black text-emerald-400">{{ mastered_count }}/{{ total_concepts }}</p>
+      <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Mastered</p>
+    </div>
+  </div>
+
+  <!-- Recent Sessions -->
+  <div class="rounded-2xl bg-[#1a2d35] p-5 shadow-lg shadow-black/20">
+    <h3 class="text-lg font-black text-slate-50 mb-4">Recent Sessions</h3>
+    {% if sessions %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-[10px] uppercase tracking-widest text-slate-500 font-bold border-b border-[#2a3f4a]">
+            <th class="text-left py-2 px-2">Date</th>
+            <th class="text-center py-2 px-2">Cards</th>
+            <th class="text-center py-2 px-2">Accuracy</th>
+            <th class="text-center py-2 px-2">XP</th>
+            <th class="text-center py-2 px-2">Streak</th>
+            <th class="text-center py-2 px-2">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sessions %}
+          <tr class="border-b border-[#162028] hover:bg-[#0f1a1f]/50 transition">
+            <td class="py-2.5 px-2 text-slate-300">{{ s.date }}</td>
+            <td class="py-2.5 px-2 text-center text-slate-200 font-bold">{{ s.cards }}</td>
+            <td class="py-2.5 px-2 text-center font-bold
+              {% if s.accuracy >= 80 %}text-emerald-400{% elif s.accuracy >= 50 %}text-amber-400{% else %}text-red-400{% endif %}">
+              {{ s.accuracy }}%
+            </td>
+            <td class="py-2.5 px-2 text-center text-amber-400 font-bold">+{{ s.xp }}</td>
+            <td class="py-2.5 px-2 text-center text-slate-300">{{ s.streak }}</td>
+            <td class="py-2.5 px-2 text-center">
+              <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full
+                {% if s.status == 'completed' %}bg-emerald-500/20 text-emerald-400
+                {% else %}bg-amber-500/20 text-amber-400{% endif %}">
+                {{ s.status }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-slate-500 text-sm">No sessions yet. Start a Flow session to see your stats!</p>
+    {% endif %}
+  </div>
+
+  <!-- Per-Concept Performance -->
+  <div class="rounded-2xl bg-[#1a2d35] p-5 shadow-lg shadow-black/20">
+    <h3 class="text-lg font-black text-slate-50 mb-4">Concept Performance</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-[10px] uppercase tracking-widest text-slate-500 font-bold border-b border-[#2a3f4a]">
+            <th class="text-left py-2 px-2">Concept</th>
+            <th class="text-center py-2 px-2">Tier</th>
+            <th class="text-center py-2 px-2">Attempts</th>
+            <th class="text-center py-2 px-2">Accuracy</th>
+            <th class="text-center py-2 px-2">Mastery</th>
+            <th class="text-center py-2 px-2">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in concept_stats %}
+          <tr class="border-b border-[#162028] hover:bg-[#0f1a1f]/50 transition">
+            <td class="py-2.5 px-2 text-slate-200 font-medium">{{ c.name }}</td>
+            <td class="py-2.5 px-2 text-center text-sky-400 font-bold">{{ c.tier }}</td>
+            <td class="py-2.5 px-2 text-center text-slate-300">{{ c.n_attempts }}</td>
+            <td class="py-2.5 px-2 text-center font-bold
+              {% if c.accuracy >= 80 %}text-emerald-400{% elif c.accuracy >= 50 %}text-amber-400{% else %}text-red-400{% endif %}">
+              {% if c.n_attempts > 0 %}{{ c.accuracy }}%{% else %}-{% endif %}
+            </td>
+            <td class="py-2.5 px-2 text-center">
+              <div class="inline-flex items-center gap-2">
+                <div class="h-2 w-16 overflow-hidden rounded-full bg-[#0f1a1f]">
+                  <div class="h-full rounded-full {% if c.status == 'mastered' %}bg-emerald-500{% else %}bg-amber-500{% endif %}"
+                    style="width: {{ c.mastery_pct }}%"></div>
+                </div>
+                <span class="text-[11px] text-slate-400">{{ c.mastery_pct }}%</span>
+              </div>
+            </td>
+            <td class="py-2.5 px-2 text-center">
+              <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full
+                {% if c.status == 'mastered' %}bg-emerald-500/20 text-emerald-400
+                {% elif c.status == 'learning' %}bg-amber-500/20 text-amber-400
+                {% else %}bg-slate-700/40 text-slate-500{% endif %}">
+                {{ c.status }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

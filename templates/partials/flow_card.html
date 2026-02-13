@@ -1,0 +1,55 @@
+{% if card_context.card_type == 'teach' %}
+<!-- ═══ Teach Card ═══ -->
+<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-sky-500/20">
+  <header class="flex items-center justify-between mb-4">
+    <span class="rounded-full bg-sky-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-sky-300">
+      New Concept
+    </span>
+  </header>
+
+  <h2 class="text-2xl font-black text-slate-50 mb-4">{{ concept_name }}</h2>
+
+  <div class="prose prose-invert prose-sm max-w-none mb-6 rounded-xl bg-[#0f1a1f] px-5 py-4 text-slate-300 leading-relaxed">
+    {{ teach_html | safe }}
+  </div>
+
+  <form hx-post="/flow/teach-seen" hx-target="#flow-card-slot" hx-swap="innerHTML">
+    <input type="hidden" name="session_id" value="{{ session_id }}" />
+    <input type="hidden" name="concept_id" value="{{ card_context.concept_id }}" />
+    <button type="submit"
+      class="w-full rounded-xl bg-emerald-500 px-6 py-3.5 text-base font-black text-emerald-950 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 active:scale-[0.98]">
+      Got it — Let's Practice
+    </button>
+  </form>
+</div>
+
+{% else %}
+<!-- ═══ MCQ Card ═══ -->
+<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-emerald-500/20">
+  <header class="flex items-center justify-between mb-4">
+    <span class="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-300">
+      {{ concept_name }}
+    </span>
+  </header>
+
+  <div class="mb-6">
+    <p class="text-2xl font-bold text-slate-50 leading-snug">{{ card_context.question }}</p>
+  </div>
+
+  <!-- 4 tappable MCQ options -->
+  <div class="grid gap-3">
+    {% for option in card_context.options %}
+      <form hx-post="/flow/answer" hx-target="#flow-card-slot" hx-swap="innerHTML">
+        <input type="hidden" name="session_id" value="{{ session_id }}" />
+        <input type="hidden" name="card_json" value='{{ card_json }}' />
+        <input type="hidden" name="chosen_option" value="{{ option }}" />
+        <input type="hidden" name="start_time" value="0" />
+        <button type="submit"
+          class="w-full text-left rounded-xl bg-[#0f1a1f] px-5 py-4 text-lg font-medium text-slate-200 transition hover:bg-[#162028] hover:ring-1 hover:ring-emerald-500/30 active:scale-[0.98] active:bg-emerald-500/10">
+          {{ option }}
+        </button>
+      </form>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}

@@ -1,0 +1,332 @@
+# A1 Spanish Concepts — Prerequisite DAG
+# ~35 concepts in 6 difficulty tiers
+
+# Tier 1 — No prerequisites (entry points)
+- id: greetings
+  name: Greetings & Introductions
+  difficulty_level: 1
+  prerequisites: []
+  teach_content: |
+    **Hola** — Hello
+    **Buenos días** — Good morning
+    **Buenas tardes** — Good afternoon
+    **Buenas noches** — Good evening/night
+    **¿Cómo estás?** — How are you?
+    **Me llamo...** — My name is...
+    **Mucho gusto** — Nice to meet you
+    **Adiós** — Goodbye
+
+- id: numbers_1_20
+  name: Numbers 1–20
+  difficulty_level: 1
+  prerequisites: []
+  teach_content: |
+    **1** uno, **2** dos, **3** tres, **4** cuatro, **5** cinco
+    **6** seis, **7** siete, **8** ocho, **9** nueve, **10** diez
+    **11** once, **12** doce, **13** trece, **14** catorce, **15** quince
+    **16** dieciséis, **17** diecisiete, **18** dieciocho, **19** diecinueve, **20** veinte
+
+- id: colors_basic
+  name: Basic Colors
+  difficulty_level: 1
+  prerequisites: []
+  teach_content: |
+    **rojo** — red, **azul** — blue, **verde** — green
+    **amarillo** — yellow, **blanco** — white, **negro** — black
+    **naranja** — orange, **rosa** — pink, **morado** — purple
+    **marrón** — brown, **gris** — gray
+
+# Tier 2 — Basic vocabulary + grammar foundations
+- id: subject_pronouns
+  name: Subject Pronouns
+  difficulty_level: 2
+  prerequisites: [greetings]
+  teach_content: |
+    **yo** — I
+    **tú** — you (informal)
+    **él / ella / usted** — he / she / you (formal)
+    **nosotros / nosotras** — we
+    **vosotros / vosotras** — you all (Spain)
+    **ellos / ellas / ustedes** — they / you all
+
+- id: nouns_gender
+  name: Noun Gender (el / la)
+  difficulty_level: 2
+  prerequisites: [greetings]
+  teach_content: |
+    Spanish nouns are masculine or feminine.
+    **Masculine**: usually end in **-o** → el libro, el gato
+    **Feminine**: usually end in **-a** → la mesa, la casa
+    **Exceptions**: el día, la mano, el problema, la foto
+
+- id: family_vocab
+  name: Family Vocabulary
+  difficulty_level: 2
+  prerequisites: [greetings]
+  teach_content: |
+    **la madre / mamá** — mother/mom
+    **el padre / papá** — father/dad
+    **el hermano / la hermana** — brother/sister
+    **el hijo / la hija** — son/daughter
+    **el abuelo / la abuela** — grandfather/grandmother
+    **el tío / la tía** — uncle/aunt
+
+- id: food_vocab
+  name: Food Vocabulary
+  difficulty_level: 2
+  prerequisites: [greetings]
+  teach_content: |
+    **el pan** — bread, **la leche** — milk, **el agua** — water
+    **la fruta** — fruit, **la manzana** — apple, **el pollo** — chicken
+    **el arroz** — rice, **la ensalada** — salad, **el café** — coffee
+    **el jugo** — juice, **la carne** — meat, **el pescado** — fish
+
+- id: animals_vocab
+  name: Animal Vocabulary
+  difficulty_level: 2
+  prerequisites: [greetings]
+  teach_content: |
+    **el perro** — dog, **el gato** — cat, **el pájaro** — bird
+    **el pez** — fish, **el caballo** — horse, **la vaca** — cow
+    **el ratón** — mouse, **la mariposa** — butterfly
+    **el conejo** — rabbit, **la tortuga** — turtle
+
+# Tier 3 — Core grammar
+- id: articles_definite
+  name: Definite Articles (el, la, los, las)
+  difficulty_level: 3
+  prerequisites: [nouns_gender]
+  teach_content: |
+    **el** — the (masculine singular) → el libro
+    **la** — the (feminine singular) → la mesa
+    **los** — the (masculine plural) → los libros
+    **las** — the (feminine plural) → las mesas
+
+- id: articles_indefinite
+  name: Indefinite Articles (un, una, unos, unas)
+  difficulty_level: 3
+  prerequisites: [nouns_gender]
+  teach_content: |
+    **un** — a/an (masculine) → un libro
+    **una** — a/an (feminine) → una mesa
+    **unos** — some (masculine) → unos libros
+    **unas** — some (feminine) → unas mesas
+
+- id: ser_present
+  name: "Ser — Present Tense"
+  difficulty_level: 3
+  prerequisites: [subject_pronouns]
+  teach_content: |
+    **ser** = to be (identity, origin, characteristics)
+    yo **soy**, tú **eres**, él/ella **es**
+    nosotros **somos**, vosotros **sois**, ellos **son**
+    *Yo soy estudiante.* — I am a student.
+    *Ella es de México.* — She is from Mexico.
+
+- id: tener_present
+  name: "Tener — Present Tense"
+  difficulty_level: 3
+  prerequisites: [subject_pronouns]
+  teach_content: |
+    **tener** = to have
+    yo **tengo**, tú **tienes**, él/ella **tiene**
+    nosotros **tenemos**, vosotros **tenéis**, ellos **tienen**
+    *Tengo un perro.* — I have a dog.
+    *¿Cuántos años tienes?* — How old are you?
+
+- id: hay
+  name: "Hay — There is / There are"
+  difficulty_level: 3
+  prerequisites: [nouns_gender]
+  teach_content: |
+    **Hay** = there is / there are (invariable form of *haber*)
+    *Hay un libro en la mesa.* — There is a book on the table.
+    *Hay tres gatos.* — There are three cats.
+    **No hay** = there isn't / there aren't
+
+- id: basic_questions
+  name: Basic Question Words
+  difficulty_level: 3
+  prerequisites: [subject_pronouns]
+  teach_content: |
+    **¿Qué?** — What?
+    **¿Quién?** — Who?
+    **¿Dónde?** — Where?
+    **¿Cuándo?** — When?
+    **¿Cómo?** — How?
+    **¿Por qué?** — Why?
+    **¿Cuánto/a?** — How much?
+    **¿Cuántos/as?** — How many?
+
+# Tier 4 — More verbs + adjective grammar
+- id: estar_present
+  name: "Estar — Present Tense"
+  difficulty_level: 4
+  prerequisites: [ser_present]
+  teach_content: |
+    **estar** = to be (location, temporary states, feelings)
+    yo **estoy**, tú **estás**, él/ella **está**
+    nosotros **estamos**, vosotros **estáis**, ellos **están**
+    *Estoy en casa.* — I am at home.
+    *Ella está contenta.* — She is happy.
+
+- id: ir_a
+  name: "Ir + a — Going to"
+  difficulty_level: 4
+  prerequisites: [ser_present]
+  teach_content: |
+    **ir** = to go
+    yo **voy**, tú **vas**, él/ella **va**
+    nosotros **vamos**, vosotros **vais**, ellos **van**
+    **ir + a + infinitive** = going to (future)
+    *Voy a comer.* — I am going to eat.
+    *Vamos a la escuela.* — We go to school.
+
+- id: gustar
+  name: "Gustar — To Like"
+  difficulty_level: 4
+  prerequisites: [subject_pronouns, articles_definite]
+  teach_content: |
+    **gustar** works differently — the thing liked is the subject.
+    **me gusta** — I like (singular thing)
+    **me gustan** — I like (plural things)
+    **te gusta / le gusta / nos gusta**
+    *Me gusta el chocolate.* — I like chocolate.
+    *Me gustan los perros.* — I like dogs.
+
+- id: querer
+  name: "Querer — To Want"
+  difficulty_level: 4
+  prerequisites: [ser_present]
+  teach_content: |
+    **querer** = to want
+    yo **quiero**, tú **quieres**, él/ella **quiere**
+    nosotros **queremos**, vosotros **queréis**, ellos **quieren**
+    *Quiero agua.* — I want water.
+    *¿Qué quieres comer?* — What do you want to eat?
+
+- id: adjective_agreement
+  name: Adjective Agreement
+  difficulty_level: 4
+  prerequisites: [nouns_gender, articles_definite]
+  teach_content: |
+    Adjectives match the noun in gender and number.
+    **-o → -a** (masc → fem): alto → alta
+    **-o → -os / -a → -as** (plural): altos, altas
+    **-e / consonant**: same for both genders, add -s/-es for plural
+    *el gato negro* → *la gata negra* → *los gatos negros*
+
+- id: negation
+  name: Negation (no, nunca, nada)
+  difficulty_level: 4
+  prerequisites: [ser_present]
+  teach_content: |
+    Put **no** before the verb to negate:
+    *No tengo dinero.* — I don't have money.
+    **nunca** — never: *Nunca como carne.* — I never eat meat.
+    **nada** — nothing: *No quiero nada.* — I don't want anything.
+    **nadie** — nobody: *No hay nadie.* — There is nobody.
+
+# Tier 5 — Regular verb conjugation + time/place
+- id: present_tense_ar
+  name: Present Tense — AR Verbs
+  difficulty_level: 5
+  prerequisites: [ser_present, estar_present]
+  teach_content: |
+    Regular **-ar** verbs: drop -ar, add endings.
+    **hablar** (to speak): habl**o**, habl**as**, habl**a**, habl**amos**, habl**áis**, habl**an**
+    Common -ar verbs: hablar, caminar, estudiar, trabajar, cocinar, comprar
+
+- id: present_tense_er_ir
+  name: Present Tense — ER/IR Verbs
+  difficulty_level: 5
+  prerequisites: [ser_present, estar_present]
+  teach_content: |
+    Regular **-er** verbs: com**o**, com**es**, com**e**, com**emos**, com**éis**, com**en**
+    Regular **-ir** verbs: viv**o**, viv**es**, viv**e**, viv**imos**, viv**ís**, viv**en**
+    Common: comer, beber, leer, escribir, vivir, abrir
+
+- id: basic_prepositions
+  name: Basic Prepositions
+  difficulty_level: 5
+  prerequisites: [estar_present]
+  teach_content: |
+    **en** — in/on/at: *en la mesa* — on the table
+    **de** — of/from: *de España* — from Spain
+    **a** — to/at: *a la escuela* — to school
+    **con** — with: *con mi amigo* — with my friend
+    **sin** — without: *sin azúcar* — without sugar
+    **para** — for: *para ti* — for you
+    **por** — for/by/through: *por la mañana* — in the morning
+
+- id: telling_time
+  name: Telling Time
+  difficulty_level: 5
+  prerequisites: [numbers_1_20, ser_present]
+  teach_content: |
+    **¿Qué hora es?** — What time is it?
+    **Es la una.** — It's one o'clock. (singular)
+    **Son las dos / tres / cuatro...** — It's 2/3/4... (plural)
+    **y media** — half past, **y cuarto** — quarter past
+    **menos cuarto** — quarter to
+    *Son las tres y media.* — It's 3:30.
+
+- id: days_months
+  name: Days & Months
+  difficulty_level: 5
+  prerequisites: [numbers_1_20]
+  teach_content: |
+    **Days**: lunes, martes, miércoles, jueves, viernes, sábado, domingo
+    **Months**: enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre
+    *Hoy es lunes.* — Today is Monday.
+    *Mi cumpleaños es en mayo.* — My birthday is in May.
+
+# Tier 6 — Communicative tasks
+- id: describing_people
+  name: Describing People
+  difficulty_level: 6
+  prerequisites: [ser_present, estar_present, adjective_agreement]
+  teach_content: |
+    Use **ser** for permanent traits: *Ella es alta y morena.*
+    Use **estar** for temporary states: *Él está cansado.*
+    **Physical**: alto/bajo, gordo/delgado, joven/viejo, guapo/feo
+    **Personality**: simpático, inteligente, amable, divertido, tímido
+
+- id: ordering_food
+  name: Ordering Food
+  difficulty_level: 6
+  prerequisites: [querer, food_vocab, numbers_1_20]
+  teach_content: |
+    **Quiero...** — I want... / **Quisiera...** — I would like...
+    **¿Me puede traer...?** — Can you bring me...?
+    **La cuenta, por favor.** — The check, please.
+    **¿Qué recomienda?** — What do you recommend?
+    **Para mí...** — For me...
+    **De beber, quiero...** — To drink, I want...
+
+- id: asking_directions
+  name: Asking Directions
+  difficulty_level: 6
+  prerequisites: [estar_present, basic_prepositions, basic_questions]
+  teach_content: |
+    **¿Dónde está...?** — Where is...?
+    **a la derecha** — to the right
+    **a la izquierda** — to the left
+    **todo recto / derecho** — straight ahead
+    **cerca de** — near, **lejos de** — far from
+    **al lado de** — next to
+    **¿Cómo llego a...?** — How do I get to...?
+
+- id: daily_routine
+  name: Daily Routine
+  difficulty_level: 6
+  prerequisites: [present_tense_ar, present_tense_er_ir, telling_time]
+  teach_content: |
+    **me despierto** — I wake up
+    **me levanto** — I get up
+    **me ducho** — I shower
+    **desayuno** — I have breakfast
+    **almuerzo** — I have lunch
+    **ceno** — I have dinner
+    **me acuesto** — I go to bed
+    *Me despierto a las siete.* — I wake up at seven.

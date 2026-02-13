@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Spanish Vibes · Flow{% endblock %}
+{% block content %}
+<div id="flow-container" class="flex flex-col items-center gap-6">
+  <!-- Flow header -->
+  <div class="w-full flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <!-- Concept progress -->
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-bold text-emerald-300" id="concepts-progress">{{ concepts_mastered }}/{{ total_concepts }}</span>
+        <span class="text-xs text-slate-500 font-bold">mastered</span>
+      </div>
+      <!-- Streak -->
+      <div class="flex items-center gap-1">
+        <span id="streak-fire" class="text-xl {% if streak > 0 %}{% else %}opacity-30{% endif %}">🔥</span>
+        <span id="streak-count" class="text-lg font-black text-amber-400">{{ streak }}</span>
+      </div>
+      <!-- Cards count -->
+      <div class="text-center">
+        <span class="text-sm font-bold text-slate-400" id="cards-count">{{ cards_answered }} cards</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <!-- Concepts -->
+      <a href="/flow/concepts" class="rounded-full bg-violet-500/15 px-4 py-2 text-sm font-bold text-violet-300 transition hover:bg-violet-500/25">Concepts</a>
+      <!-- Stats -->
+      <a href="/flow/stats" class="rounded-full bg-sky-500/15 px-3 py-2 text-sm font-bold text-sky-300 transition hover:bg-sky-500/25">Stats</a>
+      <!-- Skip to level -->
+      <button onclick="document.getElementById('skip-modal').classList.toggle('hidden')"
+        class="rounded-full bg-slate-500/15 px-4 py-2 text-sm font-bold text-slate-300 transition hover:bg-slate-500/25">
+        Skip Level
+      </button>
+      <!-- Exit button -->
+      <form hx-post="/flow/end" hx-target="#flow-container" hx-swap="innerHTML">
+        <input type="hidden" name="session_id" value="{{ session.id }}" />
+        <button type="submit" class="rounded-full bg-red-500/15 px-4 py-2 text-sm font-bold text-red-300 transition hover:bg-red-500/25">
+          End Session
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Card slot — HTMX loads first card on page load -->
+  <div id="flow-card-slot" class="w-full"
+       hx-get="/flow/card?session_id={{ session.id }}"
+       hx-trigger="load"
+       hx-swap="innerHTML">
+    <div class="flex items-center justify-center py-20">
+      <div class="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+    </div>
+  </div>
+
+  <!-- Skip level modal -->
+  <div id="skip-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="rounded-2xl bg-[#1a2d35] p-6 shadow-xl ring-1 ring-sky-500/20 w-80">
+      <h3 class="text-lg font-black text-slate-50 mb-2">Skip to Level</h3>
+      <p class="text-sm text-slate-400 mb-4">Mark all concepts below this tier as mastered.</p>
+      <form method="post" action="/flow/skip-to-tier" class="flex flex-col gap-3">
+        <button type="submit" name="tier" value="2" class="w-full rounded-xl bg-[#0f1a1f] px-4 py-3 text-left text-sm font-medium text-slate-200 hover:ring-1 hover:ring-sky-500/30 transition">
+          <span class="font-bold text-sky-300">Tier 2</span> — Skip greetings, numbers, colors
+        </button>
+        <button type="submit" name="tier" value="3" class="w-full rounded-xl bg-[#0f1a1f] px-4 py-3 text-left text-sm font-medium text-slate-200 hover:ring-1 hover:ring-sky-500/30 transition">
+          <span class="font-bold text-sky-300">Tier 3</span> — Skip pronouns, gender, basic vocab
+        </button>
+        <button type="submit" name="tier" value="4" class="w-full rounded-xl bg-[#0f1a1f] px-4 py-3 text-left text-sm font-medium text-slate-200 hover:ring-1 hover:ring-sky-500/30 transition">
+          <span class="font-bold text-sky-300">Tier 4</span> — Skip articles, ser/tener/hay
+        </button>
+        <button type="submit" name="tier" value="5" class="w-full rounded-xl bg-[#0f1a1f] px-4 py-3 text-left text-sm font-medium text-slate-200 hover:ring-1 hover:ring-sky-500/30 transition">
+          <span class="font-bold text-sky-300">Tier 5</span> — Skip estar, ir a, gustar, adjectives
+        </button>
+        <button type="button" onclick="document.getElementById('skip-modal').classList.add('hidden')"
+          class="w-full rounded-xl bg-slate-700 px-4 py-2.5 text-sm font-bold text-slate-300 hover:bg-slate-600 transition">
+          Cancel
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Celebration overlay (hidden by default) -->
+  <div id="celebration-overlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="text-center animate-bounce">
+      <p class="text-6xl">🔥</p>
+      <p id="celebration-text" class="mt-4 text-3xl font-black text-amber-400"></p>
+    </div>
+  </div>
+</div>
+
+<style>
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .flow-card-enter { animation: slideUp 0.3s ease-out; }
+
+  @keyframes correctFlash {
+    0% { background-color: rgba(52, 211, 153, 0.2); }
+    100% { background-color: transparent; }
+  }
+  .correct-flash { animation: correctFlash 0.5s ease-out; }
+
+  @keyframes wrongFlash {
+    0% { background-color: rgba(248, 113, 113, 0.15); }
+    100% { background-color: transparent; }
+  }
+  .wrong-flash { animation: wrongFlash 0.5s ease-out; }
+</style>
+
+<script>
+  window.flowStartTime = 0;
+
+  document.body.addEventListener('htmx:afterSwap', function(e) {
+    if (e.detail.target.id === 'flow-card-slot' || e.detail.target.closest('#flow-card-slot')) {
+      window.flowStartTime = Date.now();
+      var timeInput = document.querySelector('#flow-card-slot input[name="start_time"]');
+      if (timeInput) {
+        timeInput.value = window.flowStartTime;
+      }
+    }
+  });
+
+  function showCelebration(streak) {
+    var milestones = [5, 10, 15, 20, 25, 50];
+    if (milestones.indexOf(streak) === -1) return;
+    var overlay = document.getElementById('celebration-overlay');
+    var text = document.getElementById('celebration-text');
+    text.textContent = streak + ' streak!';
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+    setTimeout(function() {
+      overlay.classList.add('hidden');
+      overlay.classList.remove('flex');
+    }, 1500);
+  }
+</script>
+{% endblock %}

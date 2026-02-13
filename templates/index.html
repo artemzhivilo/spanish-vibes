@@ -4,100 +4,134 @@
 
 {% block content %}
 <section class="grid gap-8">
-  <div class="rounded-lg border border-slate-800 bg-slate-800/60 p-6 shadow">
-    <h2 class="text-lg font-semibold text-slate-100">Due Cards</h2>
-    <p class="mt-2 text-4xl font-bold text-emerald-300">{{ due_count }}</p>
-    <p class="mt-1 text-sm text-slate-400">Cards scheduled up to now.</p>
+  <!-- Continue Learning hero -->
+  <div class="rounded-2xl bg-gradient-to-br from-[#1a2d35] to-[#162028] p-6 shadow-lg shadow-black/20 border border-[#234]">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+      <div class="flex-1">
+        <h2 class="text-xl font-black text-slate-50 mb-2">Continue Learning</h2>
+        <div class="flex items-center gap-3 mb-3">
+          <span class="text-sm font-bold text-emerald-300">{{ concepts_mastered }}/{{ total_concepts }} concepts mastered</span>
+        </div>
+        <div class="relative h-3 w-full overflow-hidden rounded-full bg-[#0f1a1f] mb-3">
+          <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
+               style="width: {{ (concepts_mastered / total_concepts * 100) | int if total_concepts > 0 else 0 }}%"></div>
+        </div>
+        <div class="flex gap-4 text-xs text-slate-500">
+          <a href="/flow/concepts" class="hover:text-sky-300 transition font-bold">View all concepts &rarr;</a>
+          <a href="/flow/stats" class="hover:text-violet-300 transition font-bold">Study stats &rarr;</a>
+        </div>
+      </div>
+      <a href="/flow"
+        class="inline-flex items-center justify-center rounded-xl bg-amber-500 px-8 py-4 text-lg font-black text-amber-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-400 hover:shadow-amber-400/30 hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap">
+        Continue Flow
+      </a>
+    </div>
   </div>
 
-  <div class="rounded-lg border border-slate-800 bg-slate-800/60 p-6 shadow">
-    <h2 class="text-lg font-semibold text-slate-100">Add Card</h2>
-    <form
-      method="post"
-      action="/add"
-      hx-post="/add"
-      hx-target="#cards-tbody"
-      hx-swap="afterbegin"
-      hx-on::after-request="this.reset()"
-      class="mt-4 grid gap-4"
-    >
-      <label class="grid gap-2 text-sm text-slate-200">
-        <span class="font-medium">Front</span>
-        <input
-          name="front"
-          required
-          class="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
-          placeholder="¿Cómo estás?"
-        />
-      </label>
-      <label class="grid gap-2 text-sm text-slate-200">
-        <span class="font-medium">Back</span>
-        <input
-          name="back"
-          required
-          class="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
-          placeholder="How are you?"
-        />
-      </label>
-      <label class="grid gap-2 text-sm text-slate-200">
-        <span class="font-medium">Example (optional)</span>
-        <textarea
-          name="example"
-          rows="2"
-          class="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
-          placeholder="Estoy bien, gracias."
-        ></textarea>
-      </label>
-      <button
-        type="submit"
-        class="inline-flex items-center justify-center rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 shadow-md transition hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+  <div class="flex flex-wrap items-center gap-4">
+    <div class="rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-black text-emerald-950 shadow-md shadow-emerald-500/25">
+      Due now: <span class="text-lg">{{ due_count }}</span>
+    </div>
+    <p class="text-sm text-slate-400">
+      Adjust settings below and hit Start Quiz to begin.
+    </p>
+  </div>
+
+  <form id="quiz-settings" class="rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 grid gap-6 text-sm text-slate-100">
+    <h2 class="text-xl font-bold text-slate-50">Quiz Settings</h2>
+
+    <label class="grid gap-2">
+      <span class="font-bold text-slate-200">Decks</span>
+      <select
+        name="deck"
+        multiple
+        size="6"
+        class="h-36 w-full rounded-xl border-2 border-[#2a3f4a] bg-[#0f1a1f] px-3 py-2 text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition"
       >
-        Save Card
-      </button>
-    </form>
-  </div>
+        <optgroup label="Vocabulary">
+          {% for deck in vocab_decks %}
+            <option value="{{ deck.id }}" {% if deck.id in state.deck_ids and state.mode == 'vocab' %}selected{% endif %}>
+              {{ lesson_labels.get(deck.lesson_id, '') }} {{ deck.name }} ({{ deck.due_count }} / {{ deck.card_count }})
+            </option>
+          {% endfor %}
+        </optgroup>
+        <optgroup label="Fill in the Blank">
+          {% for deck in fillblank_decks %}
+            <option value="{{ deck.id }}" {% if deck.id in state.deck_ids and state.mode == 'fillblank' %}selected{% endif %}>
+              {{ lesson_labels.get(deck.lesson_id, '') }} {{ deck.name }} ({{ deck.due_count }} / {{ deck.card_count }})
+            </option>
+          {% endfor %}
+        </optgroup>
+        <optgroup label="Verbs">
+          {% for deck in verb_decks %}
+            <option value="{{ deck.id }}" {% if deck.id in state.deck_ids and state.mode == 'verbs' %}selected{% endif %}>
+              {{ lesson_labels.get(deck.lesson_id, '') }} {{ deck.name }} ({{ deck.due_count }} / {{ deck.card_count }})
+            </option>
+          {% endfor %}
+        </optgroup>
+      </select>
+    </label>
 
-  <div class="rounded-lg border border-slate-800 bg-slate-800/60 p-0 shadow overflow-hidden">
-    <div class="flex items-center justify-between border-b border-slate-700 bg-slate-900/70 px-4 py-3">
-      <h2 class="text-lg font-semibold text-slate-100">Recent Cards</h2>
-      <span class="text-xs uppercase tracking-wide text-slate-400">Latest 10</span>
-    </div>
-    <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-slate-700 text-left text-sm">
-        <thead class="bg-slate-900/70 text-xs uppercase tracking-wide text-slate-400">
-          <tr>
-            <th scope="col" class="px-4 py-3">Front</th>
-            <th scope="col" class="px-4 py-3">Back</th>
-            <th scope="col" class="px-4 py-3">Example</th>
-            <th scope="col" class="px-4 py-3">Due</th>
-          </tr>
-        </thead>
-        <tbody id="cards-tbody" class="divide-y divide-slate-800">
-          {% if cards %}
-            {% for card in cards %}
-              {% include "partials/card_row.html" %}
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="4" class="px-4 py-6 text-center text-sm text-slate-400">No cards yet. Add your first phrase!</td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+    <fieldset class="grid gap-3">
+      <legend class="font-bold text-slate-200">Mode</legend>
+      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-emerald-500 has-[:checked]:bg-emerald-500/10">
+        <input type="radio" name="mode" value="vocab" {% if state.mode == 'vocab' %}checked{% endif %} class="h-4 w-4 accent-emerald-500" />
+        <span class="font-medium">Vocabulary</span>
+      </label>
+      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-emerald-500 has-[:checked]:bg-emerald-500/10">
+        <input type="radio" name="mode" value="fillblank" {% if state.mode == 'fillblank' %}checked{% endif %} class="h-4 w-4 accent-emerald-500" />
+        <span class="font-medium">Fill in the Blank</span>
+      </label>
+      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-emerald-500 has-[:checked]:bg-emerald-500/10">
+        <input type="radio" name="mode" value="verbs" {% if state.mode == 'verbs' %}checked{% endif %} class="h-4 w-4 accent-emerald-500" />
+        <span class="font-medium">Verbs</span>
+      </label>
+    </fieldset>
+
+    <fieldset class="grid gap-3">
+      <legend class="font-bold text-slate-200">Direction (vocab)</legend>
+      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-sky-500 has-[:checked]:bg-sky-500/10">
+        <input type="radio" name="direction" value="es_to_en" {% if state.direction == 'es_to_en' %}checked{% endif %} class="h-4 w-4 accent-sky-500" />
+        <span class="font-medium">Spanish → English</span>
+      </label>
+      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-sky-500 has-[:checked]:bg-sky-500/10">
+        <input type="radio" name="direction" value="en_to_es" {% if state.direction == 'en_to_es' %}checked{% endif %} class="h-4 w-4 accent-sky-500" />
+        <span class="font-medium">English → Spanish</span>
+      </label>
+    </fieldset>
+
+    <fieldset class="grid gap-3">
+      <legend class="font-bold text-slate-200">Grading</legend>
+      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-amber-500 has-[:checked]:bg-amber-500/10">
+        <input type="radio" name="grading" value="strict" {% if state.grading == 'strict' %}checked{% endif %} class="h-4 w-4 accent-amber-500" />
+        <span class="font-medium">Strict</span>
+      </label>
+      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-amber-500 has-[:checked]:bg-amber-500/10">
+        <input type="radio" name="grading" value="lenient" {% if state.grading == 'lenient' %}checked{% endif %} class="h-4 w-4 accent-amber-500" />
+        <span class="font-medium">Lenient (accept close matches)</span>
+      </label>
+    </fieldset>
+
+    <input type="hidden" name="points" value="0" />
+    <input type="hidden" name="streak" value="0" />
+
+    <button
+      type="button"
+      class="w-full rounded-xl bg-emerald-500 px-6 py-3.5 text-base font-black text-emerald-950 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 hover:shadow-emerald-400/30 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+      hx-get="/quiz"
+      hx-target="#quiz-panel"
+      hx-include="#quiz-settings"
+      hx-swap="outerHTML"
+    >
+      Start Quiz
+    </button>
+  </form>
 </section>
 
-<div
-  id="quiz-panel"
-  class="mt-8"
-  hx-get="/quiz"
-  hx-trigger="load delay:50ms, revealed"
-  hx-target="#quiz-panel"
-  hx-swap="outerHTML"
->
-  <div class="rounded-lg border border-dashed border-slate-700 bg-slate-800/40 p-6 text-center text-sm text-slate-400">
-    Loading quiz…
+<div id="quiz-panel" class="mt-8">
+  <div class="rounded-2xl border-2 border-dashed border-[#2a3f4a] bg-[#1a2d35]/50 p-8 text-center">
+    <p class="text-lg text-slate-500 font-medium">Choose settings and start the quiz to begin.</p>
+    <p class="mt-2 text-sm text-slate-600">Your progress will be tracked automatically.</p>
   </div>
 </div>
 {% endblock %}

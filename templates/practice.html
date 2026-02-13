@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<section class="grid gap-6">
+  <!-- Lesson header -->
+  {% if lesson_info %}
+  <header class="rounded-2xl bg-[#1a2d35] px-6 py-5 shadow-lg shadow-black/20">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div class="flex items-center gap-3">
+          <a href="/lessons" class="inline-flex items-center gap-1 text-sm text-slate-400 transition hover:text-slate-200">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
+            Lessons
+          </a>
+          <span class="text-slate-600">·</span>
+          <a href="/lesson/{{ lesson_info.slug }}" class="text-sm text-slate-400 transition hover:text-slate-200">
+            {{ lesson_info.slug|chapter_label }}
+          </a>
+        </div>
+        <h1 class="mt-1 text-2xl font-bold text-slate-50">
+          <span class="text-emerald-400">{{ lesson_info.slug|chapter_label }}</span>
+          {{ lesson_info.title }}
+        </h1>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-300">{{ practice_kind|replace('_', ' ')|title }}</span>
+        {% if lesson_info.difficulty %}
+          <span class="rounded-full bg-sky-500/15 px-3 py-1 text-xs font-bold text-sky-300">{{ lesson_info.difficulty }}</span>
+        {% endif %}
+        {% if due_in_lesson is defined %}
+          <span class="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-300">{{ due_in_lesson }} due</span>
+        {% endif %}
+      </div>
+    </div>
+    {% if deck_kinds|length > 1 %}
+    <div class="mt-4 flex flex-wrap items-center gap-2">
+      {% for dk in deck_kinds %}
+        <a href="/practice?lesson={{ lesson_info.slug }}&kind={{ dk }}"
+           class="rounded-full px-4 py-1.5 text-xs font-bold transition {{ 'bg-emerald-500 text-emerald-950 shadow shadow-emerald-500/25' if dk == practice_kind else 'bg-[#0f1a1f] text-slate-400 hover:text-slate-200 hover:bg-[#162028]' }}">
+          {{ dk|replace('_', ' ')|title }}
+        </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </header>
+  {% endif %}
+
+  <!-- Quiz panel -->
+  {% include "quiz.html" %}
+</section>
+{% endblock %}

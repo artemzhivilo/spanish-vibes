@@ -1,62 +1,137 @@
 {% if card %}
-<div id="quiz-panel" class="rounded-lg border border-emerald-500/40 bg-slate-900/70 p-6 shadow-lg">
+<div id="quiz-panel" class="rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-emerald-500/20">
   <header class="flex items-center justify-between">
-    <h2 class="text-lg font-semibold text-slate-100">Next Card</h2>
-    <span class="text-xs uppercase tracking-wide text-emerald-300">Due now</span>
+    <h2 class="text-xl font-bold text-slate-50">Next Card</h2>
+    <span class="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-300">{{ prompt.mode_label }}</span>
   </header>
-  <div class="mt-4 space-y-4">
-    <div>
-      <p class="text-xs uppercase tracking-wide text-slate-400">Front</p>
-      <p class="mt-1 text-xl font-semibold text-emerald-200">{{ card.front }}</p>
-    </div>
-    {% if revealed %}
-      <div>
-        <p class="text-xs uppercase tracking-wide text-slate-400">Back</p>
-        <p class="mt-1 text-lg text-slate-100">{{ card.back }}</p>
-      </div>
-      {% if card.example %}
-        <div>
-          <p class="text-xs uppercase tracking-wide text-slate-400">Example</p>
-          <p class="mt-1 text-slate-300">{{ card.example }}</p>
-        </div>
-      {% endif %}
-      <div class="flex gap-3 pt-4">
-        <button
-          type="button"
-          class="w-full rounded-md border border-red-400/60 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
-          hx-post="/grade/{{ card.id }}/again"
-          hx-target="#quiz-panel"
-          hx-swap="outerHTML"
-        >
-          Again
-        </button>
-        <button
-          type="button"
-          class="w-full rounded-md border border-emerald-400/60 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
-          hx-post="/grade/{{ card.id }}/good"
-          hx-target="#quiz-panel"
-          hx-swap="outerHTML"
-        >
-          Good
-        </button>
+  <div class="mt-4 flex items-center gap-3">
+    <span class="rounded-full bg-emerald-500/15 px-4 py-1.5 text-sm font-bold text-emerald-300">
+      Points: {{ score.points }}
+    </span>
+    <span class="rounded-full bg-sky-500/15 px-4 py-1.5 text-sm font-bold text-sky-300">
+      Streak: {{ score.streak }}
+    </span>
+  </div>
+  {% if feedback %}
+    {% if feedback.is_correct %}
+      <div class="mt-5 rounded-xl bg-emerald-500/15 ring-1 ring-emerald-500/30 px-5 py-4">
+        <p class="text-lg font-bold text-emerald-300">✓ {{ feedback.message }}</p>
+        <p class="mt-1 text-sm text-emerald-200/80">{{ feedback.label }}: <span class="font-bold text-emerald-200">{{ feedback.expected }}</span></p>
+        {% if feedback.xp_earned %}
+          <p class="mt-2 inline-block rounded-full bg-amber-500/20 px-3 py-1 text-sm font-black text-amber-400">+{{ feedback.xp_earned }} XP</p>
+        {% endif %}
       </div>
     {% else %}
-      <div class="pt-4">
-        <button
-          type="button"
-          class="w-full rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 shadow-md transition hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
-          hx-get="/reveal/{{ card.id }}"
-          hx-target="#quiz-panel"
-          hx-swap="outerHTML"
-        >
-          Reveal Answer
-        </button>
+      <div class="mt-5 rounded-xl bg-red-500/10 ring-1 ring-red-500/25 px-5 py-4">
+        <p class="text-lg font-bold text-red-300">✗ {{ feedback.message }}</p>
+        <p class="mt-2 text-sm text-red-200/80">Correct {{ feedback.label }}: <span class="font-bold text-red-200">{{ feedback.expected }}</span></p>
+        <p class="mt-1 text-sm text-red-200/60">Your answer: <span class="font-semibold">{{ feedback.provided or '—' }}</span></p>
       </div>
     {% endif %}
-  </div>
+  {% endif %}
+  <form
+    id="quiz-answer-form"
+    class="mt-5 grid gap-5"
+    hx-post="/check/{{ card.id }}"
+    hx-target="#quiz-panel"
+    hx-swap="outerHTML"
+  >
+    {% for deck_id in state.deck_ids %}
+      <input type="hidden" name="deck" value="{{ deck_id }}" />
+    {% endfor %}
+    <input type="hidden" name="mode" value="{{ state.mode }}" />
+    <input type="hidden" name="direction" value="{{ state.direction }}" />
+    <input type="hidden" name="grading" value="{{ state.grading }}" />
+    <input type="hidden" name="points" value="{{ score.points }}" />
+    <input type="hidden" name="streak" value="{{ score.streak }}" />
+
+    <div class="space-y-4">
+      {% if prompt.instructions %}
+        <div class="rounded-xl bg-[#0f1a1f] px-4 py-3 text-sm">
+          <p class="font-bold text-slate-200">Instructions</p>
+          <p class="mt-1 text-slate-300">{{ prompt.instructions }}</p>
+        </div>
+      {% endif %}
+
+      {% for line in prompt.lines %}
+        <div>
+          <p class="text-xs uppercase tracking-widest font-bold text-slate-500">{{ line.label }}</p>
+          <p class="mt-1 text-2xl font-bold text-emerald-300">{{ line.value }}</p>
+        </div>
+      {% endfor %}
+      {% if prompt.options %}
+        <div class="rounded-xl bg-[#0f1a1f] px-4 py-3 text-sm">
+          <p class="font-bold text-slate-200">Options</p>
+          <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-300">
+            {% for option in prompt.options %}
+              <li>{{ option }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+      {% if prompt.example %}
+        <div class="rounded-xl bg-[#0f1a1f] px-4 py-3 text-sm">
+          <p class="font-bold text-slate-200">Example</p>
+          <p class="mt-1 text-slate-300">{{ prompt.example }}</p>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if prompt.input_type == 'options' and prompt.options %}
+      <fieldset class="grid gap-3 text-sm text-slate-200">
+        <legend class="font-bold text-slate-200">Choose the best answer ({{ prompt.answer_label }})</legend>
+        {% for option in prompt.options %}
+          <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-emerald-500 has-[:checked]:bg-emerald-500/10">
+            <input type="radio" name="answer" value="{{ option }}" required class="h-4 w-4 accent-emerald-500" />
+            <span class="font-medium">{{ option }}</span>
+          </label>
+        {% endfor %}
+      </fieldset>
+    {% else %}
+      <label class="grid gap-2 text-sm text-slate-200">
+        <span class="font-bold">Your answer ({{ prompt.answer_label }})</span>
+        <input
+          name="answer"
+          value="{{ submitted_answer }}"
+          class="w-full rounded-xl border-2 border-[#2a3f4a] bg-[#0f1a1f] px-4 py-3 text-lg text-slate-100 transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+          placeholder="{{ prompt.placeholder }}"
+          autocomplete="off"
+        />
+      </label>
+    {% endif %}
+
+    <button
+      type="submit"
+      class="w-full rounded-xl bg-emerald-500 px-6 py-3.5 text-base font-black text-emerald-950 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 hover:shadow-emerald-400/30 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+    >
+      Check Answer
+    </button>
+  </form>
 </div>
 {% else %}
-<div id="quiz-panel" class="rounded-lg border border-slate-700 bg-slate-900/40 p-6 text-center text-sm text-slate-300">
-  No cards are due. Add or review cards to begin.
+<div id="quiz-panel" class="rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20">
+  <div class="flex items-center gap-3">
+    <span class="rounded-full bg-emerald-500/15 px-4 py-1.5 text-sm font-bold text-emerald-300">
+      Points: {{ score.points if score else 0 }}
+    </span>
+    <span class="rounded-full bg-sky-500/15 px-4 py-1.5 text-sm font-bold text-sky-300">
+      Streak: {{ score.streak if score else 0 }}
+    </span>
+  </div>
+  {% if feedback %}
+    {% if feedback.is_correct %}
+      <div class="mt-5 rounded-xl bg-emerald-500/15 ring-1 ring-emerald-500/30 px-5 py-4">
+        <p class="text-lg font-bold text-emerald-300">✓ {{ feedback.message }}</p>
+        <p class="mt-1 text-sm text-emerald-200/80">{{ feedback.label }}: <span class="font-bold text-emerald-200">{{ feedback.expected }}</span></p>
+      </div>
+    {% else %}
+      <div class="mt-5 rounded-xl bg-red-500/10 ring-1 ring-red-500/25 px-5 py-4">
+        <p class="text-lg font-bold text-red-300">✗ {{ feedback.message }}</p>
+        <p class="mt-2 text-sm text-red-200/80">Correct {{ feedback.label }}: <span class="font-bold text-red-200">{{ feedback.expected }}</span></p>
+        <p class="mt-1 text-sm text-red-200/60">Your answer: <span class="font-semibold">{{ feedback.provided or '—' }}</span></p>
+      </div>
+    {% endif %}
+  {% endif %}
+  <p class="mt-5 text-center text-lg text-slate-400 font-medium">No cards are due. Adjust your selection or add more cards.</p>
 </div>
 {% endif %}
