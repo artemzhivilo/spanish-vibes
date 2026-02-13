@@ -1,0 +1,334 @@
+<!-- ═══ Conversation Card ═══ -->
+<div class="rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-violet-500/20">
+  <header class="flex items-center justify-between mb-4">
+    <span class="rounded-full bg-violet-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-violet-300">
+      Conversation
+    </span>
+    <span class="text-xs text-slate-500">{{ concept_name }} · {{ card.topic }}</span>
+  </header>
+
+  <!-- Chat messages -->
+  <div id="conversation-messages" class="flex flex-col gap-3 max-h-[400px] overflow-y-auto mb-4 scroll-smooth">
+    {% for msg in card.messages %}
+      {% if msg.role == 'ai' %}
+        <!-- AI bubble — left, gray -->
+        <div class="flex items-start gap-2 max-w-[85%]" data-chat-role="ai">
+          <div class="shrink-0 w-7 h-7 rounded-full bg-slate-600 flex items-center justify-center text-xs font-bold text-slate-300">AI</div>
+          <div class="rounded-2xl rounded-tl-sm bg-slate-700 px-4 py-2.5 text-sm text-slate-200 leading-relaxed">
+            {{ msg.content | tappable | safe }}
+          </div>
+        </div>
+      {% elif msg.role == 'system' %}
+        {% set meta = msg.metadata or {} %}
+        {% if meta.kind == 'translation' %}
+          <!-- System translation bubble -->
+          <div class="flex items-start gap-2 max-w-[90%] mx-auto">
+            <div class="rounded-xl bg-violet-500/10 px-4 py-2.5 text-sm text-violet-300 leading-relaxed ring-1 ring-violet-500/20 w-full">
+              <p class="font-medium">
+                💡 En español:
+                <span class="text-emerald-300">{{ meta.spanish_translation }}</span>
+              </p>
+              {% if meta.vocabulary_gaps %}
+                <p class="text-xs text-slate-400 mt-1">
+                  📝 New:
+                  {% for gap in meta.vocabulary_gaps %}
+                    <span class="text-violet-400">{{ gap.english }}</span>
+                    <span class="text-slate-600">→</span>
+                    <span class="text-emerald-400">{{ gap.spanish }}</span>
+                    {% if not loop.last %} · {% endif %}
+                  {% endfor %}
+                </p>
+              {% endif %}
+              {% if msg.content and not msg.content.startswith('💡 En español') %}
+                <p class="text-[11px] text-slate-500 mt-1">{{ msg.content }}</p>
+              {% endif %}
+            </div>
+          </div>
+        {% else %}
+          <div class="flex items-start gap-2 max-w-[85%] mx-auto">
+            <div class="rounded-xl bg-slate-700/60 px-3 py-2 text-xs text-slate-200">{{ msg.content }}</div>
+          </div>
+        {% endif %}
+      {% else %}
+        <!-- User bubble — right, brand color -->
+        <div class="flex items-start gap-2 max-w-[85%] self-end flex-row-reverse" data-chat-role="user">
+          <div class="shrink-0 w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center text-xs font-bold text-emerald-100">Tú</div>
+          <div class="rounded-2xl rounded-tr-sm bg-emerald-600/80 px-4 py-2.5 text-sm text-emerald-50 leading-relaxed">
+            {{ msg.content }}
+            {% if msg.corrections %}
+              <div class="mt-2 pt-2 border-t border-emerald-500/30 flex flex-wrap gap-1">
+                {% for c in msg.corrections %}
+                  <span class="inline-flex items-center gap-1 rounded-full bg-amber-400/20 px-2 py-0.5 text-[11px] font-medium text-amber-100">
+                    <span class="text-amber-200">{{ c.original }}</span>
+                    <span class="text-amber-400">→</span>
+                    <span class="text-emerald-100">{{ c.corrected }}</span>
+                  </span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  {% if is_ended %}
+    <!-- Conversation ended — show summary button -->
+    <div class="text-center">
+      <p class="text-sm text-slate-400 mb-3">Conversation complete!</p>
+      <div class="flex gap-3">
+        <a href="/flow/conversation/summary?conversation_id={{ conversation_id }}&session_id={{ session_id }}"
+           hx-get="/flow/conversation/summary?conversation_id={{ conversation_id }}&session_id={{ session_id }}"
+           hx-target="#flow-card-slot"
+           hx-swap="innerHTML"
+           class="flex-1 rounded-xl bg-violet-500 px-5 py-3 text-sm font-bold text-violet-950 text-center transition hover:bg-violet-400 active:scale-[0.98]">
+          View Summary
+        </a>
+        <button
+          hx-get="/flow/card?session_id={{ session_id }}"
+          hx-target="#flow-card-slot"
+          hx-swap="innerHTML"
+          class="flex-1 rounded-xl bg-slate-700 px-5 py-3 text-sm font-bold text-slate-200 transition hover:bg-slate-600 active:scale-[0.98]">
+          Next Card
+        </button>
+      </div>
+    </div>
+  {% else %}
+    <!-- Input area -->
+    <form hx-post="/flow/conversation/respond" hx-target="#flow-card-slot" hx-swap="innerHTML"
+          class="flex gap-2">
+      <input type="hidden" name="session_id" value="{{ session_id }}" />
+      <input type="hidden" name="conversation_id" value="{{ conversation_id }}" />
+      <input type="text" name="user_message"
+             placeholder="Escribe en español..."
+             autocomplete="off"
+             autofocus
+             class="flex-1 rounded-xl bg-[#0f1a1f] px-4 py-3 text-sm text-slate-200 placeholder-slate-600 ring-1 ring-slate-700 focus:ring-violet-500/50 focus:outline-none transition" />
+      <button type="submit"
+              class="rounded-xl bg-violet-500 px-4 py-3 text-sm font-bold text-violet-950 transition hover:bg-violet-400 active:scale-[0.98]">
+        Send
+      </button>
+    </form>
+    <div class="mt-2 flex justify-end">
+      <button
+        hx-get="/flow/conversation/summary?conversation_id={{ conversation_id }}&session_id={{ session_id }}"
+        hx-target="#flow-card-slot"
+        hx-swap="innerHTML"
+        class="rounded-lg bg-slate-700/50 px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:bg-slate-700 hover:text-slate-300">
+        Done
+      </button>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+  (function() {
+    var el = document.getElementById('conversation-messages');
+    if (el) el.scrollTop = el.scrollHeight;
+  })();
+
+  (function() {
+    var existing = document.getElementById('word-tooltip');
+    if (existing && existing.parentNode) {
+      existing.parentNode.removeChild(existing);
+    }
+
+    var tooltip = document.createElement('div');
+    tooltip.id = 'word-tooltip';
+    tooltip.className = 'fixed z-50 bg-slate-900/95 text-emerald-200 text-sm px-3 py-2 rounded-lg shadow-xl ring-1 ring-slate-800 pointer-events-none opacity-0 transition-opacity duration-150';
+    tooltip.style.maxWidth = '240px';
+    tooltip.style.backgroundColor = '#0f172a';
+    tooltip.style.lineHeight = '1.3';
+    tooltip.style.display = 'inline-flex';
+    tooltip.style.flexDirection = 'column';
+    tooltip.style.gap = '4px';
+
+    var inner = document.createElement('div');
+    tooltip.appendChild(inner);
+
+    var caret = document.createElement('div');
+    caret.style.position = 'absolute';
+    caret.style.width = '0';
+    caret.style.height = '0';
+    caret.style.borderLeft = '6px solid transparent';
+    caret.style.borderRight = '6px solid transparent';
+    caret.style.pointerEvents = 'none';
+    tooltip.appendChild(caret);
+
+    document.body.appendChild(tooltip);
+
+    var activeText = null;
+
+    function hideTooltip() {
+      tooltip.style.opacity = '0';
+      tooltip.style.visibility = 'hidden';
+      activeText = null;
+    }
+
+    function positionTooltip(targetRect) {
+      tooltip.style.visibility = 'hidden';
+      tooltip.style.opacity = '1';
+      requestAnimationFrame(function() {
+        var tooltipRect = tooltip.getBoundingClientRect();
+        var left = targetRect.left;
+        var top = targetRect.bottom + 8;
+        var showAbove = false;
+
+        if (left + tooltipRect.width > window.innerWidth - 12) {
+          left = window.innerWidth - tooltipRect.width - 12;
+        }
+        if (left < 12) {
+          left = 12;
+        }
+
+        if (top + tooltipRect.height > window.innerHeight - 12) {
+          top = targetRect.top - tooltipRect.height - 12;
+          showAbove = true;
+        }
+
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
+        tooltip.style.visibility = 'visible';
+
+        caret.style.position = 'absolute';
+        caret.style.borderBottom = showAbove ? '6px solid #0f172a' : '0 solid transparent';
+        caret.style.borderTop = showAbove ? '0 solid transparent' : '6px solid #0f172a';
+        caret.style.borderLeft = '6px solid transparent';
+        caret.style.borderRight = '6px solid transparent';
+        caret.style.top = showAbove ? (tooltipRect.height - 2) + 'px' : '-6px';
+
+        var center = targetRect.left + targetRect.width / 2;
+        var caretLeft = Math.min(Math.max(center - 6, left + 8), left + tooltipRect.width - 14);
+        caret.style.left = (caretLeft - left) + 'px';
+      });
+    }
+
+    function requestTranslation(text, context, rect) {
+      if (!text) return;
+      activeText = text;
+      inner.textContent = '...';
+      tooltip.style.opacity = '1';
+      positionTooltip(rect);
+
+      fetch('/flow/translate-word?word=' + encodeURIComponent(text) + '&context=' + encodeURIComponent(context))
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+          if (activeText !== text) return;
+          inner.innerHTML = html;
+          positionTooltip(rect);
+        })
+        .catch(function() {
+          if (activeText !== text) return;
+          inner.textContent = '(translation unavailable)';
+        });
+    }
+
+    document.addEventListener('scroll', hideTooltip, true);
+    document.addEventListener('click', function(event) {
+      var target = event.target;
+      if (!target.classList.contains('tappable-word')) {
+        var selection = window.getSelection();
+        if (!selection || selection.isCollapsed) {
+          hideTooltip();
+        }
+        return;
+      }
+
+      var bubble = target.closest('[data-chat-role="ai"]');
+      if (!bubble) return;
+
+      var word = target.dataset.word || target.textContent;
+      if (!word) {
+        hideTooltip();
+        return;
+      }
+
+      if (activeText === word && tooltip.style.opacity === '1') {
+        hideTooltip();
+        return;
+      }
+
+      var context = bubble.textContent.trim().slice(0, 160);
+      var rect = target.getBoundingClientRect();
+      requestTranslation(word, context, rect);
+    });
+
+    function getWordSpan(node) {
+      if (!node) return null;
+      if (node.nodeType === 3) {
+        node = node.parentElement;
+      }
+      if (!node) return null;
+      if (node.classList && node.classList.contains('tappable-word')) {
+        return node;
+      }
+      return node.closest ? node.closest('.tappable-word') : null;
+    }
+
+    function collectSpanRange(bubble, startSpan, endSpan) {
+      var spans = Array.from(bubble.querySelectorAll('.tappable-word'));
+      var startIndex = spans.indexOf(startSpan);
+      var endIndex = spans.indexOf(endSpan);
+      if (startIndex === -1 || endIndex === -1) {
+        return null;
+      }
+      if (startIndex > endIndex) {
+        var tmp = startIndex;
+        startIndex = endIndex;
+        endIndex = tmp;
+      }
+      var slice = spans.slice(startIndex, endIndex + 1);
+      if (!slice.length) {
+        return null;
+      }
+      var phrase = slice.map(function(span) {
+        return span.dataset.word || span.textContent;
+      }).join(' ').trim();
+      if (!phrase) {
+        return null;
+      }
+      var range = document.createRange();
+      range.setStartBefore(slice[0]);
+      range.setEndAfter(slice[slice.length - 1]);
+      var rect = range.getBoundingClientRect();
+      if (!rect || rect.width === 0 || rect.height === 0) {
+        return null;
+      }
+      return { text: phrase, rect: rect };
+    }
+
+    function handleSelectionTranslation() {
+      var selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+      if (selection.rangeCount === 0) return;
+      var range = selection.getRangeAt(0);
+      var container = range.commonAncestorContainer;
+      var element = container.nodeType === 1 ? container : container.parentElement;
+      if (!element) return;
+      var bubble = element.closest('[data-chat-role="ai"]');
+      if (!bubble) return;
+
+      var startWord = getWordSpan(range.startContainer);
+      var endWord = getWordSpan(range.endContainer);
+      if (!startWord || !endWord) return;
+      var startBubble = startWord.closest('[data-chat-role="ai"]');
+      var endBubble = endWord.closest('[data-chat-role="ai"]');
+      if (!startBubble || startBubble !== endBubble) return;
+
+      var phraseInfo = collectSpanRange(bubble, startWord, endWord);
+      if (!phraseInfo || phraseInfo.text.split(/\s+/).length < 2) {
+        return;
+      }
+
+      var context = bubble.textContent.trim().slice(0, 200);
+      requestTranslation(phraseInfo.text, context, phraseInfo.rect);
+    }
+
+    document.addEventListener('mouseup', function() {
+      setTimeout(handleSelectionTranslation, 0);
+    });
+    document.addEventListener('touchend', function() {
+      setTimeout(handleSelectionTranslation, 0);
+    });
+  })();
+</script>

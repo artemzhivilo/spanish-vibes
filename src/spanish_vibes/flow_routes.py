@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+from html import escape
+from datetime import datetime, timezone
 from pathlib import Path
 
 import markdown
@@ -21,9 +23,19 @@ from .flow import (
     start_or_resume_session,
 )
 from .flow_ai import ai_available, ensure_cache_populated, prefetch_next_concepts
-from .flow_db import get_session, mark_teach_shown, get_all_concept_knowledge
+from .interest import CardSignal, InterestTracker
+from .flow_db import (
+    get_session,
+    mark_teach_shown,
+    get_all_concept_knowledge,
+    store_vocabulary_gap,
+    update_session,
+)
+from .db import seed_interest_topics
 from .concepts import load_concepts
 from .bkt import is_mastered
+from .lexicon import translate_spanish_word
+from .template_helpers import register_template_filters
 
 router = APIRouter()
 
@@ -32,6 +44,8 @@ PROJECT_ROOT = PACKAGE_ROOT.parent.parent
 TEMPLATES_DIR = PROJECT_ROOT / "templates"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+register_template_filters(templates.env)
+seed_interest_topics()
 
 
 def _count_mastered() -> tuple[int, int]:
@@ -94,6 +108,51 @@ async def flow_card(
         }
         return templates.TemplateResponse(request, "partials/flow_card.html", context)
 
+    if card_context.card_type == "conversation":
+        # Auto-start a conversation card
+        from .conversation import ConversationCard, ConversationEngine, ConversationMessage
+        from .db import now_iso as _now_iso
+
+        engine = ConversationEngine()
+        from .conversation import get_random_topic
+        topic = card_context.interest_topics[0] if card_context.interest_topics else get_random_topic()
+        concept_id = card_context.concept_id
+        difficulty = card_context.difficulty
+
+        opener = engine.generate_opener(topic, concept_id, difficulty)
+        timestamp = _now_iso()
+        opener_msg = ConversationMessage(role="ai", content=opener, timestamp=timestamp)
+        messages_json = json.dumps([opener_msg.to_dict()])
+
+        from .db import _open_connection
+        with _open_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO flow_conversations
+                    (session_id, topic, messages_json, turn_count, completed, created_at, concept_id, difficulty)
+                VALUES (?, ?, ?, 1, 0, ?, ?, ?)
+                """,
+                (session_id, topic, messages_json, timestamp, concept_id, difficulty),
+            )
+            conn.commit()
+            conversation_id = cursor.lastrowid
+
+        card = ConversationCard(
+            topic=topic,
+            concept=concept_id,
+            difficulty=difficulty,
+            opener=opener,
+            messages=[opener_msg],
+        )
+        context = {
+            "session_id": session_id,
+            "conversation_id": conversation_id,
+            "card": card,
+            "concept_name": _get_concept_name(concept_id),
+            "is_ended": False,
+        }
+        return templates.TemplateResponse(request, "partials/flow_conversation.html", context)
+
     # MCQ card
     context = {
         "session_id": session_id,
@@ -146,6 +205,19 @@ async def flow_answer(
         chosen_option=chosen_option,
         response_time_ms=response_time_ms,
     )
+
+    # Record interest signal (topic_id=None until cards are topic-tagged)
+    signal = CardSignal(
+        topic_id=None,
+        was_correct=result.is_correct,
+        dwell_time_ms=response_time_ms,
+        response_time_ms=response_time_ms,
+        card_id=card_context.mcq_card_id,
+        session_id=session_id,
+        concept_id=card_context.concept_id,
+        card_type=card_context.card_type,
+    )
+    InterestTracker().update_from_card_signal(signal)
 
     # Prefetch in background
     background_tasks.add_task(prefetch_next_concepts)
@@ -412,6 +484,393 @@ async def stats_page(request: Request) -> Response:
         "current_page": "stats",
     }
     return templates.TemplateResponse(request, "flow_stats.html", context)
+
+
+@router.get("/flow/interests", response_class=HTMLResponse)
+async def interests_dashboard(request: Request) -> Response:
+    """Developer dashboard exposing interest-topic internals."""
+    from .db import _open_connection
+
+    tracker = InterestTracker()
+    seed_interest_topics()
+    top_topics = tracker.get_top_interests(n=25)
+    now = datetime.now(timezone.utc)
+
+    with _open_connection() as conn:
+        topic_rows = conn.execute(
+            """
+            SELECT t.id, t.name, t.slug, t.parent_id,
+                   s.score, s.interaction_count, s.last_updated, s.decay_half_life_days
+            FROM interest_topics t
+            LEFT JOIN user_interest_scores s ON s.topic_id = t.id
+            ORDER BY COALESCE(s.score, 0) DESC, t.name
+            """,
+        ).fetchall()
+        total_signals_row = conn.execute("SELECT COUNT(*) AS c FROM card_signals").fetchone()
+        signal_rows = conn.execute(
+            """
+            SELECT cs.id, cs.topic_id, cs.was_correct, cs.dwell_time_ms,
+                   cs.response_time_ms, cs.was_skipped, cs.concept_id, cs.card_type,
+                   cs.created_at, t.name AS topic_name
+            FROM card_signals cs
+            LEFT JOIN interest_topics t ON t.id = cs.topic_id
+            ORDER BY cs.id DESC
+            LIMIT 25
+            """,
+        ).fetchall()
+
+    topics: list[dict[str, Any]] = []
+    decayed_values: list[float] = []
+    for row in topic_rows:
+        raw_score = row["score"]
+        last_updated = row["last_updated"]
+        half_life = row["decay_half_life_days"] or 45.0
+        decayed = None
+        if raw_score is not None and last_updated:
+            decayed = InterestTracker._apply_decay(  # type: ignore[attr-defined]
+                score=float(raw_score),
+                last_updated=str(last_updated),
+                half_life_days=float(half_life),
+                now=now,
+            )
+            decayed_values.append(decayed)
+        topics.append({
+            "id": int(row["id"]),
+            "name": row["name"],
+            "slug": row["slug"],
+            "parent_id": row["parent_id"],
+            "score": raw_score,
+            "decayed": decayed,
+            "interaction_count": row["interaction_count"] or 0,
+            "last_updated": last_updated,
+        })
+
+    total_signals = int(total_signals_row["c"] if total_signals_row else 0)
+    recent_signals = [
+        {
+            "id": row["id"],
+            "topic": row["topic_name"] or "(none)",
+            "topic_id": row["topic_id"],
+            "created_at": row["created_at"],
+            "card_type": row["card_type"],
+            "was_correct": bool(row["was_correct"]),
+            "dwell_time_ms": row["dwell_time_ms"],
+            "was_skipped": bool(row["was_skipped"]),
+            "concept_id": row["concept_id"],
+        }
+        for row in signal_rows
+    ]
+
+    avg_decayed = sum(decayed_values) / len(decayed_values) if decayed_values else 0.0
+    tracked_topics = sum(1 for t in topics if t["score"] is not None)
+    last_signal_at = recent_signals[0]["created_at"] if recent_signals else None
+
+    context = {
+        "page_title": "Spanish Vibes · Interests",
+        "current_page": "flow",
+        "top_topics": top_topics,
+        "topics": topics,
+        "recent_signals": recent_signals,
+        "total_topics": len(topics),
+        "tracked_topics": tracked_topics,
+        "avg_decayed": avg_decayed,
+        "total_signals": total_signals,
+        "last_signal_at": last_signal_at,
+    }
+    return templates.TemplateResponse(request, "flow_interests.html", context)
+
+
+# ── Conversation card routes ─────────────────────────────────────────────────
+
+
+@router.get("/flow/translate-word", response_class=HTMLResponse)
+async def translate_word_endpoint(
+    request: Request,
+    word: str = Query(...),
+    context: str = Query(""),
+) -> Response:
+    """Return a lightweight tooltip with a Spanish→English translation."""
+    result = translate_spanish_word(word, context)
+    if result is None:
+        body = (
+            '<div class="text-slate-400">(translation unavailable)</div>'
+        )
+    else:
+        word_html = escape(result["word"])
+        translation_html = escape(result["translation"])
+        body = (
+            '<div class="flex flex-col gap-1">'
+            f'<div><span class="font-bold text-emerald-300">{word_html}</span>'
+            '<span class="text-slate-500 mx-1">→</span>'
+            f'<span class="text-slate-100">{translation_html}</span></div>'
+            '</div>'
+        )
+    return HTMLResponse(body)
+
+
+@router.post("/flow/conversation/start", response_class=HTMLResponse)
+async def conversation_start(
+    request: Request,
+    session_id: int = Form(...),
+    concept_id: str = Form(""),
+    topic: str = Form(""),
+    difficulty: int = Form(1),
+) -> Response:
+    """Start a conversation card and return the chat UI."""
+    from .conversation import ConversationCard, ConversationEngine, ConversationMessage
+    from .db import _open_connection, now_iso
+
+    engine = ConversationEngine()
+
+    # Pick concept/topic from flow context if not provided
+    if not concept_id:
+        card_context = select_next_card(session_id)
+        concept_id = card_context.concept_id if card_context else "greetings"
+        if card_context and card_context.interest_topics:
+            import random
+            topic = topic or random.choice(card_context.interest_topics)
+    if not topic:
+        from .conversation import get_random_topic
+        topic = get_random_topic()
+
+    opener = engine.generate_opener(topic, concept_id, difficulty)
+
+    # Create conversation record in DB
+    timestamp = now_iso()
+    opener_msg = ConversationMessage(role="ai", content=opener, timestamp=timestamp)
+    messages_json = json.dumps([opener_msg.to_dict()])
+
+    with _open_connection() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO flow_conversations
+                (session_id, topic, messages_json, turn_count, completed, created_at, concept_id, difficulty)
+            VALUES (?, ?, ?, 1, 0, ?, ?, ?)
+            """,
+            (session_id, topic, messages_json, timestamp, concept_id, difficulty),
+        )
+        conn.commit()
+        conversation_id = cursor.lastrowid
+
+    card = ConversationCard(
+        topic=topic,
+        concept=concept_id,
+        difficulty=difficulty,
+        opener=opener,
+        messages=[opener_msg],
+    )
+
+    context = {
+        "session_id": session_id,
+        "conversation_id": conversation_id,
+        "card": card,
+        "concept_name": _get_concept_name(concept_id),
+        "is_ended": False,
+    }
+    return templates.TemplateResponse(request, "partials/flow_conversation.html", context)
+
+
+@router.post("/flow/conversation/respond", response_class=HTMLResponse)
+async def conversation_respond(
+    request: Request,
+    session_id: int = Form(...),
+    conversation_id: int = Form(...),
+    user_message: str = Form(""),
+) -> Response:
+    """User sends a message — single LLM call evaluates, replies, and steers."""
+    from .conversation import (
+        ConversationCard,
+        ConversationEngine,
+        ConversationMessage,
+    )
+    from .db import _open_connection, now_iso
+
+    engine = ConversationEngine()
+    timestamp = now_iso()
+
+    # Load conversation from DB
+    with _open_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM flow_conversations WHERE id = ?", (conversation_id,)
+        ).fetchone()
+
+    if row is None:
+        return HTMLResponse("<p>Conversation not found.</p>", status_code=404)
+
+    topic = str(row["topic"])
+    concept_id = str(row["concept_id"] or "")
+    difficulty = int(row["difficulty"])
+    existing_messages = json.loads(row["messages_json"])
+    messages = [ConversationMessage.from_dict(m) for m in existing_messages]
+    score_was_none = row["score"] is None
+
+    clean_message = user_message.strip()
+    english_result = engine.detect_and_handle_english(
+        clean_message,
+        concept_id,
+        difficulty,
+    )
+
+    user_text_for_engine = english_result.spanish_translation if english_result else clean_message
+
+    # Single LLM call: evaluate + reply + steer
+    result = engine.respond_to_user(
+        messages=messages,
+        user_text=user_text_for_engine,
+        topic=topic,
+        concept=concept_id,
+        difficulty=difficulty,
+    )
+
+    # Add user message with corrections from the evaluation
+    corrections = None if english_result else (result.corrections if result.corrections else None)
+    user_msg = ConversationMessage(
+        role="user",
+        content=clean_message,
+        corrections=corrections,
+        timestamp=timestamp,
+    )
+    messages.append(user_msg)
+
+    if english_result:
+        system_msg = ConversationMessage(
+            role="system",
+            content=english_result.display_message,
+            timestamp=timestamp,
+            metadata={
+                "kind": "translation",
+                "spanish_translation": english_result.spanish_translation,
+                "original_english": english_result.original_english,
+                "vocabulary_gaps": [
+                    {
+                        "english": gap.english_word,
+                        "spanish": gap.spanish_word,
+                        "concept_id": gap.concept_id,
+                    }
+                    for gap in english_result.vocabulary_gaps
+                ],
+            },
+        )
+        messages.append(system_msg)
+        for gap in english_result.vocabulary_gaps:
+            store_vocabulary_gap(gap.english_word, gap.spanish_word, gap.concept_id)
+
+    # Build card to check hard cap
+    card = ConversationCard(
+        topic=topic,
+        concept=concept_id,
+        difficulty=difficulty,
+        opener=messages[0].content if messages else "",
+        messages=messages,
+    )
+
+    # End if hard cap reached OR LLM says conversation is done
+    hard_cap = engine.should_end(card)
+    is_ended = hard_cap or not result.should_continue
+
+    if not is_ended:
+        # Add Marta's reply
+        ai_msg = ConversationMessage(role="ai", content=result.ai_reply, timestamp=now_iso())
+        messages.append(ai_msg)
+
+    # Update DB
+    messages_json = json.dumps([m.to_dict() for m in messages])
+    corrections_json = json.dumps([
+        {
+            "original": c.original,
+            "corrected": c.corrected,
+            "explanation": c.explanation,
+            "concept_id": c.concept_id,
+        }
+        for m in messages if m.corrections
+        for c in m.corrections
+    ])
+
+    with _open_connection() as conn:
+        conn.execute(
+            """
+            UPDATE flow_conversations
+            SET messages_json = ?, turn_count = ?, completed = ?, corrections_json = ?
+            WHERE id = ?
+            """,
+            (messages_json, len(messages), int(is_ended), corrections_json, conversation_id),
+        )
+        conn.commit()
+
+    context = {
+        "session_id": session_id,
+        "conversation_id": conversation_id,
+        "card": card,
+        "concept_name": _get_concept_name(concept_id),
+        "is_ended": is_ended,
+        "hint": result.hint,
+    }
+    return templates.TemplateResponse(request, "partials/flow_conversation.html", context)
+
+
+@router.get("/flow/conversation/summary", response_class=HTMLResponse)
+async def conversation_summary(
+    request: Request,
+    conversation_id: int = Query(...),
+    session_id: int = Query(...),
+) -> Response:
+    """Post-conversation review with explicit corrections."""
+    from .conversation import (
+        ConversationCard,
+        ConversationEngine,
+        ConversationMessage,
+    )
+    from .db import _open_connection
+
+    engine = ConversationEngine()
+
+    with _open_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM flow_conversations WHERE id = ?", (conversation_id,)
+        ).fetchone()
+
+    if row is None:
+        return HTMLResponse("<p>Conversation not found.</p>", status_code=404)
+
+    topic = str(row["topic"])
+    concept_id = str(row["concept_id"] or "")
+    difficulty = int(row["difficulty"])
+    existing_messages = json.loads(row["messages_json"])
+    messages = [ConversationMessage.from_dict(m) for m in existing_messages]
+    score_was_none = row["score"] is None
+
+    card = ConversationCard(
+        topic=topic,
+        concept=concept_id,
+        difficulty=difficulty,
+        opener=messages[0].content if messages else "",
+        messages=messages,
+    )
+
+    summary = engine.generate_summary(card)
+
+    # Save score to DB
+    with _open_connection() as conn:
+        conn.execute(
+            "UPDATE flow_conversations SET score = ?, completed = 1 WHERE id = ?",
+            (summary.score, conversation_id),
+        )
+        conn.commit()
+
+    if score_was_none:
+        session = get_session(session_id)
+        if session:
+            update_session(session_id, cards_answered=session.cards_answered + 1)
+
+    context = {
+        "session_id": session_id,
+        "conversation_id": conversation_id,
+        "card": card,
+        "summary": summary,
+        "concept_name": _get_concept_name(concept_id),
+        "score_pct": int(summary.score * 100),
+    }
+    return templates.TemplateResponse(request, "partials/flow_conversation_summary.html", context)
 
 
 def _render_teach(content: str | None) -> str:

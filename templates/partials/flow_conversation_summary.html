@@ -1,0 +1,149 @@
+<!-- ═══ Conversation Summary ═══ -->
+<div class="rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-violet-500/20">
+  <header class="flex items-center justify-between mb-4">
+    <span class="rounded-full bg-violet-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-violet-300">
+      Conversation Review
+    </span>
+    <span class="text-xs text-slate-500">{{ concept_name }}</span>
+  </header>
+
+  {% if summary.corrections %}
+    <div id="correction-stepper" class="mb-6">
+      <h3 class="text-sm font-bold text-slate-200 mb-1">Review your corrections</h3>
+      <p class="text-xs text-slate-500 mb-3">Tap through each fix, then you'll see your final score.</p>
+      <div class="relative min-h-[140px]">
+        {% for c in summary.corrections %}
+          <div class="rounded-2xl bg-[#0f1a1f] p-4 ring-1 ring-slate-700/80 {% if not loop.first %}hidden{% endif %}" data-correction-card>
+            <p class="text-[11px] uppercase tracking-wide text-slate-500 mb-2">Correction {{ loop.index }} de {{ summary.corrections | length }}</p>
+            <div class="flex flex-wrap gap-2">
+              <span class="inline-flex items-center gap-1 rounded-full bg-red-400/20 px-2 py-0.5 text-xs text-red-200">{{ c.original }}</span>
+              <span class="text-slate-500 text-sm">→</span>
+              <span class="inline-flex items-center gap-1 rounded-full bg-emerald-400/20 px-2 py-0.5 text-xs text-emerald-200">{{ c.corrected }}</span>
+            </div>
+            {% if c.explanation %}
+              <p class="mt-3 text-sm text-slate-300">{{ c.explanation }}</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="mt-4 flex items-center justify-between">
+        <span id="correction-progress" class="text-xs text-slate-500">1 of {{ summary.corrections | length }}</span>
+        <button id="correction-next" class="rounded-lg bg-violet-500/80 px-4 py-2 text-xs font-bold text-violet-950 transition hover:bg-violet-400">Next</button>
+      </div>
+    </div>
+  {% endif %}
+
+  <div id="summary-final" class="{% if summary.corrections %}hidden{% endif %}">
+    <!-- Score -->
+    <div class="flex items-center justify-center mb-5">
+      <div class="text-center">
+        <div class="text-4xl font-black {% if score_pct >= 80 %}text-emerald-400{% elif score_pct >= 50 %}text-amber-400{% else %}text-red-400{% endif %}">
+          {{ score_pct }}%
+        </div>
+        <p class="text-sm text-slate-400 mt-1">
+          {{ summary.turn_count }} messages · {{ summary.concepts_practiced | length }} concept{{ 's' if summary.concepts_practiced | length != 1 else '' }} practiced
+        </p>
+      </div>
+    </div>
+
+    {% if summary.corrections %}
+      <!-- Corrections recap -->
+      <div class="mb-5">
+        <h3 class="text-sm font-bold text-slate-300 mb-3">All corrections</h3>
+        <div class="flex flex-wrap gap-2">
+          {% for c in summary.corrections %}
+            <div class="rounded-2xl bg-[#0f1a1f] px-3 py-2 text-xs text-slate-200 ring-1 ring-slate-700/60 max-w-[48%] min-w-[140px]">
+              <div class="flex items-center gap-1 text-sm">
+                <span class="text-red-300">{{ c.original }}</span>
+                <span class="text-slate-500">→</span>
+                <span class="text-emerald-300 font-semibold">{{ c.corrected }}</span>
+              </div>
+              {% if c.explanation %}
+                <p class="mt-1 text-[11px] text-slate-500">{{ c.explanation }}</p>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      <div class="mb-5 text-center">
+        <p class="text-sm text-emerald-300">No corrections needed — great job!</p>
+      </div>
+    {% endif %}
+
+    <!-- Conversation replay -->
+    <details class="mb-5">
+      <summary class="text-xs text-slate-500 cursor-pointer hover:text-slate-400 transition">
+        View full conversation
+      </summary>
+      <div class="mt-3 flex flex-col gap-2">
+        {% for msg in card.messages %}
+        {% if msg.role == 'ai' %}
+          <div class="flex items-start gap-2 max-w-[85%]">
+            <div class="shrink-0 w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-[10px] font-bold text-slate-300">AI</div>
+            <div class="rounded-xl rounded-tl-sm bg-slate-700 px-3 py-2 text-xs text-slate-300">{{ msg.content }}</div>
+          </div>
+        {% else %}
+          <div class="flex items-start gap-2 max-w-[85%] self-end flex-row-reverse">
+            <div class="shrink-0 w-6 h-6 rounded-full bg-emerald-600 flex items-center justify-center text-[10px] font-bold text-emerald-100">Tú</div>
+            <div class="rounded-xl rounded-tr-sm px-3 py-2 text-xs {% if msg.corrections %}bg-amber-500/15 text-amber-200 ring-1 ring-amber-500/20{% else %}bg-emerald-600/60 text-emerald-100{% endif %}">
+              {{ msg.content }}
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </details>
+
+  <button
+    hx-get="/flow/card?session_id={{ session_id }}"
+    hx-target="#flow-card-slot"
+    hx-swap="innerHTML"
+    class="w-full rounded-xl bg-emerald-500 px-6 py-3.5 text-base font-black text-emerald-950 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 active:scale-[0.98]">
+    Continue Flow
+  </button>
+  </div>
+</div>
+
+{% if summary.corrections %}
+<script>
+  (function() {
+    var stepper = document.getElementById('correction-stepper');
+    if (!stepper) return;
+    var cards = stepper.querySelectorAll('[data-correction-card]');
+    if (!cards.length) return;
+    var progress = document.getElementById('correction-progress');
+    var button = document.getElementById('correction-next');
+    var finalBlock = document.getElementById('summary-final');
+    var index = 0;
+
+    function render() {
+      cards.forEach(function(card, i) {
+        card.classList.toggle('hidden', i !== index);
+      });
+      if (progress) {
+        progress.textContent = (index + 1) + ' of ' + cards.length;
+      }
+      if (button) {
+        button.textContent = index === cards.length - 1 ? 'See results' : 'Next';
+      }
+    }
+
+    if (button) {
+      button.addEventListener('click', function() {
+        if (index < cards.length - 1) {
+          index += 1;
+          render();
+        } else {
+          stepper.classList.add('hidden');
+          if (finalBlock) {
+            finalBlock.classList.remove('hidden');
+          }
+        }
+      });
+    }
+
+    render();
+  })();
+</script>
+{% endif %}

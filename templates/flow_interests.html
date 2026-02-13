@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Spanish Vibes · Interest Diagnostics{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-2xl font-black text-slate-50">Interest Diagnostics</h2>
+      <p class="text-sm text-slate-400 mt-1">Peek inside the topic tracker</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="/flow/stats" class="rounded-full bg-sky-500/15 px-4 py-2 text-sm font-bold text-sky-300 transition hover:bg-sky-500/25">Study Stats</a>
+      <a href="/flow" class="rounded-full bg-amber-500/15 px-4 py-2 text-sm font-bold text-amber-300 transition hover:bg-amber-500/25">Flow</a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="rounded-xl bg-[#1a2d35] p-4 text-center">
+      <p class="text-2xl font-black text-emerald-400">{{ tracked_topics }}/{{ total_topics }}</p>
+      <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Tracked Topics</p>
+    </div>
+    <div class="rounded-xl bg-[#1a2d35] p-4 text-center">
+      <p class="text-2xl font-black text-violet-400">{{ (avg_decayed * 100) | round(1) }}%</p>
+      <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Avg Decayed Score</p>
+    </div>
+    <div class="rounded-xl bg-[#1a2d35] p-4 text-center">
+      <p class="text-2xl font-black text-amber-400">{{ total_signals }}</p>
+      <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Signals Logged</p>
+    </div>
+    <div class="rounded-xl bg-[#1a2d35] p-4 text-center">
+      <p class="text-lg font-black text-slate-200">{{ last_signal_at or '—' }}</p>
+      <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Last Signal</p>
+    </div>
+  </div>
+
+  <div class="rounded-2xl bg-[#1a2d35] p-5 shadow-lg shadow-black/20">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <h3 class="text-lg font-black text-slate-50">Top Topics</h3>
+        <p class="text-xs text-slate-500">Decay-adjusted interest scores</p>
+      </div>
+      <span class="text-xs text-slate-500">{{ top_topics | length }} tracked</span>
+    </div>
+    {% if top_topics %}
+      <div class="grid gap-3 sm:grid-cols-2">
+        {% for t in top_topics %}
+        <div class="rounded-xl bg-[#0f1a1f] p-4 ring-1 ring-slate-800">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-semibold text-slate-200">{{ t.name }}</p>
+              <p class="text-[11px] text-slate-500">Slug: {{ t.slug }}</p>
+            </div>
+            <span class="text-lg font-black text-emerald-400">{{ (t.score * 100) | round(1) }}%</span>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-2">{{ t.interaction_count }} interactions</p>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-sm text-slate-500">No interest data yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-2xl bg-[#1a2d35] p-5 shadow-lg shadow-black/20">
+    <h3 class="text-lg font-black text-slate-50 mb-4">All Topics</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-[10px] uppercase tracking-widest text-slate-500 font-bold border-b border-[#2a3f4a]">
+            <th class="text-left py-2 px-2">Topic</th>
+            <th class="text-left py-2 px-2">Slug</th>
+            <th class="text-center py-2 px-2">Interactions</th>
+            <th class="text-center py-2 px-2">Raw Score</th>
+            <th class="text-center py-2 px-2">Decayed</th>
+            <th class="text-center py-2 px-2">Last Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for topic in topics %}
+          <tr class="border-b border-[#162028] hover:bg-[#0f1a1f]/40 transition">
+            <td class="py-2.5 px-2 text-slate-200">{{ topic.name }}</td>
+            <td class="py-2.5 px-2 text-xs text-slate-500">{{ topic.slug }}</td>
+            <td class="py-2.5 px-2 text-center text-slate-300">{{ topic.interaction_count }}</td>
+            <td class="py-2.5 px-2 text-center text-slate-400">
+              {% if topic.score is not none %}{{ (topic.score * 100) | round(1) }}%{% else %}—{% endif %}
+            </td>
+            <td class="py-2.5 px-2 text-center font-bold {% if topic.decayed %}text-emerald-400{% else %}text-slate-600{% endif %}">
+              {% if topic.decayed is not none %}{{ (topic.decayed * 100) | round(1) }}%{% else %}—{% endif %}
+            </td>
+            <td class="py-2.5 px-2 text-center text-slate-500">{{ topic.last_updated or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="rounded-2xl bg-[#1a2d35] p-5 shadow-lg shadow-black/20">
+    <h3 class="text-lg font-black text-slate-50 mb-4">Recent Signals</h3>
+    {% if recent_signals %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-[10px] uppercase tracking-widest text-slate-500 font-bold border-b border-[#2a3f4a]">
+              <th class="text-left py-2 px-2">Time</th>
+              <th class="text-left py-2 px-2">Topic</th>
+              <th class="text-center py-2 px-2">Correct?</th>
+              <th class="text-center py-2 px-2">Dwell (s)</th>
+              <th class="text-center py-2 px-2">Skipped?</th>
+              <th class="text-center py-2 px-2">Card</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in recent_signals %}
+            <tr class="border-b border-[#162028] hover:bg-[#0f1a1f]/40 transition">
+              <td class="py-2.5 px-2 text-slate-300">{{ s.created_at }}</td>
+              <td class="py-2.5 px-2 text-slate-200">{{ s.topic }}</td>
+              <td class="py-2.5 px-2 text-center font-bold {% if s.was_correct %}text-emerald-400{% else %}text-red-400{% endif %}">
+                {{ 'Yes' if s.was_correct else 'No' }}
+              </td>
+              <td class="py-2.5 px-2 text-center text-slate-400">{% if s.dwell_time_ms %}{{ (s.dwell_time_ms / 1000) | round(1) }}{% else %}—{% endif %}</td>
+              <td class="py-2.5 px-2 text-center text-slate-400">{{ 'Yes' if s.was_skipped else 'No' }}</td>
+              <td class="py-2.5 px-2 text-center text-slate-400">{{ s.card_type }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-sm text-slate-500">No signals logged yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
