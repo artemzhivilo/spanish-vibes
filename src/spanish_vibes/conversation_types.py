@@ -14,6 +14,7 @@ ConversationType = Literal[
     "concept_required",
     "tutor",
     "story_comprehension",
+    "placement",
 ]
 
 BASE_TYPE_WEIGHTS: dict[ConversationType, float] = {
@@ -50,6 +51,22 @@ CONVERSATION_TYPE_INSTRUCTIONS: dict[ConversationType, str | None] = {
         "Give a brief example, ask them to try, then gently correct while staying warm and encouraging."
     ),
     "story_comprehension": None,
+    "placement": (
+        "CONVERSATION MODE: Placement\n"
+        "This is a placement conversation to assess the learner's level. Your goal is to discover what they know, not to teach.\n\n"
+        "RULES:\n"
+        "- Start with the complexity level indicated below\n"
+        "- If they respond fluently and correctly, increase complexity in your next message:\n"
+        "  Level 1: Present tense, basic vocabulary, simple questions\n"
+        "  Level 2: Past tense, descriptions, opinions\n"
+        "  Level 3: Mixed tenses, conditional, subjunctive hints\n"
+        "  Level 4: Complex structures, idioms, abstract topics\n"
+        "- If they struggle (short answers, errors, English words), stay at the current level or drop down\n"
+        "- Be encouraging regardless of level\n"
+        "- Don't correct errors during placement; note them mentally\n"
+        "- Ask open-ended questions to let them show what they know\n\n"
+        "STARTING LEVEL: {starting_level}"
+    ),
 }
 
 ROLE_PLAY_SCENARIOS: dict[str, list[str]] = {
@@ -105,6 +122,7 @@ def get_type_instruction(
     concept_id: str,
     topic: str,
     persona_id: str | None = None,
+    starting_level: int | None = None,
 ) -> str | None:
     template = CONVERSATION_TYPE_INSTRUCTIONS.get(conversation_type)
     if not template:
@@ -121,6 +139,8 @@ def get_type_instruction(
 
     if conversation_type in {"concept_required", "tutor"}:
         return template.format(concept_name=concept_name)
+    if conversation_type == "placement":
+        return template.format(starting_level=max(1, min(4, int(starting_level or 1))))
 
     return template
 
@@ -171,4 +191,3 @@ __all__ = [
     "select_conversation_type",
     "select_role_play_scenario",
 ]
-

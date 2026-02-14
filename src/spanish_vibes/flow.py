@@ -466,7 +466,7 @@ def _consume_forced_conversation_type() -> str | None:
     if value is None:
         return None
     normalized = value.strip().lower()
-    valid = {"general_chat", "role_play", "concept_required", "tutor", "story_comprehension"}
+    valid = {"general_chat", "role_play", "concept_required", "tutor", "story_comprehension", "placement"}
     return normalized if normalized in valid else None
 
 

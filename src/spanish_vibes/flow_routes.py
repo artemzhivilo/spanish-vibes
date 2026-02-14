@@ -14,7 +14,7 @@ import markdown
 from fastapi import APIRouter, BackgroundTasks, Form, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from starlette.responses import Response
+from starlette.responses import Response, RedirectResponse
 
 from .flow import (
     FlowCardContext,
@@ -27,6 +27,7 @@ from .flow import (
 )
 from .flow_ai import ensure_cache_populated, generate_story_card, prefetch_next_concepts
 from .interest import CardSignal, InterestTracker, get_topic_id_for_conversation
+from .interest import seed_interest_scores
 from .flow_db import (
     clear_mcq_cache,
     get_session,
@@ -43,8 +44,11 @@ from .db import (
     consume_dev_override,
     delete_dev_override,
     get_all_dev_overrides,
+    get_all_interest_topics,
+    is_user_onboarded,
     now_iso,
     seed_interest_topics,
+    set_user_onboarded,
     set_dev_override,
 )
 from .concepts import load_concepts, prerequisites_met
@@ -53,6 +57,7 @@ from .lexicon import translate_spanish_word
 from .personas import get_persona_prompt, load_all_personas, load_persona, select_persona
 from .conversation_types import get_type_instruction, select_conversation_type
 from .evaluation import (
+    apply_placement_results,
     compute_enjoyment_score,
     evaluate_conversation,
     update_persona_engagement,
@@ -97,6 +102,9 @@ def _count_mastered() -> tuple[int, int]:
 @router.get("/flow", response_class=HTMLResponse)
 async def flow_page(request: Request) -> Response:
     """Full-screen Flow Mode page."""
+    if not is_user_onboarded():
+        return RedirectResponse(url="/flow/onboarding", status_code=303)
+
     from .app import _get_player_progress
     session = start_or_resume_session()
     state = build_session_state(session.id)
@@ -125,6 +133,88 @@ async def flow_page(request: Request) -> Response:
         "dev_overrides": overrides,
     }
     return templates.TemplateResponse(request, "flow.html", context)
+
+
+@router.get("/flow/onboarding", response_class=HTMLResponse)
+async def onboarding_page(request: Request) -> Response:
+    """Render onboarding questions before placement conversation."""
+    if is_user_onboarded():
+        return RedirectResponse(url="/flow", status_code=303)
+    topics = get_all_interest_topics()
+    context = {
+        "page_title": "Spanish Vibes · Onboarding",
+        "topics": topics,
+    }
+    return templates.TemplateResponse(request, "flow_onboarding.html", context)
+
+
+@router.post("/flow/onboarding/start-placement", response_class=HTMLResponse)
+async def start_placement(
+    request: Request,
+    experience_level: str = Form(...),
+    comprehension_levels: list[str] = Form(default=[]),
+    interest_topic_ids: list[int] = Form(default=[]),
+) -> Response:
+    """Start placement conversation after lightweight onboarding questions."""
+    if is_user_onboarded():
+        return RedirectResponse(url="/flow", status_code=303)
+
+    session = start_or_resume_session()
+
+    base_level_map = {
+        "never": 1,
+        "a_little": 2,
+        "intermediate": 3,
+        "advanced": 4,
+        "heritage": 4,
+    }
+    starting_level = base_level_map.get(experience_level.strip().lower(), 1)
+
+    comp_level = 0
+    for value in comprehension_levels:
+        normalized = value.strip().lower()
+        if normalized == "a1":
+            comp_level = max(comp_level, 1)
+        elif normalized in {"a2", "a1_a2"}:
+            comp_level = max(comp_level, 2)
+        elif normalized in {"b1", "a2_plus"}:
+            comp_level = max(comp_level, 3)
+    if comp_level > 0:
+        starting_level = max(starting_level, comp_level)
+    starting_level = max(1, min(4, starting_level))
+
+    if interest_topic_ids:
+        try:
+            seed_interest_scores(interest_topic_ids, initial_score=0.35)
+        except Exception:
+            pass
+
+    concept_id = _pick_placement_concept(starting_level)
+    topic = _pick_placement_topic(interest_topic_ids)
+
+    return _start_chat_conversation_card(
+        request=request,
+        session_id=session.id,
+        concept_id=concept_id,
+        topic=topic,
+        difficulty=min(3, max(1, starting_level)),
+        conversation_type="placement",
+        forced_persona_id=_pick_placement_persona_id(),
+        placement_starting_level=starting_level,
+    )
+
+
+@router.get("/flow/onboarding/results", response_class=HTMLResponse)
+async def placement_results(
+    request: Request,
+    conversation_id: int = Query(...),
+    session_id: int = Query(...),
+) -> Response:
+    """Compatibility route: placement results are rendered via summary."""
+    return RedirectResponse(
+        url=f"/flow/conversation/summary?conversation_id={conversation_id}&session_id={session_id}",
+        status_code=303,
+    )
 
 
 @router.get("/flow/card", response_class=HTMLResponse)
@@ -465,6 +555,7 @@ async def flow_skip_to_tier(
     active = get_active_session()
     if active:
         end_session(active.id)
+    set_user_onboarded(True)
 
     # Redirect to flow page
     from starlette.responses import RedirectResponse
@@ -983,6 +1074,7 @@ async def conversation_respond(
         concept_id=concept_id,
         topic=topic,
         persona_id=persona.id,
+        starting_level=difficulty if conversation_type == "placement" else None,
     )
     persona_prompt = _compose_persona_prompt(persona, type_instruction=type_instruction)
     existing_messages = json.loads(row["messages_json"])
@@ -1048,6 +1140,7 @@ async def conversation_respond(
         difficulty=difficulty,
         opener=messages[0].content if messages else "",
         messages=messages,
+        max_turns=8 if conversation_type == "placement" else 4,
         persona_name=persona.name,
     )
 
@@ -1133,6 +1226,7 @@ async def conversation_summary(
             concept_id=concept_id,
             topic=topic,
             persona_id=persona.id,
+            starting_level=difficulty if conversation_type == "placement" else None,
         )
         persona_prompt = _compose_persona_prompt(persona, type_instruction=type_instruction)
         existing_messages = json.loads(row["messages_json"])
@@ -1144,6 +1238,7 @@ async def conversation_summary(
             difficulty=difficulty,
             opener=messages[0].content if messages else "",
             messages=messages,
+            max_turns=8 if conversation_type == "placement" else 4,
             persona_name=persona.name,
         )
 
@@ -1272,16 +1367,25 @@ async def conversation_summary(
             )
             conn.commit()
 
+        placement_summary: dict[str, Any] | None = None
+        if conversation_type == "placement":
+            placement_summary = apply_placement_results(evaluation)
+            set_user_onboarded(True)
+
         context = {
             "session_id": session_id,
             "conversation_id": conversation_id,
-        "card": card,
-        "summary": summary,
-        "concept_name": _get_concept_name(concept_id),
-        "score_pct": int(summary.score * 100),
-        "persona_name": persona.name,
-        "evaluation": evaluation,
-    }
+            "card": card,
+            "summary": summary,
+            "concept_name": _get_concept_name(concept_id),
+            "score_pct": int(summary.score * 100),
+            "persona_name": persona.name,
+            "evaluation": evaluation,
+        }
+        if placement_summary is not None:
+            context["placement"] = placement_summary
+            context["starting_concept_name"] = _pick_next_learning_concept_name()
+            return templates.TemplateResponse(request, "flow_placement_results.html", context)
         return templates.TemplateResponse(request, "partials/flow_conversation_summary.html", context)
     except Exception as exc:
         import traceback
@@ -1439,6 +1543,18 @@ async def dev_force_persona(persona_id: str = Form(...)) -> Response:
 async def dev_force_conversation() -> Response:
     set_dev_override("force_next_card_type", "conversation")
     return HTMLResponse("<span>Next card forced to conversation</span>")
+
+
+@router.post("/flow/dev/rerun-placement", response_class=HTMLResponse)
+async def dev_rerun_placement() -> Response:
+    set_user_onboarded(False)
+    return HTMLResponse("<span>Placement reset. Open /flow/onboarding</span>")
+
+
+@router.post("/flow/dev/skip-placement", response_class=HTMLResponse)
+async def dev_skip_placement() -> Response:
+    set_user_onboarded(True)
+    return HTMLResponse("<span>Placement skipped. Flow unlocked.</span>")
 
 
 @router.post("/flow/dev/reset-all", response_class=HTMLResponse)
@@ -1876,6 +1992,58 @@ def _persona_novelty_from_timestamp(last_conversation_at: str | None, conversati
     return min(1.0, days_since / 5.0)
 
 
+def _pick_placement_persona_id() -> str:
+    personas = load_all_personas()
+    if not personas:
+        return "marta_fallback"
+    preferred_ids = ("marta", "abuela_rosa")
+    for preferred_id in preferred_ids:
+        if any(p.id == preferred_id for p in personas):
+            return preferred_id
+    return personas[0].id
+
+
+def _pick_placement_concept(starting_level: int) -> str:
+    concepts = load_concepts()
+    target_tier = 1 if starting_level <= 1 else (2 if starting_level == 2 else 3)
+    candidates = sorted(
+        [cid for cid, c in concepts.items() if c.difficulty_level == target_tier],
+        key=lambda cid: concepts[cid].name,
+    )
+    if candidates:
+        return candidates[0]
+    # Fallback to any concept by tier then name.
+    ordered = sorted(concepts.items(), key=lambda item: (item[1].difficulty_level, item[1].name))
+    return ordered[0][0] if ordered else "greetings"
+
+
+def _pick_placement_topic(interest_topic_ids: list[int]) -> str:
+    if interest_topic_ids:
+        ids = {int(tid) for tid in interest_topic_ids}
+        topics = get_all_interest_topics()
+        for topic in topics:
+            if int(topic["id"]) in ids:
+                return str(topic.get("name") or "la vida diaria")
+    top = InterestTracker().get_top_interests(1)
+    if top:
+        return top[0].name
+    from .conversation import get_random_topic
+    return get_random_topic()
+
+
+def _pick_next_learning_concept_name() -> str:
+    concepts = load_concepts()
+    knowledge = get_all_concept_knowledge()
+    for concept_id, concept in sorted(concepts.items(), key=lambda item: (item[1].difficulty_level, item[1].name)):
+        ck = knowledge.get(concept_id)
+        if ck is None:
+            continue
+        if not is_mastered(ck.p_mastery, ck.n_attempts):
+            return concept.name
+    first = sorted(concepts.values(), key=lambda c: (c.difficulty_level, c.name))
+    return first[0].name if first else "your next concept"
+
+
 def _compose_persona_prompt(persona: Any, *, type_instruction: str | None = None) -> str:
     persona_memories: list[str] | None = None
     user_facts: list[str] | None = None
@@ -1907,19 +2075,25 @@ def _start_chat_conversation_card(
     topic: str,
     difficulty: int,
     conversation_type: str,
+    forced_persona_id: str | None = None,
+    placement_starting_level: int | None = None,
 ) -> Response:
     from .conversation import ConversationCard, ConversationEngine, ConversationMessage
     from .db import _open_connection, now_iso
 
     engine = ConversationEngine()
-    last_conv = get_last_conversation_info(session_id)
-    exclude_persona_id = last_conv.get("persona_id") if last_conv else None
-    persona = select_persona(exclude_id=exclude_persona_id)
+    if forced_persona_id:
+        persona = load_persona(forced_persona_id)
+    else:
+        last_conv = get_last_conversation_info(session_id)
+        exclude_persona_id = last_conv.get("persona_id") if last_conv else None
+        persona = select_persona(exclude_id=exclude_persona_id)
     type_instruction = get_type_instruction(
         conversation_type,
         concept_id=concept_id,
         topic=topic,
         persona_id=persona.id,
+        starting_level=placement_starting_level,
     )
     persona_prompt = _compose_persona_prompt(persona, type_instruction=type_instruction)
     user_level_info = get_user_level()
@@ -1968,6 +2142,7 @@ def _start_chat_conversation_card(
         difficulty=effective_difficulty,
         opener=opener,
         messages=[opener_msg],
+        max_turns=8 if conversation_type == "placement" else 4,
         persona_name=persona.name,
     )
     context = {

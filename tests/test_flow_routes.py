@@ -13,6 +13,7 @@ def fresh_db(tmp_path):
     db_path = tmp_path / "test.db"
     db.DB_PATH = db_path
     db.init_db()
+    db.set_user_onboarded(True)
     from spanish_vibes.concepts import clear_cache
     clear_cache()
     yield
@@ -50,6 +51,13 @@ def _seed_flow_data():
 
 
 class TestFlowPage:
+    def test_get_flow_redirects_to_onboarding_when_not_onboarded(self, client):
+        from spanish_vibes.db import set_user_onboarded
+        set_user_onboarded(False)
+        response = client.get("/flow", follow_redirects=False)
+        assert response.status_code == 303
+        assert response.headers["location"] == "/flow/onboarding"
+
     def test_get_flow_page(self, client):
         _seed_flow_data()
         response = client.get("/flow")

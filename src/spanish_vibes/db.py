@@ -1426,6 +1426,25 @@ def consume_dev_override(key: str) -> str | None:
     return value
 
 
+def is_user_onboarded() -> bool:
+    """Return True when placement/onboarding has been completed."""
+    value = get_dev_override("onboarding_complete")
+    if value is not None:
+        return value.strip().lower() in {"1", "true", "yes", "y"}
+
+    # Backwards-compatible fallback: any answered concepts implies onboarding done.
+    with _open_connection() as connection:
+        row = connection.execute(
+            "SELECT COUNT(*) AS c FROM concept_knowledge WHERE n_attempts > 0",
+        ).fetchone()
+    return bool(row and int(row["c"]) > 0)
+
+
+def set_user_onboarded(value: bool) -> None:
+    """Persist onboarding completion via dev_overrides."""
+    set_dev_override("onboarding_complete", "1" if value else "0")
+
+
 __all__ = [
     "connect",
     "DB_PATH",
@@ -1453,6 +1472,8 @@ __all__ = [
     "get_xp",
     "add_xp",
     "get_streak",
+    "is_user_onboarded",
+    "set_user_onboarded",
     "record_practice_today",
     "fetch_lesson_mastery",
 ]

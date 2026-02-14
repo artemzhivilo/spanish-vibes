@@ -84,6 +84,43 @@ def get_topic_id_for_conversation(topic: str, concept_id: str | None = None) -> 
     return None
 
 
+def seed_interest_scores(topic_ids: list[int], initial_score: float = 0.35) -> int:
+    """Seed user interest scores from onboarding-selected topics."""
+    valid_ids = sorted({int(topic_id) for topic_id in topic_ids if int(topic_id) > 0})
+    if not valid_ids:
+        return 0
+    timestamp = now_iso()
+    seeded = 0
+    with _open_connection() as conn:
+        for topic_id in valid_ids:
+            row = conn.execute(
+                "SELECT score, interaction_count FROM user_interest_scores WHERE topic_id = ?",
+                (topic_id,),
+            ).fetchone()
+            if row is None:
+                conn.execute(
+                    """
+                    INSERT INTO user_interest_scores (topic_id, score, last_updated, interaction_count)
+                    VALUES (?, ?, ?, 1)
+                    """,
+                    (topic_id, max(0.0, min(1.0, initial_score)), timestamp),
+                )
+            else:
+                current_score = float(row["score"] or 0.0)
+                current_count = int(row["interaction_count"] or 0)
+                conn.execute(
+                    """
+                    UPDATE user_interest_scores
+                    SET score = ?, interaction_count = ?, last_updated = ?
+                    WHERE topic_id = ?
+                    """,
+                    (max(current_score, initial_score), max(current_count, 1), timestamp, topic_id),
+                )
+            seeded += 1
+        conn.commit()
+    return seeded
+
+
 @dataclass(slots=True)
 class CardSignal:
     """A single card interaction signal."""
@@ -351,4 +388,5 @@ __all__ = [
     "InterestTracker",
     "TopicScore",
     "get_topic_id_for_conversation",
+    "seed_interest_scores",
 ]

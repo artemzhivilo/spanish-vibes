@@ -11,6 +11,7 @@ from .db import _open_connection, now_iso
 
 from .flow_ai import ai_available, _get_client
 from .personas import load_persona, get_persona_prompt
+from .concepts import load_concepts
 
 
 @dataclass(slots=True)
@@ -289,3 +290,84 @@ def _upsert_engagement_row(
             early_exit_value,
         ),
     )
+
+
+def apply_placement_results(evaluation: ConversationEvaluation) -> dict[str, Any]:
+    """Mass-unlock concepts conservatively from placement conversation evidence."""
+    concepts = load_concepts()
+    cefr = evaluation.estimated_cefr or {}
+    grammar_tier = _cefr_to_tier(str(cefr.get("grammar") or "A1"))
+    vocab_tier = _cefr_to_tier(str(cefr.get("vocabulary") or "A1"))
+    safe_tier = min(grammar_tier, vocab_tier)
+
+    unlocked_count = 0
+    timestamp = now_iso()
+    with _open_connection() as conn:
+        for concept_id, concept in concepts.items():
+            if concept.difficulty_level >= safe_tier:
+                continue
+            row = conn.execute(
+                "SELECT p_mastery, n_attempts, n_correct, n_wrong FROM concept_knowledge WHERE concept_id = ?",
+                (concept_id,),
+            ).fetchone()
+            if row is None:
+                continue
+            p_mastery = max(float(row["p_mastery"] or 0.0), 0.95)
+            n_attempts = max(int(row["n_attempts"] or 0), 10)
+            n_correct = max(int(row["n_correct"] or 0), 10)
+            n_wrong = min(int(row["n_wrong"] or 0), max(0, n_attempts - n_correct))
+            conn.execute(
+                """
+                UPDATE concept_knowledge
+                SET p_mastery = ?, n_attempts = ?, n_correct = ?, n_wrong = ?, teach_shown = 1, updated_at = ?
+                WHERE concept_id = ?
+                """,
+                (p_mastery, n_attempts, n_correct, n_wrong, timestamp, concept_id),
+            )
+            unlocked_count += 1
+
+        demonstrated: list[str] = []
+        for evidence in evaluation.concepts_demonstrated:
+            if evidence.usage_count <= 0 or evidence.correct_count <= 0:
+                continue
+            concept_id = evidence.concept_id
+            row = conn.execute(
+                "SELECT p_mastery, n_attempts, n_correct FROM concept_knowledge WHERE concept_id = ?",
+                (concept_id,),
+            ).fetchone()
+            if row is None:
+                continue
+            accuracy = max(0.0, min(1.0, evidence.correct_count / max(1, evidence.usage_count)))
+            initial_mastery = accuracy * 0.7
+            p_mastery = max(float(row["p_mastery"] or 0.0), initial_mastery)
+            n_attempts = max(int(row["n_attempts"] or 0), evidence.usage_count)
+            n_correct = max(int(row["n_correct"] or 0), evidence.correct_count)
+            conn.execute(
+                """
+                UPDATE concept_knowledge
+                SET p_mastery = ?, n_attempts = ?, n_correct = ?, teach_shown = 1, updated_at = ?
+                WHERE concept_id = ?
+                """,
+                (p_mastery, n_attempts, n_correct, timestamp, concept_id),
+            )
+            demonstrated.append(concept_id)
+
+        conn.commit()
+
+    return {
+        "safe_tier": safe_tier,
+        "unlocked_count": unlocked_count,
+        "demonstrated_concepts": sorted(set(demonstrated)),
+        "estimated_cefr": cefr,
+    }
+
+
+def _cefr_to_tier(level: str) -> int:
+    normalized = level.strip().upper()
+    if normalized.startswith("A1"):
+        return 1
+    if normalized.startswith("A2"):
+        return 2
+    if normalized.startswith("B"):
+        return 3
+    return 1
