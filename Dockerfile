@@ -2,28 +2,23 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install uv for fast dependency resolution
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# Copy dependency definition first (better layer caching)
+COPY pyproject.toml ./
 
-# Copy dependency files first (better cache)
-COPY pyproject.toml uv.lock ./
+# Install dependencies only (not the project itself)
+RUN pip install --no-cache-dir fastapi uvicorn jinja2 python-multipart PyYAML markdown openai feedparser
 
-# Install dependencies
-RUN uv sync --frozen --no-dev --no-editable
-
-# Copy the rest of the application
+# Copy the full project
 COPY . .
 
-# Install the project itself
-RUN uv sync --frozen --no-dev
-
-# Create data directory for SQLite (writable)
+# Ensure data directory exists and is writable
 RUN mkdir -p /app/data
 
-# Default environment
+# Production defaults
 ENV HOST=0.0.0.0
 ENV PORT=8000
+ENV PYTHONPATH=/app/src
 
 EXPOSE 8000
 
-CMD ["uv", "run", "spanish-vibes"]
+CMD ["python", "-m", "spanish_vibes"]
