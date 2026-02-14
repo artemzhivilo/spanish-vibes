@@ -3,8 +3,8 @@
 {% block content %}
 <div id="flow-container" class="flex flex-col items-center gap-6">
   <!-- Flow header -->
-  <div class="w-full flex items-center justify-between">
-    <div class="flex items-center gap-4">
+  <div class="w-full flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div class="flex flex-wrap items-center gap-4">
       <!-- Concept progress -->
       <div class="flex items-center gap-2">
         <span class="text-sm font-bold text-emerald-300" id="concepts-progress">{{ concepts_mastered }}/{{ total_concepts }}</span>
@@ -19,12 +19,18 @@
       <div class="text-center">
         <span class="text-sm font-bold text-slate-400" id="cards-count">{{ cards_answered }} cards</span>
       </div>
+      <!-- Adaptive CEFR level -->
+      <span class="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-300">
+        {{ user_cefr }}
+      </span>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap gap-2 md:justify-end">
       <!-- Concepts -->
       <a href="/flow/concepts" class="rounded-full bg-violet-500/15 px-4 py-2 text-sm font-bold text-violet-300 transition hover:bg-violet-500/25">Concepts</a>
       <!-- Stats -->
       <a href="/flow/stats" class="rounded-full bg-sky-500/15 px-3 py-2 text-sm font-bold text-sky-300 transition hover:bg-sky-500/25">Stats</a>
+      <!-- Words dashboard -->
+      <a href="/flow/words" class="rounded-full bg-indigo-500/15 px-3 py-2 text-sm font-bold text-indigo-300 transition hover:bg-indigo-500/25">Words</a>
       <!-- Skip to level -->
       <button onclick="document.getElementById('skip-modal').classList.toggle('hidden')"
         class="rounded-full bg-slate-500/15 px-4 py-2 text-sm font-bold text-slate-300 transition hover:bg-slate-500/25">
@@ -42,6 +48,12 @@
 
   <!-- Card slot — HTMX loads first card on page load -->
   <div id="flow-card-slot" class="w-full"
+       data-card-type=""
+       data-card-id=""
+       data-concept-id=""
+       data-persona-id=""
+       data-conversation-type=""
+       data-conversation-id=""
        hx-get="/flow/card?session_id={{ session.id }}"
        hx-trigger="load"
        hx-swap="innerHTML">
@@ -83,9 +95,26 @@
       <p id="celebration-text" class="mt-4 text-3xl font-black text-amber-400"></p>
     </div>
   </div>
+
+  {% include "partials/dev_panel.html" %}
 </div>
 
 <style>
+  @media (min-width: 1280px) {
+    /* Break out of base.html's max-w-4xl so the flow page can use full width */
+    #flow-container {
+      max-width: 42rem;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    /* Override the parent <main> max-width so side panels have room */
+    main:has(#flow-container) {
+      max-width: none;
+      padding-left: 19rem;
+      padding-right: 19rem;
+    }
+  }
+
   @keyframes slideUp {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
@@ -115,6 +144,17 @@
       if (timeInput) {
         timeInput.value = window.flowStartTime;
       }
+      var meta = document.querySelector('#flow-card-slot [data-dev-card-type]');
+      var slot = document.getElementById('flow-card-slot');
+      if (meta && slot) {
+        slot.dataset.cardType = meta.dataset.devCardType || '';
+        slot.dataset.cardId = meta.dataset.devCardId || '';
+        slot.dataset.conceptId = meta.dataset.devConceptId || '';
+        slot.dataset.personaId = meta.dataset.devPersonaId || '';
+        slot.dataset.conversationType = meta.dataset.devConversationType || '';
+        slot.dataset.conversationId = meta.dataset.devConversationId || '';
+      }
+      document.body.dispatchEvent(new CustomEvent('cardChanged'));
     }
   });
 

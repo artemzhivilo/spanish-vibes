@@ -1,5 +1,13 @@
+<div
+  class="hidden"
+  data-dev-card-type="{{ card_context.card_type }}"
+  data-dev-card-id="{{ card_context.mcq_card_id or card_context.word_id or '' }}"
+  data-dev-concept-id="{{ card_context.concept_id }}"
+  data-dev-persona-id="{{ persona_id | default('') }}"
+  data-dev-conversation-type="{{ conversation_type | default(card_context.conversation_type | default('')) }}"
+  data-dev-conversation-id=""
+></div>
 {% if card_context.card_type == 'teach' %}
-<!-- ═══ Teach Card ═══ -->
 <div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-sky-500/20">
   <header class="flex items-center justify-between mb-4">
     <span class="rounded-full bg-sky-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-sky-300">
@@ -23,11 +31,104 @@
   </form>
 </div>
 
-{% else %}
-<!-- ═══ MCQ Card ═══ -->
+{% elif card_context.card_type == 'story_comprehension' %}
+<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-violet-500/25">
+  <header class="flex items-center justify-between mb-4">
+    <span class="rounded-full bg-violet-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-violet-300">
+      Story Comprehension
+    </span>
+    <span class="text-xs text-slate-500">{{ concept_name }}</span>
+  </header>
+  <p class="text-slate-300 mb-4">
+    Read a short story and answer comprehension questions.
+  </p>
+  <form hx-post="/flow/story-card/start" hx-target="#flow-card-slot" hx-swap="innerHTML">
+    <input type="hidden" name="session_id" value="{{ session_id }}" />
+    <input type="hidden" name="concept_id" value="{{ card_context.concept_id }}" />
+    <input type="hidden" name="difficulty" value="{{ card_context.difficulty }}" />
+    <button type="submit"
+      class="w-full rounded-xl bg-violet-500 px-6 py-3.5 text-base font-black text-violet-950 shadow-lg shadow-violet-500/25 transition hover:bg-violet-400 active:scale-[0.98]">
+      Start Story
+    </button>
+  </form>
+</div>
+
+{% elif card_context.card_type == 'word_intro' %}
+<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-violet-500/20">
+  <p class="text-xs font-bold uppercase tracking-[0.2em] text-violet-300 mb-4">New word</p>
+  <div class="text-center mb-6">
+    {% if card_context.word_emoji %}
+      <p class="text-5xl mb-3">{{ card_context.word_emoji }}</p>
+    {% endif %}
+    <h2 class="text-3xl font-black text-slate-50">{{ card_context.word_spanish }}</h2>
+    <p class="text-lg text-slate-400 mt-1">{{ card_context.word_english }}</p>
+    {% if card_context.word_sentence %}
+      <p class="text-sm text-slate-400 mt-4">{{ card_context.word_sentence }}</p>
+    {% endif %}
+  </div>
+  <form hx-post="/flow/word-intro/complete" hx-target="#flow-card-slot" hx-swap="innerHTML">
+    <input type="hidden" name="session_id" value="{{ session_id }}" />
+    <input type="hidden" name="word_id" value="{{ card_context.word_id }}" />
+    <button type="submit" class="w-full rounded-xl bg-emerald-500 px-6 py-3.5 text-base font-black text-emerald-950 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 active:scale-[0.98]">
+      Add to practice
+    </button>
+  </form>
+</div>
+
+{% elif card_context.card_type == 'word_practice' %}
+{% set concept_toggle = concept_teach_html is defined and concept_teach_html %}
 <div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-emerald-500/20" data-concept-wrapper>
   <header class="flex items-center justify-between mb-4">
-    {% if concept_teach_html %}
+    {% if concept_toggle %}
+      <button type="button" class="flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-300 transition hover:bg-emerald-500/25" data-concept-toggle aria-expanded="false">
+        <span>{{ concept_name }}</span>
+        <span class="text-[10px] text-emerald-200 font-normal normal-case">View lesson</span>
+      </button>
+    {% else %}
+      <span class="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-300">
+        {{ concept_name }}
+      </span>
+    {% endif %}
+    {% if card_context.word_emoji %}
+      <span class="text-3xl">{{ card_context.word_emoji }}</span>
+    {% endif %}
+  </header>
+
+  {% if concept_toggle %}
+    <div class="hidden rounded-2xl border border-emerald-500/20 bg-[#0f1a1f] px-4 py-3 mb-5" data-concept-panel>
+      <p class="text-[11px] uppercase tracking-wide text-emerald-400 font-bold mb-2">Lesson snippet</p>
+      <div class="prose prose-invert prose-sm max-w-none text-slate-300">
+        {{ concept_teach_html | safe }}
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="mb-6">
+    <p class="text-sm font-bold uppercase tracking-[0.2em] text-emerald-300">{{ card_context.question }}</p>
+    <p class="mt-3 text-2xl font-bold text-slate-50 leading-snug">{{ card_context.word_sentence }}</p>
+  </div>
+
+  <div class="grid gap-3">
+    {% for option in card_context.options %}
+      <form hx-post="/flow/answer" hx-target="#flow-card-slot" hx-swap="innerHTML">
+        <input type="hidden" name="session_id" value="{{ session_id }}" />
+        <input type="hidden" name="card_json" value='{{ card_json }}' />
+        <input type="hidden" name="chosen_option" value="{{ option }}" />
+        <input type="hidden" name="start_time" value="0" />
+        <button type="submit"
+          class="w-full text-left rounded-xl bg-[#0f1a1f] px-5 py-4 text-lg font-medium text-slate-200 transition hover:bg-[#162028] hover:ring-1 hover:ring-emerald-500/30 active:scale-[0.98] active:bg-emerald-500/10">
+          {{ option }}
+        </button>
+      </form>
+    {% endfor %}
+  </div>
+</div>
+
+{% elif card_context.card_type == 'word_match' %}
+{% set concept_toggle = concept_teach_html is defined and concept_teach_html %}
+<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-emerald-500/20" data-concept-wrapper>
+  <header class="flex items-center justify-between mb-4">
+    {% if concept_toggle %}
       <button type="button" class="flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-300 transition hover:bg-emerald-500/25" data-concept-toggle aria-expanded="false">
         <span>{{ concept_name }}</span>
         <span class="text-[10px] text-emerald-200 font-normal normal-case">View lesson</span>
@@ -39,7 +140,57 @@
     {% endif %}
   </header>
 
-  {% if concept_teach_html %}
+  {% if concept_toggle %}
+    <div class="hidden rounded-2xl border border-emerald-500/20 bg-[#0f1a1f] px-4 py-3 mb-5" data-concept-panel>
+      <p class="text-[11px] uppercase tracking-wide text-emerald-400 font-bold mb-2">Lesson snippet</p>
+      <div class="prose prose-invert prose-sm max-w-none text-slate-300">
+        {{ concept_teach_html | safe }}
+      </div>
+    </div>
+  {% endif %}
+
+  <p class="text-sm font-bold uppercase tracking-[0.2em] text-emerald-300 mb-2">Match the pairs</p>
+  <form hx-post="/flow/word-match/submit" hx-target="#flow-card-slot" hx-swap="innerHTML" class="flex flex-col gap-4">
+    <input type="hidden" name="session_id" value="{{ session_id }}" />
+    <input type="hidden" name="pair_count" value="{{ card_context.word_pairs | length }}" />
+    {% for pair in card_context.word_pairs %}
+      <div class="rounded-xl bg-[#0f1a1f] px-4 py-3 flex flex-col gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-lg font-semibold text-slate-50">{{ pair.spanish }}</span>
+        </div>
+        <input type="hidden" name="word_id_{{ loop.index0 }}" value="{{ pair.word_id }}" />
+        <input type="hidden" name="answer_key_{{ loop.index0 }}" value="{{ pair.english }}" />
+        <select name="answer_{{ loop.index0 }}" class="rounded-lg bg-[#141f24] px-3 py-2 text-sm text-slate-200 border border-slate-700 focus:border-emerald-500 focus:outline-none">
+          <option value="">Select translation</option>
+          {% for opt in card_context.options %}
+            <option value="{{ opt }}">{{ opt }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    {% endfor %}
+    <button type="submit" class="w-full rounded-xl bg-emerald-500 px-6 py-3.5 text-base font-black text-emerald-950 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 active:scale-[0.98]">
+      Check matches
+    </button>
+  </form>
+</div>
+
+{% else %}
+{% set concept_toggle = concept_teach_html is defined and concept_teach_html %}
+<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-emerald-500/20" data-concept-wrapper>
+  <header class="flex items-center justify-between mb-4">
+    {% if concept_toggle %}
+      <button type="button" class="flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-300 transition hover:bg-emerald-500/25" data-concept-toggle aria-expanded="false">
+        <span>{{ concept_name }}</span>
+        <span class="text-[10px] text-emerald-200 font-normal normal-case">View lesson</span>
+      </button>
+    {% else %}
+      <span class="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-300">
+        {{ concept_name }}
+      </span>
+    {% endif %}
+  </header>
+
+  {% if concept_toggle %}
     <div class="hidden rounded-2xl border border-emerald-500/20 bg-[#0f1a1f] px-4 py-3 mb-5" data-concept-panel>
       <p class="text-[11px] uppercase tracking-wide text-emerald-400 font-bold mb-2">Lesson snippet</p>
       <div class="prose prose-invert prose-sm max-w-none text-slate-300">
@@ -52,7 +203,6 @@
     <p class="text-2xl font-bold text-slate-50 leading-snug">{{ card_context.question }}</p>
   </div>
 
-  <!-- 4 tappable MCQ options -->
   <div class="grid gap-3">
     {% for option in card_context.options %}
       <form hx-post="/flow/answer" hx-target="#flow-card-slot" hx-swap="innerHTML">
@@ -70,7 +220,7 @@
 </div>
 {% endif %}
 
-{% if card_context.card_type != 'teach' %}
+{% if card_context.card_type in ['mcq', 'word_practice', 'word_match'] and concept_teach_html %}
 <script>
   (function() {
     var card = document.currentScript.previousElementSibling;

@@ -1,0 +1,49 @@
+<div
+  class="hidden"
+  data-dev-card-type="story_comprehension"
+  data-dev-card-id=""
+  data-dev-concept-id="{{ concept_id }}"
+  data-dev-persona-id="{{ persona_id | default('') }}"
+  data-dev-conversation-type="{{ conversation_type | default('story_comprehension') }}"
+  data-dev-conversation-id=""
+></div>
+<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-violet-500/25">
+  <header class="flex items-center justify-between mb-4">
+    <span class="rounded-full bg-violet-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-violet-300">
+      Story Comprehension
+    </span>
+    <span class="text-xs text-slate-500">{{ concept_name }} · {{ topic }} · {{ persona_name }}</span>
+  </header>
+
+  <div class="rounded-xl bg-[#0f1a1f] px-5 py-4 mb-5">
+    <p class="text-xs uppercase tracking-[0.2em] text-violet-300 mb-2">Story</p>
+    <div class="text-slate-200 leading-relaxed">
+      {{ story_payload.story | tappable | safe }}
+    </div>
+  </div>
+
+  <form hx-post="/flow/story-card/submit" hx-target="#flow-card-slot" hx-swap="innerHTML" class="space-y-4">
+    <input type="hidden" name="session_id" value="{{ session_id }}" />
+    <input type="hidden" name="concept_id" value="{{ concept_id }}" />
+    <input type="hidden" name="story_payload_json" value='{{ story_payload_json }}' />
+
+    {% for q in story_payload.questions %}
+      <div class="rounded-xl bg-[#0f1a1f] px-4 py-3 ring-1 ring-violet-500/15">
+        <p class="text-sm font-bold text-slate-100 mb-3">{{ q.question }}</p>
+        <div class="space-y-2">
+          {% for option in q.options %}
+            <label class="flex items-center gap-2 text-sm text-slate-300">
+              <input type="radio" name="answer_{{ loop.parent.index0 }}" value="{{ option }}" required>
+              <span>{{ option }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+
+    <button type="submit"
+      class="w-full rounded-xl bg-violet-500 px-6 py-3 text-sm font-bold text-violet-950 transition hover:bg-violet-400 active:scale-[0.98]">
+      Check Answers
+    </button>
+  </form>
+</div>

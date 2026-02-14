@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Spanish Vibes · Word Diagnostics{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div>
+      <h2 class="text-2xl font-black text-slate-50">Word Diagnostics</h2>
+      <p class="text-sm text-slate-400 mt-1">Track the vocabulary lifecycle</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="/flow/stats" class="rounded-full bg-sky-500/15 px-4 py-2 text-sm font-bold text-sky-300 transition hover:bg-sky-500/25">Study Stats</a>
+      <a href="/flow/interests" class="rounded-full bg-violet-500/15 px-4 py-2 text-sm font-bold text-violet-300 transition hover:bg-violet-500/25">Interests</a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="rounded-xl bg-[#1a2d35] p-4 text-center">
+      <p class="text-2xl font-black text-emerald-400">{{ total_words }}</p>
+      <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Words tracked</p>
+    </div>
+    <div class="rounded-xl bg-[#1a2d35] p-4 text-center">
+      <p class="text-2xl font-black text-violet-400">{{ status_totals['unseen'] or 0 }}</p>
+      <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Unintroduced</p>
+    </div>
+    <div class="rounded-xl bg-[#1a2d35] p-4 text-center">
+      <p class="text-2xl font-black text-amber-400">{{ (status_totals['introduced'] or 0) + (status_totals['practicing'] or 0) }}</p>
+      <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">In practice</p>
+    </div>
+    <div class="rounded-xl bg-[#1a2d35] p-4 text-center">
+      <p class="text-2xl font-black text-slate-200">{{ status_totals['known'] or 0 }}</p>
+      <p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Known</p>
+    </div>
+  </div>
+
+  <div class="rounded-2xl bg-[#1a2d35] p-5 shadow-lg shadow-black/20">
+    <h3 class="text-lg font-black text-slate-50 mb-3">Practice Queue</h3>
+    {% if practice_words %}
+      <div class="grid gap-2 md:grid-cols-2">
+        {% for word in practice_words %}
+        <div class="rounded-xl bg-[#0f1a1f] p-4 ring-1 ring-emerald-500/20">
+          <div class="flex items-center gap-3">
+            <div class="text-3xl">{{ word.emoji or '📝' }}</div>
+            <div>
+              <p class="text-lg font-semibold text-slate-50">{{ word.spanish }}</p>
+              <p class="text-sm text-slate-400">{{ word.english }}</p>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-xs text-slate-500">
+            <span>Status: {{ word.status }}</span>
+            <span>Seen {{ word.times_seen }}× · Correct {{ word.times_correct }}</span>
+          </div>
+          {% if word.concept_name %}
+            <p class="mt-2 text-[11px] text-slate-500">Concept: {{ word.concept_name }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-sm text-slate-500">No words in practice yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="rounded-2xl bg-[#1a2d35] p-5 shadow-lg shadow-black/20">
+    <h3 class="text-lg font-black text-slate-50 mb-4">Recent Updates</h3>
+    {% if recent_words %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-[10px] uppercase tracking-widest text-slate-500 font-bold border-b border-[#2a3f4a]">
+            <th class="text-left py-2 px-2">Word</th>
+            <th class="text-left py-2 px-2">English</th>
+            <th class="text-center py-2 px-2">Status</th>
+            <th class="text-center py-2 px-2">Seen</th>
+            <th class="text-center py-2 px-2">Correct</th>
+            <th class="text-left py-2 px-2">Concept</th>
+            <th class="text-left py-2 px-2">Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for word in recent_words %}
+          <tr class="border-b border-[#162028] hover:bg-[#0f1a1f]/40 transition">
+            <td class="py-2.5 px-2 text-slate-200 font-medium">{{ word.spanish }}</td>
+            <td class="py-2.5 px-2 text-slate-400">{{ word.english }}</td>
+            <td class="py-2.5 px-2 text-center text-slate-300">{{ word.status }}</td>
+            <td class="py-2.5 px-2 text-center text-slate-300">{{ word.times_seen }}</td>
+            <td class="py-2.5 px-2 text-center text-slate-300">{{ word.times_correct }}</td>
+            <td class="py-2.5 px-2 text-slate-400">{{ word.concept_name or '—' }}</td>
+            <td class="py-2.5 px-2 text-slate-500 text-xs">{{ word.updated_at }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <p class="text-sm text-slate-500">No words yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

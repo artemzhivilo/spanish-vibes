@@ -2,7 +2,7 @@
 
 ## Bugs
 
-(none currently)
+- [ ] **Word taps recording full sentences** — When user selects a whole sentence to translate, the word_taps table records the entire sentence as a single "word" (e.g. "te gusta más este chico que está aquí o ese que está allá" with 6 taps). Fix: only count single-word selections as word tap signals. Sentence translations can still be stored separately but shouldn't feed into word-level prioritization.
 
 ## Recently Done
 
@@ -12,54 +12,76 @@
 - [x] Correction stepper on summary page (step through one at a time, then full list)
 - [x] Phrase selection translation (highlight multiple words to translate together)
 - [x] MCQ infinite loop fix (conversations now increment `cards_answered`)
+- [x] MCQ quality: improved AI prompt to avoid ambiguous "Which is correct?" questions
+- [x] MCQ quality: added post-generation validation (`_validate_mcq`)
+- [x] "Refresh Questions" button on Concepts page to clear AI MCQ cache
+- [x] Conversation "Done" button: fallback `<a>` tag + error handling on summary endpoint
+- [x] Concept Expansion Phase 1 — A1 gaps filled (possessive_adjectives, demonstratives, plurals, numbers_21_100, muy_mucho, frequency_adverbs, weather_seasons, clothing_vocab, body_parts, places_in_town, professions)
+- [x] Concept Expansion Phase 2 — A2 grammar (reflexive_verbs, direct/indirect_object_pronouns, present_perfect, preterite_regular/irregular, imperfect_intro, comparatives, tener_que, estar_gerund, poder_infinitive, por_vs_para, conjunctions, conditional_politeness, imperative_basic)
+- [x] Concept Expansion Phase 3 — A2 communicative vocab (shopping, health_doctor, travel_transport, hobbies_free_time, house_rooms, my_city)
+- [x] Accelerated word tracking — harvest vocabulary from conversations (all user-produced Spanish words tracked automatically), word tap tracking (taps during conversation recorded as learning signals), smart word lifecycle (conversation words skip intro, enter as 'practicing'; tapped words enter as 'unseen')
 
 ## Up Next
 
-### Concept Expansion (A1 completion + A2)
+### Persona System & Conversations
 
-Current state: 29 concepts across 6 tiers, covering basic A1. Need ~30 more to fully cover A1 and start A2.
-CEFR references: Instituto Cervantes Plan Curricular, DELE A1/A2 syllabus, Kwiziq/Inhispania course maps.
+See `DESIGN_IDEAS.md` for full design thinking. Build order below follows the dependency chain. **Prompt ready: `PROMPT_PERSONAS.md`**
 
-**Phase 1 — Fill A1 gaps (Tiers 2-5)** — Add to `data/concepts.yaml`, run `seed_concepts_to_db()`
+**Step 1 — Persona data layer + files**
+- [ ] `personas` DB table: id, slug, name, soul_file_path, created_at
+- [ ] Persona YAML files in `data/personas/` (marta.yaml, diego.yaml, abuela_rosa.yaml, luis.yaml) defining: identity, personality, conversation style, interest weights, vocab level, system prompt template
+- [ ] `personas.py` module: load persona YAML, build dynamic system prompt with memory injection slots
 
-- [ ] `possessive_adjectives` (Tier 3) — mi, tu, su, nuestro. Prereqs: nouns_gender
-- [ ] `demonstratives` (Tier 3) — este/ese/aquel + agreement. Prereqs: nouns_gender
-- [ ] `plurals` (Tier 3) — forming plurals (-s, -es, -ces). Prereqs: nouns_gender
-- [ ] `numbers_21_100` (Tier 2) — veintiuno to cien. Prereqs: numbers_1_20
-- [ ] `muy_mucho` (Tier 4) — muy + adjective, mucho + noun. Prereqs: adjective_agreement
-- [ ] `frequency_adverbs` (Tier 4) — siempre, a veces, nunca, todos los días. Prereqs: present_tense_ar
-- [ ] `weather_seasons` (Tier 3) — hace frío/calor, llueve, nieva + seasons. Prereqs: hay
-- [ ] `clothing_vocab` (Tier 2) — la camisa, los zapatos, etc. Prereqs: greetings
-- [ ] `body_parts` (Tier 2) — la cabeza, el brazo, etc. Prereqs: greetings
-- [ ] `places_in_town` (Tier 3) — el banco, la tienda, el hospital, la escuela. Prereqs: articles_definite
-- [ ] `professions` (Tier 3) — profesor, médico, etc + ser. Prereqs: ser_present
+**Step 2 — Refactor conversation engine to use personas**
+- [ ] Refactor `conversation.py` to accept a persona object instead of hardcoded Marta
+- [ ] System prompt built from persona YAML + injected memories + user profile
+- [ ] Persona selection in `select_next_card()` for conversation injection — weighted by engagement scores (neutral start)
 
-**Phase 2 — A2 grammar (Tiers 6-8)**
+**Step 3 — Post-conversation evaluation (the hub)**
+- [ ] `evaluation.py` module: single LLM call after each conversation that extracts:
+  - Concepts demonstrated (with correct/error counts) → feeds BKT with boosted weight (production > recognition)
+  - Vocabulary used → feeds words table
+  - User facts to remember → feeds user_profile
+  - Persona-specific observations → feeds persona_memories
+  - Engagement quality assessment (soft signal)
+- [ ] Wire into conversation summary flow (replace or augment current `generate_summary()`)
 
-- [ ] `reflexive_verbs` (Tier 6) — llamarse, levantarse, ducharse, vestirse. Prereqs: present_tense_ar
-- [ ] `direct_object_pronouns` (Tier 7) — lo, la, los, las. Prereqs: present_tense_ar, present_tense_er_ir
-- [ ] `indirect_object_pronouns` (Tier 7) — me, te, le, nos, les. Prereqs: gustar
-- [ ] `present_perfect` (Tier 7) — he/has/ha + past participle. Prereqs: present_tense_ar, present_tense_er_ir
-- [ ] `preterite_regular` (Tier 7) — -ar/-er/-ir regular preterite endings. Prereqs: present_tense_ar, present_tense_er_ir
-- [ ] `preterite_irregular` (Tier 8) — fui, hice, tuve, etc. Prereqs: preterite_regular
-- [ ] `imperfect_intro` (Tier 8) — -aba/-ía endings, habitual past. Prereqs: preterite_regular
-- [ ] `comparatives` (Tier 7) — más/menos...que, tan...como, mejor/peor. Prereqs: adjective_agreement
-- [ ] `tener_que_hay_que` (Tier 6) — obligation: tener que, hay que, deber. Prereqs: tener_present
-- [ ] `estar_gerund` (Tier 6) — estar + -ando/-iendo (present progressive). Prereqs: estar_present
-- [ ] `poder_infinitive` (Tier 6) — puedo/puedes/puede + verb. Prereqs: present_tense_er_ir
-- [ ] `por_vs_para` (Tier 7) — core uses. Prereqs: basic_prepositions
-- [ ] `conjunctions` (Tier 6) — pero, porque, cuando, si, y, o. Prereqs: present_tense_ar
-- [ ] `conditional_politeness` (Tier 8) — quisiera, podría, me gustaría. Prereqs: gustar, poder_infinitive
-- [ ] `imperative_basic` (Tier 8) — tú commands affirmative. Prereqs: present_tense_ar
+**Step 4 — Memory system**
+- [ ] `persona_memories` table: persona_id, memory_text, conversation_id, importance_score, created_at. Capped at ~20 per persona, prune oldest/least-important.
+- [ ] `user_profile` table: key, value, source (conversation_id), confidence, created_at. Shared across personas.
+- [ ] Memory injection into persona system prompts before each conversation
 
-**Phase 3 — A2 communicative vocab (Tiers 6-8)**
+**Step 5 — Conversation enjoyment scoring**
+- [ ] Compute enjoyment score after each conversation: message_length (0.35), completion_ratio (0.25), no_early_exit (0.20), response_time (0.10), engagement_quality from LLM (0.10)
+- [ ] `persona_engagement` table: persona_id, topic_id, conversation_count, avg_enjoyment_score, avg_message_length, avg_turns, early_exit_rate, last_conversation_at
+- [ ] Persona rotation weighted by engagement scores + novelty bonus (TikTok-style algorithm)
 
-- [ ] `shopping` (Tier 7) — ¿Cuánto cuesta?, comprar, pagar, la tienda. Prereqs: numbers_21_100, querer
-- [ ] `health_doctor` (Tier 7) — me duele, tengo fiebre, el médico. Prereqs: body_parts, tener_present
-- [ ] `travel_transport` (Tier 7) — el tren, el avión, el billete, viajar. Prereqs: ir_a, basic_prepositions
-- [ ] `hobbies_free_time` (Tier 6) — deportes, leer, nadar, jugar. Prereqs: gustar
-- [ ] `house_rooms` (Tier 5) — la cocina, el baño, el dormitorio. Prereqs: articles_definite, basic_prepositions
-- [ ] `my_city` (Tier 7) — describing where you live. Prereqs: hay, estar_present, places_in_town
+**Step 6 — Conversation types**
+- [ ] Implement conversation type selection: general chat (~50%), role play (~20%), concept-required (~15%), tutor (~15%), story comprehension (~10% — see below)
+- [ ] Conversation type instruction injected into persona system prompt
+- [ ] Type-aware post-conversation evaluation (concept-required gets pass/fail on target concept)
+
+**Step 7 — Adaptive placement**
+- [ ] Placement conversation mode: persona probes increasing complexity on first session
+- [ ] Post-placement evaluation mass-unlocks concepts, sets initial CEFR dimension estimates
+- [ ] Onboarding flow: 2-3 quick questions → placement conversation → calibrated concept graph
+
+### Word-Level Tracking (remaining items)
+
+- [ ] **Seed core vocabulary** — Pre-populate words for existing concepts with emojis AND topic tags. Core words (greetings, numbers, pronouns) have no topic. Domain words get tagged (cancha→sports, cocina→food). See DESIGN_IDEAS.md "Interest-driven vocabulary" for the tiering model (core / functional / deep).
+- [ ] **Interest-driven word prioritization** — Word intro cards prioritize words from high-interest topics. If user loves basketball (interest score 0.9), basketball words surface before photography words (interest score 0.2).
+- [ ] **Word-aware MCQ generation** — Tell the AI prompt which words the user knows, so distractors use known vocabulary and don't accidentally test unknown words
+
+### New Card Types
+
+Currently: teach, MCQ, conversation. Add variety to keep sessions engaging.
+
+- [ ] **Story comprehension card** — Persona tells a short story (3-5 sentences) using target grammar, then 2-3 comprehension MCQs. Tests reading comprehension without production. Persona personality flavors the story. Variations: retell mode, fill-in-the-story, continuing the story. See DESIGN_IDEAS.md "Story Comprehension Card".
+- [ ] **Fill-in-the-blank card** — Full sentence with one word blanked, 4 choices. Context constrains the answer. E.g. "Ella ___ alta." → es/está/son/están. Different from MCQ because it's inline and tests reading comprehension in context.
+- [ ] **Match card** — Show 4-5 Spanish words on left, English (or emoji) on right, drag/tap to match pairs. Pure frontend, no AI needed. Great break from MCQs. Good for vocab reinforcement.
+- [ ] **Sentence builder card** — Scrambled words, arrange in correct order. Tests word order / grammar understanding differently. E.g. [gusta / me / la / música] → "Me gusta la música."
+- [ ] **Listening card** (future) — Play a sentence via TTS, pick the translation or type what you heard. Browser SpeechSynthesis API is free. Start with "listen and choose" before "listen and type."
+- [ ] **Image/emoji association card** — Show an emoji or simple image, pick the Spanish word. Fast, visual, low-stakes. Good for vocab drilling.
 
 ### Other improvements
 
@@ -68,9 +90,13 @@ CEFR references: Instituto Cervantes Plan Curricular, DELE A1/A2 syllabus, Kwizi
 
 ## Ideas / Future
 
-- [ ] **"More info" on word tooltip** — Tap a word, see translation, then option to drill deeper (conjugation table, example sentences, related words). Parked for now.
+See also: `DESIGN_IDEAS.md` for bigger-picture thinking (persona system, memory, conversation design, AI backend research).
+
+- [ ] **Conversation design overhaul** — Move beyond Q&A format. Role-play, storytelling, games, mutual exchange. Research what makes conversations fun.
+- [ ] **AI backend research** — LLM vs fine-tuning vs self-hosted. Cost analysis, personality consistency benchmarks.
+- [ ] **"More info" on word tooltip** — Tap a word, see translation, then option to drill deeper (conjugation table, example sentences, related words).
 - [ ] **Spaced repetition for conversation corrections** — Feed corrections back into the MCQ system so words you got wrong in conversation show up as flashcards later.
 - [ ] **Mobile UX audit** — Test the whole flow on phone. Chat bubbles, tooltip positioning, phrase selection on touch.
-- [ ] **Conversation variety** — More persona styles beyond Marta? Different conversation formats (ordering food, asking directions, etc)?
 - [ ] **Progress dashboard improvements** — Graphs over time, streak calendar, weekly goals.
 - [ ] **Audio / pronunciation** — Text-to-speech on AI messages, or speech-to-text for user input.
+- [ ] **Video comprehension cards** — Short video clips with questions. Content sourcing is the hard part. Could start with animated text scenes as a stepping stone.

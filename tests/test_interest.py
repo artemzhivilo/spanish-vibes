@@ -9,7 +9,7 @@ import pytest
 
 from spanish_vibes import db
 from spanish_vibes.db import init_db, seed_interest_topics, get_all_interest_topics, _open_connection
-from spanish_vibes.interest import CardSignal, InterestTracker
+from spanish_vibes.interest import CardSignal, InterestTracker, get_topic_id_for_conversation
 
 
 @pytest.fixture(autouse=True)
@@ -274,3 +274,17 @@ class TestSignalRecording:
         assert int(row["dwell_time_ms"]) == 25_000
         assert int(row["card_id"]) == 42
         assert str(row["card_type"]) == "mcq"
+
+
+class TestConversationTopicMatching:
+    def test_matches_topic_string_to_seeded_topic(self):
+        topic_id = get_topic_id_for_conversation("football")
+        assert topic_id == _get_topic_id("football")
+
+    def test_matches_broader_topic_phrase(self):
+        topic_id = get_topic_id_for_conversation("cooking")
+        assert topic_id == _get_topic_id("food-cooking")
+
+    def test_falls_back_to_concept_topic_mapping(self):
+        topic_id = get_topic_id_for_conversation("unknown_topic_xyz", concept_id="travel_transport")
+        assert topic_id == _get_topic_id("travel")

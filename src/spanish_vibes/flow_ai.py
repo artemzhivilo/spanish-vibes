@@ -13,6 +13,8 @@ from .flow_db import count_cached_mcqs, get_all_concept_knowledge, save_mcq_batc
 
 def ai_available() -> bool:
     """Return True if an OpenAI API key is configured."""
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return False
     return bool(os.environ.get("OPENAI_API_KEY"))
 
 
@@ -85,9 +87,18 @@ def generate_mcq_batch(concept_id: str, count: int = 15, topic: str | None = Non
                         "CRITICAL RULES:\n"
                         "- Every question MUST have exactly ONE correct answer. Never create questions where multiple options could be valid.\n"
                         "- NEVER use open-ended fill-in-the-blank like 'Quiero _____' where any noun fits.\n"
-                        "- Good question types: translation ('What does X mean?'), grammar ('Which is correct?'), "
-                        "vocabulary matching ('How do you say X in Spanish?').\n"
-                        "- Distractors should be plausible but clearly wrong (e.g. wrong gender, wrong conjugation, wrong meaning).\n"
+                        "- NEVER ask vague 'Which is correct?' questions where multiple options are grammatically valid sentences. "
+                        "Instead, provide SPECIFIC CONTEXT that constrains the answer to exactly one option. Examples:\n"
+                        "  BAD: 'Which is correct?' with options like 'Él es alto' / 'Él está feliz' (both are correct!)\n"
+                        "  GOOD: 'He is tired right now. How do you say this?' (only 'Él está cansado' works)\n"
+                        "  GOOD: 'Which correctly uses ser for a permanent trait?' (constrains to ser)\n"
+                        "  GOOD: 'Translate: She is tall.' (only 'Ella es alta' works)\n"
+                        "- For ser/estar concepts: always specify whether you're testing ser or estar, OR give an English sentence to translate. "
+                        "Never present unrelated correct ser and estar sentences as options.\n"
+                        "- All distractors must target the SAME translation/scenario as the correct answer but with a specific error.\n"
+                        "- Good question types: translation ('Translate: X'), targeted grammar ('Which correctly uses [concept]?'), "
+                        "error spotting ('Which sentence has an error?'), vocabulary matching ('How do you say X in Spanish?').\n"
+                        "- Distractors should be plausible but clearly wrong (e.g. wrong gender, wrong conjugation, wrong ser/estar choice).\n"
                         f"{topic_instruction}"
                         "Return ONLY a JSON array, no extra text."
                     ),
@@ -104,8 +115,12 @@ def generate_mcq_batch(concept_id: str, count: int = 15, topic: str | None = Non
                         f'- "correct_answer": the correct answer\n'
                         f'- "distractors": array of 3 objects with "text" and "misconception" (concept_id)\n'
                         f'- "difficulty": 1-3 (1=easy, 2=medium, 3=hard)\n\n'
-                        f"Use these question types: translation (English↔Spanish), 'which is correct' grammar, "
-                        f"vocabulary matching. Do NOT use open-ended fill-in-the-blank where multiple answers work."
+                        f"Use these question types: translation (English→Spanish or Spanish→English), "
+                        f"targeted grammar ('Which correctly uses [specific concept]?'), error spotting.\n"
+                        f"IMPORTANT: Every question must constrain answers to ONE correct option. "
+                        f"If testing grammar, specify WHAT to test in the question itself. "
+                        f"All 4 options should attempt the SAME sentence/meaning but with different grammar choices. "
+                        f"Do NOT mix unrelated correct sentences as options."
                     ),
                 },
             ],
@@ -133,6 +148,10 @@ def generate_mcq_batch(concept_id: str, count: int = 15, topic: str | None = Non
             difficulty = item.get("difficulty", 1)
 
             if not question or not correct:
+                continue
+
+            # Validate MCQ quality — reject ambiguous or poorly constructed questions
+            if not _validate_mcq(item):
                 continue
 
             content_hash = _mcq_hash(concept_id, question, correct, topic)
@@ -230,6 +249,41 @@ def prefetch_next_concepts(knowledge: dict | None = None) -> None:
     # Next new concepts
     for concept_id in get_next_new_concepts(knowledge, limit=3):
         ensure_cache_populated(concept_id)
+
+
+def _validate_mcq(item: dict[str, Any]) -> bool:
+    """Reject MCQs that are likely ambiguous or poorly constructed.
+
+    Returns True if the MCQ passes validation, False if it should be discarded.
+    """
+    question = item.get("question", "").strip().lower()
+    correct = item.get("correct_answer", "").strip()
+    distractors = item.get("distractors", [])
+
+    if not question or not correct or len(distractors) < 3:
+        return False
+
+    # Reject vague "which is correct?" with no constraining context
+    vague_patterns = ["which is correct?", "which one is correct?", "which is right?"]
+    if question in vague_patterns or question.rstrip("?") in [p.rstrip("?") for p in vague_patterns]:
+        return False
+
+    # Reject if distractors are completely unrelated sentences
+    # (i.e., they don't share any significant words with the correct answer)
+    correct_words = set(correct.lower().split()) - {"el", "la", "los", "las", "un", "una", "es", "está", "de", "en", "a", "y", "o"}
+    if correct_words:
+        distractor_texts = [d.get("text", "") if isinstance(d, dict) else str(d) for d in distractors]
+        shared_count = 0
+        for dt in distractor_texts:
+            dt_words = set(dt.lower().split())
+            if correct_words & dt_words:
+                shared_count += 1
+        # At least 2 of 3 distractors should share vocabulary with the correct answer
+        # (meaning they're variations of the same sentence, not random unrelated sentences)
+        if shared_count < 2:
+            return False
+
+    return True
 
 
 def _pick_distractors(correct: str, pool: list[str], count: int) -> list[str]:
@@ -340,12 +394,129 @@ def generate_conversation_opener(concept_id: str, topic: str, difficulty: int = 
         return ""
 
 
+def generate_story_card(
+    concept_id: str,
+    topic: str,
+    difficulty: int,
+    persona_prompt: str,
+    persona_name: str,
+) -> dict[str, Any]:
+    """Generate a short Spanish story and comprehension MCQs."""
+    concepts = load_concepts()
+    concept = concepts.get(concept_id)
+    concept_name = concept.name if concept else concept_id
+
+    fallback_story = (
+        f"Ayer {persona_name} habló sobre {topic}. "
+        f"Primero practicó {concept_name}. "
+        f"Luego tomó un café y siguió estudiando. "
+        f"Al final, dijo que fue un buen día."
+    )
+    fallback_questions = [
+        {
+            "question": f"¿De qué habló {persona_name}?",
+            "correct_answer": f"De {topic}",
+            "options": [f"De {topic}", "De medicina", "De política", "De dinero"],
+        },
+        {
+            "question": "¿Qué hizo al final?",
+            "correct_answer": "Dijo que fue un buen día",
+            "options": [
+                "Dijo que fue un buen día",
+                "Se fue al hospital",
+                "Perdió el tren",
+                "Canceló todo",
+            ],
+        },
+    ]
+
+    if not ai_available():
+        return {"story": fallback_story, "questions": fallback_questions}
+
+    client = _get_client()
+    if client is None:
+        return {"story": fallback_story, "questions": fallback_questions}
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You create Spanish reading-comprehension micro stories for beginners. "
+                        "Return STRICT JSON only."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Persona name: {persona_name}\n"
+                        f"Persona style:\n{persona_prompt}\n---\n"
+                        f"Topic: {topic}\n"
+                        f"Target concept: {concept_name} ({concept_id})\n"
+                        f"Difficulty: {difficulty}\n\n"
+                        "Create a story card as JSON with keys: story (3-5 Spanish sentences) and questions (2-3 items). "
+                        "Each question must have question, correct_answer, options (4 total including correct_answer). "
+                        "A1: simple literal questions. A2: can include one mild inference question."
+                    ),
+                },
+            ],
+            temperature=0.7,
+            max_tokens=1000,
+            response_format={"type": "json_object"},
+        )
+        content = (response.choices[0].message.content or "").strip()
+        payload = json.loads(content)
+        story = str(payload.get("story") or "").strip()
+        questions_raw = payload.get("questions")
+        if not story or not isinstance(questions_raw, list):
+            return {"story": fallback_story, "questions": fallback_questions}
+
+        questions: list[dict[str, Any]] = []
+        for item in questions_raw[:3]:
+            if not isinstance(item, dict):
+                continue
+            question = str(item.get("question") or "").strip()
+            correct = str(item.get("correct_answer") or "").strip()
+            options_raw = item.get("options")
+            if not question or not correct or not isinstance(options_raw, list):
+                continue
+            options = [str(opt).strip() for opt in options_raw if str(opt).strip()]
+            if correct not in options:
+                options.append(correct)
+            deduped: list[str] = []
+            for opt in options:
+                if opt not in deduped:
+                    deduped.append(opt)
+            if len(deduped) < 4:
+                for extra in ["No se menciona", "No está claro", "Otra opción"]:
+                    if extra not in deduped:
+                        deduped.append(extra)
+                    if len(deduped) >= 4:
+                        break
+            questions.append(
+                {
+                    "question": question,
+                    "correct_answer": correct,
+                    "options": deduped[:4],
+                }
+            )
+
+        if not questions:
+            return {"story": fallback_story, "questions": fallback_questions}
+        return {"story": story, "questions": questions}
+    except Exception:
+        return {"story": fallback_story, "questions": fallback_questions}
+
+
 __all__ = [
     "ai_available",
     "convert_existing_cards_to_mcq",
     "ensure_cache_populated",
     "generate_conversation_opener",
     "generate_mcq_batch",
+    "generate_story_card",
     "generate_teach_card",
     "prefetch_next_concepts",
 ]

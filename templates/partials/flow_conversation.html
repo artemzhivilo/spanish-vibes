@@ -1,10 +1,22 @@
+<div
+  class="hidden"
+  data-dev-card-type="conversation"
+  data-dev-card-id="{{ conversation_id }}"
+  data-dev-concept-id="{{ card.concept }}"
+  data-dev-persona-id="{{ persona_id | default('') }}"
+  data-dev-conversation-type="{{ conversation_type | default('general_chat') }}"
+  data-dev-conversation-id="{{ conversation_id }}"
+></div>
 <!-- ═══ Conversation Card ═══ -->
 <div class="rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-violet-500/20">
   <header class="flex items-center justify-between mb-4">
     <span class="rounded-full bg-violet-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-violet-300">
       Conversation
     </span>
-    <span class="text-xs text-slate-500">{{ concept_name }} · {{ card.topic }}</span>
+    <span class="text-xs text-slate-500">
+      {{ concept_name }} · {{ card.topic }} · {{ persona_name or 'AI' }}
+      {% if conversation_type %} · {{ conversation_type|replace('_', ' ')|title }}{% endif %}
+    </span>
   </header>
 
   <!-- Chat messages -->
@@ -13,7 +25,8 @@
       {% if msg.role == 'ai' %}
         <!-- AI bubble — left, gray -->
         <div class="flex items-start gap-2 max-w-[85%]" data-chat-role="ai">
-          <div class="shrink-0 w-7 h-7 rounded-full bg-slate-600 flex items-center justify-center text-xs font-bold text-slate-300">AI</div>
+          {% set display_name = persona_name or 'AI' %}
+          <div class="shrink-0 w-7 h-7 rounded-full bg-slate-600 flex items-center justify-center text-xs font-bold text-slate-300">{{ display_name[:2] | upper }}</div>
           <div class="rounded-2xl rounded-tl-sm bg-slate-700 px-4 py-2.5 text-sm text-slate-200 leading-relaxed">
             {{ msg.content | tappable | safe }}
           </div>
@@ -110,13 +123,13 @@
       </button>
     </form>
     <div class="mt-2 flex justify-end">
-      <button
+      <a href="/flow/conversation/summary?conversation_id={{ conversation_id }}&session_id={{ session_id }}"
         hx-get="/flow/conversation/summary?conversation_id={{ conversation_id }}&session_id={{ session_id }}"
         hx-target="#flow-card-slot"
         hx-swap="innerHTML"
-        class="rounded-lg bg-slate-700/50 px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:bg-slate-700 hover:text-slate-300">
+        class="rounded-lg bg-slate-700/50 px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:bg-slate-700 hover:text-slate-300 inline-flex items-center gap-1.5 no-underline cursor-pointer">
         Done
-      </button>
+      </a>
     </div>
   {% endif %}
 </div>
@@ -210,7 +223,10 @@
       tooltip.style.opacity = '1';
       positionTooltip(rect);
 
-      fetch('/flow/translate-word?word=' + encodeURIComponent(text) + '&context=' + encodeURIComponent(context))
+      var convId = '{{ conversation_id | default("") }}';
+      var url = '/flow/translate-word?word=' + encodeURIComponent(text) + '&context=' + encodeURIComponent(context);
+      if (convId) url += '&conversation_id=' + encodeURIComponent(convId);
+      fetch(url)
         .then(function(resp) { return resp.text(); })
         .then(function(html) {
           if (activeText !== text) return;

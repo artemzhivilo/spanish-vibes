@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from .db import _open_connection, now_iso
+from .db import _open_connection, get_all_interest_topics, now_iso
 
 # ── Signal weights ────────────────────────────────────────────────────────────
 
@@ -26,6 +26,62 @@ MIN_DWELL_MS = 2_000
 
 # Struggle detection: long dwell + wrong answer
 STRUGGLE_DWELL_THRESHOLD_MS = 20_000
+
+CONCEPT_TOPIC_MAP: dict[str, str] = {
+    "food_vocab": "food-cooking",
+    "ordering_food": "food-cooking",
+    "animals_vocab": "nature-animals",
+    "clothing_vocab": "fashion",
+    "body_parts": "health",
+    "professions": "business",
+    "family_vocab": "relationships",
+    "hobbies_free_time": "gaming",
+    "weather_seasons": "nature-animals",
+    "places_in_town": "travel",
+    "travel_transport": "travel",
+    "shopping": "fashion",
+    "health_doctor": "health",
+    "my_city": "travel",
+    "describing_people": "relationships",
+}
+
+
+def get_topic_id_for_conversation(topic: str, concept_id: str | None = None) -> int | None:
+    """Match conversation topic/concept to an interest topic id."""
+    topics = get_all_interest_topics()
+    if not topics:
+        return None
+
+    needle = (topic or "").strip().lower()
+    best_match_id: int | None = None
+    best_score = -1
+
+    if needle:
+        for row in topics:
+            topic_id = int(row["id"])
+            name = str(row.get("name") or "").strip().lower()
+            slug = str(row.get("slug") or "").strip().lower()
+            score = -1
+            if needle == slug or needle == name:
+                score = 5
+            elif needle in slug or needle in name:
+                score = 3
+            elif slug in needle or name in needle:
+                score = 2
+            if score > best_score:
+                best_score = score
+                best_match_id = topic_id
+
+    if best_match_id is not None and best_score >= 0:
+        return best_match_id
+
+    mapped_slug = CONCEPT_TOPIC_MAP.get((concept_id or "").strip().lower())
+    if not mapped_slug:
+        return None
+    for row in topics:
+        if str(row.get("slug") or "").strip().lower() == mapped_slug:
+            return int(row["id"])
+    return None
 
 
 @dataclass(slots=True)
@@ -291,6 +347,8 @@ class InterestTracker:
 
 __all__ = [
     "CardSignal",
+    "CONCEPT_TOPIC_MAP",
     "InterestTracker",
     "TopicScore",
+    "get_topic_id_for_conversation",
 ]

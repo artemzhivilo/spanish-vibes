@@ -6,6 +6,7 @@ import json
 from typing import Any
 
 from .db import _open_connection, now_iso
+from .words import record_word_gap
 from .models import ConceptKnowledge, FlowResponse, FlowSession, MCQCard
 
 
@@ -224,6 +225,7 @@ def store_vocabulary_gap(
             (english, spanish, concept_id, source, timestamp),
         )
         conn.commit()
+    record_word_gap(spanish, english, concept_id)
 
 
 # ── Flow state (singleton) ───────────────────────────────────────────────────
@@ -508,6 +510,11 @@ def update_concept_knowledge(
                 (p_mastery, timestamp, timestamp, concept_id),
             )
         conn.commit()
+    try:
+        from .flow import invalidate_user_level_cache
+        invalidate_user_level_cache()
+    except Exception:
+        pass
 
 
 def mark_teach_shown(concept_id: str) -> None:
@@ -541,26 +548,43 @@ def get_cached_mcqs(
     concept_id: str,
     limit: int = 10,
     exclude_ids: list[int] | None = None,
+    preferred_difficulty: int | None = None,
 ) -> list[MCQCard]:
-    """Return cached MCQ cards for a concept."""
+    """Return cached MCQ cards for a concept.
+
+    If `preferred_difficulty` is set, prefer cards at that difficulty, then
+    fall back to any difficulty.
+    """
     exclude_clause = ""
     params: list[Any] = [concept_id]
     if exclude_ids:
         placeholders = ",".join("?" for _ in exclude_ids)
         exclude_clause = f"AND id NOT IN ({placeholders})"
         params.extend(exclude_ids)
-    params.append(limit)
-
+    rows: list[Any] = []
     with _open_connection() as conn:
-        rows = conn.execute(
-            f"""
-            SELECT * FROM flow_mcq_cache
-            WHERE concept_id = ? {exclude_clause}
-            ORDER BY times_used ASC, RANDOM()
-            LIMIT ?
-            """,
-            params,
-        ).fetchall()
+        if preferred_difficulty is not None:
+            preferred_params = [*params, int(preferred_difficulty), limit]
+            rows = conn.execute(
+                f"""
+                SELECT * FROM flow_mcq_cache
+                WHERE concept_id = ? {exclude_clause} AND difficulty = ?
+                ORDER BY times_used ASC, RANDOM()
+                LIMIT ?
+                """,
+                preferred_params,
+            ).fetchall()
+        if not rows:
+            fallback_params = [*params, limit]
+            rows = conn.execute(
+                f"""
+                SELECT * FROM flow_mcq_cache
+                WHERE concept_id = ? {exclude_clause}
+                ORDER BY times_used ASC, RANDOM()
+                LIMIT ?
+                """,
+                fallback_params,
+            ).fetchall()
     return [_row_to_mcq(row) for row in rows]
 
 
@@ -621,21 +645,46 @@ def count_cached_mcqs(concept_id: str) -> int:
     return int(row[0])
 
 
+def clear_mcq_cache(concept_id: str | None = None, source: str = "ai") -> int:
+    """Clear cached MCQs. If concept_id given, only that concept; otherwise all.
+
+    Only clears MCQs matching the given source (default: 'ai').
+    Returns the number of deleted rows.
+    """
+    with _open_connection() as conn:
+        if concept_id:
+            cursor = conn.execute(
+                "DELETE FROM flow_mcq_cache WHERE concept_id = ? AND source = ?",
+                (concept_id, source),
+            )
+        else:
+            cursor = conn.execute(
+                "DELETE FROM flow_mcq_cache WHERE source = ?",
+                (source,),
+            )
+        conn.commit()
+        return cursor.rowcount
+
+
 def get_last_conversation_info(session_id: int | None = None) -> dict[str, str] | None:
-    """Return topic and concept_id from the most recent conversation, or None."""
+    """Return metadata from the most recent conversation, or None."""
     with _open_connection() as conn:
         if session_id:
             row = conn.execute(
-                "SELECT topic, concept_id FROM flow_conversations WHERE session_id = ? ORDER BY id DESC LIMIT 1",
+                "SELECT topic, concept_id, persona_id FROM flow_conversations WHERE session_id = ? ORDER BY id DESC LIMIT 1",
                 (session_id,),
             ).fetchone()
         else:
             row = conn.execute(
-                "SELECT topic, concept_id FROM flow_conversations ORDER BY id DESC LIMIT 1"
+                "SELECT topic, concept_id, persona_id FROM flow_conversations ORDER BY id DESC LIMIT 1"
             ).fetchone()
     if row is None:
         return None
-    return {"topic": str(row["topic"] or ""), "concept_id": str(row["concept_id"] or "")}
+    return {
+        "topic": str(row["topic"] or ""),
+        "concept_id": str(row["concept_id"] or ""),
+        "persona_id": row["persona_id"],
+    }
 
 
 def _row_to_mcq(row: Any) -> MCQCard:

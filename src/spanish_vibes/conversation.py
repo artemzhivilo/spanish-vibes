@@ -1,8 +1,9 @@
 """Conversation card engine — AI-driven mini-conversations in Spanish.
 
-The AI partner is "Marta", a consistent persona that makes conversations
-feel natural. Uses a single LLM call per user turn (respond_to_user) that
-combines evaluation, reply, and steering into one structured output.
+By default the AI partner is "Marta", but callers can swap in any persona by
+passing a custom system prompt. Uses a single LLM call per user turn
+(respond_to_user) that combines evaluation, reply, and steering into one
+structured output.
 """
 
 from __future__ import annotations
@@ -12,14 +13,13 @@ import random
 from difflib import SequenceMatcher
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any, Literal
 
 from .flow_ai import ai_available, _get_client
 from .concepts import load_concepts
 
 
-# ── Marta persona ───────────────────────────────────────────────────────────
+# ── Default Marta persona ───────────────────────────────────────────────────
 
 MARTA_PERSONA = """
 You are Marta, a 25-year-old university student from Madrid studying
@@ -278,6 +278,7 @@ class ConversationCard:
     opener: str
     max_turns: int = 4
     messages: list[ConversationMessage] = field(default_factory=list)
+    persona_name: str = "Marta"
 
     @property
     def turn_count(self) -> int:
@@ -374,7 +375,7 @@ def _explode_corrections(corrections: list[Correction]) -> list[Correction]:
 
 # ── CEFR difficulty mapping ──────────────────────────────────────────────────
 
-_DIFFICULTY_TO_CEFR = {1: "A1", 2: "A1-A2", 3: "A2"}
+_DIFFICULTY_TO_CEFR = {1: "A1", 2: "A2", 3: "A2-B1"}
 
 
 # ── Conversation Engine ─────────────────────────────────────────────────────
@@ -382,8 +383,15 @@ _DIFFICULTY_TO_CEFR = {1: "A1", 2: "A1-A2", 3: "A2"}
 class ConversationEngine:
     """Drives conversation cards: opener, respond_to_user, summary."""
 
-    def generate_opener(self, topic: str, concept: str, difficulty: int = 1) -> str:
-        """Create a conversation starter as Marta that forces the target grammar."""
+    def generate_opener(
+        self,
+        topic: str,
+        concept: str,
+        difficulty: int = 1,
+        persona_prompt: str | None = None,
+        persona_name: str = "Marta",
+    ) -> str:
+        """Create a conversation starter for the selected persona."""
         if not ai_available():
             return self._fallback_opener(topic, concept, difficulty)
 
@@ -394,6 +402,7 @@ class ConversationEngine:
         cefr = _DIFFICULTY_TO_CEFR.get(difficulty, "A1")
         concept_name = self._resolve_concept_name(concept)
         steering = get_concept_steering(concept)
+        persona_block = persona_prompt or MARTA_PERSONA
 
         try:
             response = client.chat.completions.create(
@@ -402,8 +411,8 @@ class ConversationEngine:
                     {
                         "role": "system",
                         "content": (
-                            f"{MARTA_PERSONA}\n\n"
-                            "Generate a conversation opener as Marta. 1-2 sentences in Spanish.\n"
+                            f"{persona_block}\n\n"
+                            f"Generate a conversation opener as {persona_name}. 1-2 sentences in Spanish.\n"
                             f"The opener MUST ask a question that REQUIRES the learner to respond "
                             f"using {concept_name}.\n\n"
                             f"STEERING: {steering}\n\n"
@@ -421,7 +430,7 @@ class ConversationEngine:
                         "content": (
                             f"Topic: {topic}\n"
                             f"Grammar concept: {concept_name}\n"
-                            "Generate the opener."
+                            f"Generate the opener as {persona_name}."
                         ),
                     },
                 ],
@@ -540,8 +549,10 @@ class ConversationEngine:
         topic: str,
         concept: str,
         difficulty: int = 1,
+        persona_prompt: str | None = None,
+        persona_name: str = "Marta",
     ) -> RespondResult:
-        """Single LLM call: evaluate grammar, generate Marta's reply with recast,
+        """Single LLM call: evaluate grammar, generate persona reply with recast,
         decide if conversation should continue, and optionally provide a hint."""
         if not ai_available():
             return self._fallback_respond(topic, user_text, messages)
@@ -557,8 +568,10 @@ class ConversationEngine:
         user_turns = sum(1 for m in messages if m.role == "user")
         turn_number = user_turns + 1  # counting the current user_text
 
+        persona_block = persona_prompt or MARTA_PERSONA
+
         system_prompt = (
-            f"{MARTA_PERSONA}\n\n"
+            f"{persona_block}\n\n"
             f"CURRENT CONVERSATION CONTEXT:\n"
             f"- Learner level: {cefr}\n"
             f"- Grammar target: {concept_name}\n"
@@ -570,7 +583,7 @@ class ConversationEngine:
             f"{concept_name}. Only flag errors in the TARGET grammar — if they "
             "make a different kind of mistake that doesn't affect comprehension, "
             "let it go. This is focused practice, not a red-pen review.\n\n"
-            "2. REPLY: Write your conversational response as Marta. 1-2 sentences "
+            f"2. REPLY: Write your conversational response as {persona_name}. 1-2 sentences "
             "in Spanish. If they made errors in the target grammar, naturally "
             "RECAST the correct form in your reply WITHOUT pointing it out.\n\n"
             "   RECAST EXAMPLE:\n"
@@ -588,7 +601,7 @@ class ConversationEngine:
             f"{scaffolding}\n\n"
             "RESPONSE FORMAT:\n"
             "Return a JSON object with:\n"
-            '- "reply": your response as Marta (1-2 sentences, Spanish only)\n'
+            f'- "reply": your response as {persona_name} (1-2 sentences, Spanish only)\n'
             '- "corrections": array of objects with "original", "corrected", '
             '"explanation" (1 sentence), "concept_id" — ONLY for target grammar '
             "errors. Each correction MUST be a single word or tiny phrase (max 3 words). "
@@ -792,8 +805,15 @@ class ConversationEngine:
         """Return True if user has sent max_turns messages."""
         return conversation.user_turn_count >= conversation.max_turns
 
-    def generate_summary(self, conversation: ConversationCard) -> ConversationSummary:
+    def generate_summary(
+        self,
+        conversation: ConversationCard,
+        persona_prompt: str | None = None,
+        persona_name: str = "Marta",
+    ) -> ConversationSummary:
         """Post-conversation: list corrections, concepts practiced, score."""
+        _ = persona_prompt
+        conversation.persona_name = persona_name or conversation.persona_name
         all_corrections: list[Correction] = []
         concepts_practiced: set[str] = {conversation.concept}
         user_messages = 0

@@ -394,8 +394,14 @@ class TestVocabularyGapStorage:
                 "SELECT english_word, spanish_word, concept_id, times_seen FROM vocabulary_gaps WHERE english_word = ?",
                 ("store",),
             ).fetchone()
+            word_row = conn.execute(
+                "SELECT spanish, english, status FROM words WHERE spanish = ?",
+                ("tienda",),
+            ).fetchone()
 
         assert row is not None
         assert row["spanish_word"] == "tienda"
         assert row["concept_id"] == "shopping"
         assert row["times_seen"] == 2
+        assert word_row is not None
+        assert word_row["english"] == "store"

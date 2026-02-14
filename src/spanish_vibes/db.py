@@ -298,8 +298,37 @@ def _create_flow_tables(connection: sqlite3.Connection) -> None:
             concept_id TEXT,
             corrections_json TEXT NOT NULL DEFAULT '[]',
             difficulty INTEGER NOT NULL DEFAULT 1,
-            score REAL
+            score REAL,
+            persona_id TEXT,
+            conversation_type TEXT NOT NULL DEFAULT 'general_chat',
+            evaluation_json TEXT
         )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS persona_engagement (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            persona_id TEXT NOT NULL,
+            topic_id INTEGER,
+            conversation_count INTEGER NOT NULL DEFAULT 0,
+            avg_enjoyment_score REAL NOT NULL DEFAULT 0.5,
+            avg_message_length REAL NOT NULL DEFAULT 0.0,
+            avg_turns REAL NOT NULL DEFAULT 0.0,
+            early_exit_rate REAL NOT NULL DEFAULT 0.0,
+            last_conversation_at TEXT,
+            UNIQUE(persona_id, topic_id)
+        )
+        """
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_persona_engagement_persona ON persona_engagement(persona_id)"
+    )
+    connection.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_persona_engagement_persona_null_topic
+        ON persona_engagement(persona_id)
+        WHERE topic_id IS NULL
         """
     )
     # Ensure conversation columns exist on older DBs
@@ -313,6 +342,41 @@ def _create_flow_tables(connection: sqlite3.Connection) -> None:
             connection.execute("ALTER TABLE flow_conversations ADD COLUMN difficulty INTEGER NOT NULL DEFAULT 1")
         if "score" not in conv_cols:
             connection.execute("ALTER TABLE flow_conversations ADD COLUMN score REAL")
+        if "persona_id" not in conv_cols:
+            connection.execute("ALTER TABLE flow_conversations ADD COLUMN persona_id TEXT")
+        if "conversation_type" not in conv_cols:
+            connection.execute(
+                "ALTER TABLE flow_conversations ADD COLUMN conversation_type TEXT NOT NULL DEFAULT 'general_chat'"
+            )
+        if "evaluation_json" not in conv_cols:
+            connection.execute("ALTER TABLE flow_conversations ADD COLUMN evaluation_json TEXT")
+
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS dev_feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            card_type TEXT NOT NULL,
+            card_id INTEGER,
+            concept_id TEXT,
+            persona_id TEXT,
+            conversation_type TEXT,
+            rating INTEGER,
+            issue_tags TEXT,
+            note TEXT,
+            context_json TEXT,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS dev_overrides (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
 
     connection.execute(
         """
@@ -409,6 +473,8 @@ def _create_flow_tables(connection: sqlite3.Connection) -> None:
 
     # Interest tracking tables
     _create_interest_tables(connection)
+    _create_word_tables(connection)
+    _create_memory_tables(connection)
 
     # Translation/vocabulary tables
     _create_translation_tables(connection)
@@ -448,6 +514,96 @@ def _create_translation_tables(connection: sqlite3.Connection) -> None:
     )
     connection.execute(
         "CREATE INDEX IF NOT EXISTS idx_vocabulary_gaps_concept ON vocabulary_gaps(concept_id)"
+    )
+
+
+def _create_word_tables(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS words (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            spanish TEXT NOT NULL UNIQUE,
+            english TEXT NOT NULL,
+            emoji TEXT,
+            example_sentence TEXT,
+            concept_id TEXT,
+            status TEXT NOT NULL DEFAULT 'unseen',
+            mastery_score REAL NOT NULL DEFAULT 0.0,
+            times_seen INTEGER NOT NULL DEFAULT 0,
+            times_correct INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_words_concept ON words(concept_id)"
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_words_status ON words(status)"
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS word_taps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            spanish_word TEXT NOT NULL,
+            english_translation TEXT,
+            conversation_id INTEGER,
+            source TEXT NOT NULL DEFAULT 'conversation',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_word_taps_spanish ON word_taps(spanish_word)"
+    )
+
+    # Word tap tracking — records when a user taps a word for translation
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS word_taps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            spanish_word TEXT NOT NULL,
+            english_translation TEXT,
+            conversation_id INTEGER,
+            source TEXT NOT NULL DEFAULT 'conversation',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_word_taps_spanish ON word_taps(spanish_word)"
+    )
+
+
+def _create_memory_tables(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS persona_memories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            persona_id TEXT NOT NULL,
+            memory_text TEXT NOT NULL,
+            conversation_id INTEGER,
+            importance_score REAL NOT NULL DEFAULT 0.5,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_persona_memories_persona ON persona_memories(persona_id)"
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_profile (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            key TEXT NOT NULL UNIQUE,
+            value TEXT NOT NULL,
+            source_conversation_id INTEGER,
+            confidence REAL NOT NULL DEFAULT 0.5,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
     )
 
 
@@ -1217,6 +1373,57 @@ def fetch_lesson_mastery() -> dict[int, dict[str, int]]:
             "new": int(row["new"]),
         }
     return result
+
+
+def get_all_dev_overrides() -> dict[str, str]:
+    with _open_connection() as connection:
+        rows = connection.execute("SELECT key, value FROM dev_overrides").fetchall()
+    return {str(row["key"]): str(row["value"]) for row in rows}
+
+
+def get_dev_override(key: str) -> str | None:
+    with _open_connection() as connection:
+        row = connection.execute(
+            "SELECT value FROM dev_overrides WHERE key = ?",
+            (key,),
+        ).fetchone()
+    if row is None:
+        return None
+    return str(row["value"])
+
+
+def set_dev_override(key: str, value: str) -> None:
+    timestamp = now_iso()
+    with _open_connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO dev_overrides (key, value, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+            """,
+            (key, value, timestamp),
+        )
+        connection.commit()
+
+
+def delete_dev_override(key: str) -> None:
+    with _open_connection() as connection:
+        connection.execute("DELETE FROM dev_overrides WHERE key = ?", (key,))
+        connection.commit()
+
+
+def consume_dev_override(key: str) -> str | None:
+    with _open_connection() as connection:
+        row = connection.execute(
+            "SELECT value FROM dev_overrides WHERE key = ?",
+            (key,),
+        ).fetchone()
+        if row is None:
+            return None
+        value = str(row["value"])
+        connection.execute("DELETE FROM dev_overrides WHERE key = ?", (key,))
+        connection.commit()
+    return value
 
 
 __all__ = [

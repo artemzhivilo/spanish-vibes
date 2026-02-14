@@ -9,10 +9,17 @@
       <p class="text-sm text-slate-400 mt-1">{{ mastered_count }}/{{ total_concepts }} concepts mastered</p>
     </div>
     <div class="flex gap-2">
+      <button hx-post="/flow/clear-mcq-cache" hx-target="#cache-toast" hx-swap="innerHTML"
+        class="rounded-full bg-red-500/15 px-4 py-2 text-sm font-bold text-red-300 transition hover:bg-red-500/25">
+        Refresh Questions
+      </button>
       <a href="/flow/stats" class="rounded-full bg-violet-500/15 px-4 py-2 text-sm font-bold text-violet-300 transition hover:bg-violet-500/25">Stats</a>
       <a href="/flow" class="rounded-full bg-amber-500/15 px-4 py-2 text-sm font-bold text-amber-300 transition hover:bg-amber-500/25">Start Flow</a>
     </div>
   </div>
+
+  <!-- Cache clear toast -->
+  <div id="cache-toast"></div>
 
   <!-- Overall progress bar -->
   <div class="relative h-4 w-full overflow-hidden rounded-full bg-[#0f1a1f]">

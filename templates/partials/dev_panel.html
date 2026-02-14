@@ -1,0 +1,232 @@
+<div id="dev-state-panel" class="hidden xl:block fixed left-2 top-16 bottom-2 z-30 w-[17rem] overflow-auto rounded-lg bg-slate-950/95 border border-slate-700 p-3 text-xs text-slate-200 font-mono shadow-2xl">
+  <div class="mb-2 flex items-center justify-between">
+    <strong class="text-slate-100">Engine State</strong>
+  </div>
+
+  <div id="dev-state-content-summary"
+       hx-get="/flow/dev/state"
+       hx-vals="js:{view:'summary', session_id: '{{ session.id }}', concept_id: (document.getElementById('flow-card-slot')?.dataset?.conceptId || ''), conversation_id: (document.getElementById('flow-card-slot')?.dataset?.conversationId || '0'), card_type: (document.getElementById('flow-card-slot')?.dataset?.cardType || ''), persona_id: (document.getElementById('flow-card-slot')?.dataset?.personaId || ''), conversation_type: (document.getElementById('flow-card-slot')?.dataset?.conversationType || '')}"
+       hx-trigger="load, cardChanged from:body"
+       hx-swap="innerHTML">
+    Loading...
+  </div>
+
+  <div id="dev-state-content-concepts"
+       hx-get="/flow/dev/state"
+       hx-vals="js:{view:'concepts', session_id: '{{ session.id }}', concept_id: (document.getElementById('flow-card-slot')?.dataset?.conceptId || ''), conversation_id: (document.getElementById('flow-card-slot')?.dataset?.conversationId || '0'), card_type: (document.getElementById('flow-card-slot')?.dataset?.cardType || ''), persona_id: (document.getElementById('flow-card-slot')?.dataset?.personaId || ''), conversation_type: (document.getElementById('flow-card-slot')?.dataset?.conversationType || '')}"
+       hx-trigger="load, cardChanged from:body"
+       hx-swap="innerHTML">
+    Loading concepts...
+  </div>
+</div>
+
+<div id="dev-controls-panel" class="hidden xl:block fixed right-2 top-16 bottom-2 z-30 w-[17rem] overflow-auto rounded-lg bg-slate-950/95 border border-slate-700 p-3 text-xs text-slate-200 font-mono shadow-2xl">
+  <div class="mb-2 flex items-center justify-between">
+    <strong class="text-slate-100">Feedback + Controls</strong>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-2 mb-2">
+    <strong>Rate card:</strong>
+    <button type="button" data-dev-rate="1" class="rounded bg-slate-800 px-2 py-1">1</button>
+    <button type="button" data-dev-rate="2" class="rounded bg-slate-800 px-2 py-1">2</button>
+    <button type="button" data-dev-rate="3" class="rounded bg-slate-800 px-2 py-1">3</button>
+    <button type="button" data-dev-rate="4" class="rounded bg-slate-800 px-2 py-1">4</button>
+    <button type="button" data-dev-rate="5" class="rounded bg-slate-800 px-2 py-1">5</button>
+    <span id="dev-feedback-confirmation" class="text-emerald-300"></span>
+  </div>
+
+  <div class="flex flex-wrap gap-3 mb-2">
+    <label><input type="checkbox" class="dev-tag" value="ambiguous"> ambiguous</label>
+    <label><input type="checkbox" class="dev-tag" value="too_easy"> too_easy</label>
+    <label><input type="checkbox" class="dev-tag" value="too_hard"> too_hard</label>
+    <label><input type="checkbox" class="dev-tag" value="boring"> boring</label>
+    <label><input type="checkbox" class="dev-tag" value="wrong_answer"> wrong_answer</label>
+    <label><input type="checkbox" class="dev-tag" value="personality_off"> personality_off</label>
+    <label><input type="checkbox" class="dev-tag" value="bad_grammar"> bad_grammar</label>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-2 mb-3">
+    <input id="dev-note" type="text" placeholder="Quick note..." class="bg-slate-900 text-slate-200 px-2 py-1 rounded text-xs w-full ring-1 ring-slate-700">
+    <button type="button" id="dev-save-feedback" class="rounded bg-emerald-700 px-2 py-1">Save</button>
+  </div>
+
+  <div class="mb-3 border-t border-slate-700 pt-2">
+    <strong>Actions:</strong>
+    <button hx-post="/flow/clear-mcq-cache" hx-target="#dev-feedback-confirmation" class="rounded bg-slate-800 px-2 py-1 ml-2">Clear MCQ cache</button>
+    <button hx-post="/flow/dev/force-conversation" hx-target="#dev-feedback-confirmation" class="rounded bg-slate-800 px-2 py-1 ml-1">Force conversation next</button>
+    <button hx-post="/flow/dev/reset-all" hx-target="#dev-feedback-confirmation" class="rounded bg-red-900 px-2 py-1 ml-1">Reset all</button>
+  </div>
+
+  <div class="mb-3 border-t border-slate-700 pt-2 flex flex-wrap items-center gap-2">
+    <strong>Set level:</strong>
+    <form hx-post="/flow/skip-to-tier" hx-target="#dev-feedback-confirmation" class="inline-flex items-center gap-1">
+      <select name="tier" id="dev-tier-select" class="bg-slate-900 ring-1 ring-slate-700 rounded px-2 py-1">
+        <option value="1">Tier 1</option>
+        <option value="2">Tier 2</option>
+        <option value="3">Tier 3</option>
+        <option value="4">Tier 4</option>
+        <option value="5">Tier 5</option>
+      </select>
+      <button type="submit" class="rounded bg-slate-800 px-2 py-1">Jump</button>
+    </form>
+    <form hx-post="/flow/dev/reset-concept" hx-target="#dev-feedback-confirmation" class="inline-flex items-center gap-1">
+      <select name="concept_id" class="bg-slate-900 ring-1 ring-slate-700 rounded px-2 py-1">
+        <option value="">reset concept...</option>
+        {% for concept in dev_concepts %}
+          <option value="{{ concept.id }}">{{ concept.id }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="rounded bg-slate-800 px-2 py-1">Reset concept</button>
+    </form>
+  </div>
+
+  <div class="mb-3 border-t border-slate-700 pt-2">
+    <strong>Card selection weights:</strong>
+    <form hx-post="/flow/dev/set-weights" hx-target="#dev-feedback-confirmation" class="flex flex-wrap items-center gap-2 mt-1">
+      <label>spot <input id="w-spot" name="w_spot" type="range" min="0" max="100" value="{{ ((dev_overrides.get('bucket_weight_spot_check', '0.30')|float) * 100)|int }}" oninput="this.nextElementSibling.textContent=this.value+'%'"><span>{{ ((dev_overrides.get('bucket_weight_spot_check', '0.30')|float) * 100)|int }}%</span></label>
+      <label>practice <input id="w-practice" name="w_practice" type="range" min="0" max="100" value="{{ ((dev_overrides.get('bucket_weight_practice', '0.50')|float) * 100)|int }}" oninput="this.nextElementSibling.textContent=this.value+'%'"><span>{{ ((dev_overrides.get('bucket_weight_practice', '0.50')|float) * 100)|int }}%</span></label>
+      <label>new <input id="w-new" name="w_new" type="range" min="0" max="100" value="{{ ((dev_overrides.get('bucket_weight_new', '0.20')|float) * 100)|int }}" oninput="this.nextElementSibling.textContent=this.value+'%'"><span>{{ ((dev_overrides.get('bucket_weight_new', '0.20')|float) * 100)|int }}%</span></label>
+      <button type="submit" class="rounded bg-slate-800 px-2 py-1">Apply</button>
+    </form>
+  </div>
+
+  <div class="mb-3 border-t border-slate-700 pt-2 flex flex-wrap items-center gap-2">
+    <form hx-post="/flow/dev/set-override" hx-target="#dev-feedback-confirmation" class="inline-flex items-center gap-1">
+      <input type="hidden" name="key" value="conversation_frequency">
+      <label>Conversation every N: <input name="value" type="number" min="1" max="20" value="{{ dev_overrides.get('conversation_frequency', '5') }}" class="w-16 bg-slate-900 ring-1 ring-slate-700 rounded px-1 py-0.5"></label>
+      <button type="submit" class="rounded bg-slate-800 px-2 py-1">Set</button>
+    </form>
+    <form hx-post="/flow/dev/set-override" hx-target="#dev-feedback-confirmation" class="inline-flex items-center gap-1">
+      <input type="hidden" name="key" value="force_next_card_type">
+      <label>Force next card:
+        <select name="value" class="bg-slate-900 ring-1 ring-slate-700 rounded px-1 py-0.5">
+          <option value="">Auto</option>
+          <option value="mcq">mcq</option>
+          <option value="conversation">conversation</option>
+          <option value="teach">teach</option>
+          <option value="word_intro">word_intro</option>
+          <option value="word_practice">word_practice</option>
+          <option value="story_comprehension">story_comprehension</option>
+        </select>
+      </label>
+      <button type="submit" class="rounded bg-slate-800 px-2 py-1">Force</button>
+    </form>
+  </div>
+
+  <div class="mb-3 flex flex-wrap items-center gap-2">
+    <form hx-post="/flow/dev/set-override" hx-target="#dev-feedback-confirmation" class="inline-flex items-center gap-1">
+      <input type="hidden" name="key" value="force_next_conversation_type">
+      <label>Force conv type:
+        <select name="value" class="bg-slate-900 ring-1 ring-slate-700 rounded px-1 py-0.5">
+          <option value="">Auto</option>
+          <option value="general_chat">general_chat</option>
+          <option value="role_play">role_play</option>
+          <option value="concept_required">concept_required</option>
+          <option value="tutor">tutor</option>
+          <option value="story_comprehension">story_comprehension</option>
+        </select>
+      </label>
+      <button type="submit" class="rounded bg-slate-800 px-2 py-1">Force</button>
+    </form>
+    <form hx-post="/flow/dev/force-persona" hx-target="#dev-feedback-confirmation" class="inline-flex items-center gap-1">
+      <label>Force persona:
+        <select name="persona_id" class="bg-slate-900 ring-1 ring-slate-700 rounded px-1 py-0.5">
+          <option value="">Auto</option>
+          {% for p in dev_personas %}
+            <option value="{{ p.id }}">{{ p.id }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="rounded bg-slate-800 px-2 py-1">Force</button>
+    </form>
+    <form hx-post="/flow/dev/set-override" hx-target="#dev-feedback-confirmation" class="inline-flex items-center gap-1">
+      <input type="hidden" name="key" value="force_next_concept">
+      <label>Force concept:
+        <select name="value" class="bg-slate-900 ring-1 ring-slate-700 rounded px-1 py-0.5">
+          <option value="">Auto</option>
+          {% for concept in dev_concepts %}
+            <option value="{{ concept.id }}">{{ concept.id }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="rounded bg-slate-800 px-2 py-1">Force</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var selectedRating = 0;
+
+    function syncCardMetaFromSlot() {
+      var slot = document.getElementById('flow-card-slot');
+      if (!slot) return;
+      var meta = slot.querySelector('[data-dev-card-type]');
+      if (!meta) return;
+      slot.dataset.cardType = meta.dataset.devCardType || '';
+      slot.dataset.cardId = meta.dataset.devCardId || '';
+      slot.dataset.conceptId = meta.dataset.devConceptId || '';
+      slot.dataset.personaId = meta.dataset.devPersonaId || '';
+      slot.dataset.conversationType = meta.dataset.devConversationType || '';
+      slot.dataset.conversationId = meta.dataset.devConversationId || '';
+    }
+
+    function setRating(value) {
+      selectedRating = value;
+      document.querySelectorAll('[data-dev-rate]').forEach(function(btn) {
+        var isActive = parseInt(btn.dataset.devRate || '0', 10) === value;
+        btn.classList.toggle('bg-emerald-700', isActive);
+        btn.classList.toggle('bg-slate-800', !isActive);
+      });
+    }
+
+    function resetFeedbackForm() {
+      setRating(0);
+      document.querySelectorAll('.dev-tag').forEach(function(cb) { cb.checked = false; });
+      var note = document.getElementById('dev-note');
+      if (note) note.value = '';
+    }
+
+    async function saveFeedback() {
+      syncCardMetaFromSlot();
+      var slot = document.getElementById('flow-card-slot');
+      var tags = Array.from(document.querySelectorAll('.dev-tag:checked')).map(function(el) { return el.value; }).join(',');
+      var note = document.getElementById('dev-note');
+      var params = new URLSearchParams({
+        card_type: (slot && slot.dataset.cardType) || '',
+        card_id: (slot && slot.dataset.cardId) || '0',
+        concept_id: (slot && slot.dataset.conceptId) || '',
+        persona_id: (slot && slot.dataset.personaId) || '',
+        conversation_type: (slot && slot.dataset.conversationType) || '',
+        conversation_id: (slot && slot.dataset.conversationId) || '0',
+        session_id: '{{ session.id }}',
+        rating: String(selectedRating || 0),
+        issue_tags: tags,
+        note: note ? note.value : '',
+        context_json: '{}',
+      });
+      var resp = await fetch('/flow/dev/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+      });
+      var text = await resp.text();
+      var confirmation = document.getElementById('dev-feedback-confirmation');
+      if (confirmation) confirmation.innerHTML = text;
+      resetFeedbackForm();
+    }
+
+    document.addEventListener('click', function(event) {
+      var rateBtn = event.target.closest('[data-dev-rate]');
+      if (rateBtn) {
+        setRating(parseInt(rateBtn.dataset.devRate || '0', 10));
+      }
+      if (event.target && event.target.id === 'dev-save-feedback') {
+        saveFeedback().catch(function() {
+          var confirmation = document.getElementById('dev-feedback-confirmation');
+          if (confirmation) confirmation.textContent = 'save failed';
+        });
+      }
+    });
+  })();
+</script>
