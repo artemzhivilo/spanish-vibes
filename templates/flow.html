@@ -135,6 +135,125 @@
 </style>
 
 <script>
+  // ── Speech utilities ──────────────────────────────────────────
+  (function() {
+    function hideUnsupportedFeatures(root) {
+      var scope = root || document;
+      if (!window.speechSynthesis) {
+        scope.querySelectorAll('[title="Listen"], [title="Listen to pronunciation"], [title="Listen to example"]').forEach(function(btn) {
+          btn.style.display = 'none';
+        });
+      }
+      if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+        scope.querySelectorAll('#conv-mic-btn, [title="Speak in Spanish"]').forEach(function(btn) {
+          btn.style.display = 'none';
+        });
+      }
+    }
+
+    window.speakSpanish = function(text, rate) {
+      if (!window.speechSynthesis || !text) return;
+      speechSynthesis.cancel();
+
+      var utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'es-ES';
+      utterance.rate = rate || 0.85;
+      utterance.pitch = 1;
+
+      var voices = speechSynthesis.getVoices();
+      var spanishVoice = voices.find(function(v) { return v.lang && v.lang.startsWith('es'); });
+      if (spanishVoice) {
+        utterance.voice = spanishVoice;
+      }
+
+      utterance.onstart = function() {
+        var btn = document.querySelector('.speak-active');
+        if (btn) btn.classList.add('animate-pulse');
+      };
+      utterance.onend = function() {
+        var btn = document.querySelector('.speak-active');
+        if (btn) btn.classList.remove('animate-pulse', 'speak-active');
+      };
+
+      speechSynthesis.speak(utterance);
+    };
+
+    if (window.speechSynthesis) {
+      speechSynthesis.getVoices();
+      speechSynthesis.onvoiceschanged = function() {
+        speechSynthesis.getVoices();
+      };
+    }
+
+    window.startSpanishListening = function(inputSelector, statusSelector, micBtnSelector) {
+      var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert('Speech recognition is not supported in your browser. Please use Chrome or Edge.');
+        return;
+      }
+
+      var recognition = new SpeechRecognition();
+      recognition.lang = 'es-ES';
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+
+      var input = document.querySelector(inputSelector);
+      var status = document.querySelector(statusSelector);
+      var micBtn = document.querySelector(micBtnSelector);
+
+      if (micBtn) {
+        micBtn.classList.add('text-red-400', 'animate-pulse');
+        micBtn.disabled = true;
+      }
+      if (status) {
+        status.textContent = 'Escuchando...';
+        status.classList.remove('hidden');
+      }
+
+      recognition.onresult = function(event) {
+        var transcript = '';
+        for (var i = event.resultIndex; i < event.results.length; i++) {
+          transcript = event.results[i][0].transcript;
+        }
+        if (input) input.value = transcript;
+      };
+
+      recognition.onerror = function(event) {
+        console.warn('Speech recognition error:', event.error);
+        if (status) {
+          if (event.error === 'no-speech') {
+            status.textContent = 'No speech detected. Try again.';
+          } else if (event.error === 'not-allowed') {
+            status.textContent = 'Microphone access denied.';
+          } else {
+            status.textContent = 'Error: ' + event.error;
+          }
+        }
+      };
+
+      recognition.onend = function() {
+        if (micBtn) {
+          micBtn.classList.remove('text-red-400', 'animate-pulse');
+          micBtn.disabled = false;
+        }
+        if (status) {
+          setTimeout(function() { status.classList.add('hidden'); }, 2000);
+        }
+      };
+
+      recognition.start();
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+      hideUnsupportedFeatures(document);
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+      hideUnsupportedFeatures(e.detail.target || document);
+    });
+  })();
+
   window.flowStartTime = 0;
 
   document.body.addEventListener('htmx:afterSwap', function(e) {

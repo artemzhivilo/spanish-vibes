@@ -61,9 +61,21 @@
       <p class="text-5xl mb-3">{{ card_context.word_emoji }}</p>
     {% endif %}
     <h2 class="text-3xl font-black text-slate-50">{{ card_context.word_spanish }}</h2>
+    <button type="button"
+      onclick="this.classList.add('speak-active'); speakSpanish({{ card_context.word_spanish | tojson }})"
+      class="mt-2 inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-3 py-1 text-sm text-violet-300 transition hover:bg-violet-500/25"
+      title="Listen to pronunciation">
+      🔊 Listen
+    </button>
     <p class="text-lg text-slate-400 mt-1">{{ card_context.word_english }}</p>
     {% if card_context.word_sentence %}
-      <p class="text-sm text-slate-400 mt-4">{{ card_context.word_sentence }}</p>
+      <p class="text-sm text-slate-400 mt-4">
+        {{ card_context.word_sentence }}
+        <button type="button"
+          onclick="this.classList.add('speak-active'); speakSpanish({{ card_context.word_sentence | tojson }})"
+          class="inline ml-1 text-violet-400 hover:text-violet-300"
+          title="Listen to example">🔊</button>
+      </p>
     {% endif %}
   </div>
   <form hx-post="/flow/word-intro/complete" hx-target="#flow-card-slot" hx-swap="innerHTML">
@@ -105,7 +117,13 @@
 
   <div class="mb-6">
     <p class="text-sm font-bold uppercase tracking-[0.2em] text-emerald-300">{{ card_context.question }}</p>
-    <p class="mt-3 text-2xl font-bold text-slate-50 leading-snug">{{ card_context.word_sentence }}</p>
+    <p class="mt-3 text-2xl font-bold text-slate-50 leading-snug">
+      {{ card_context.word_sentence }}
+      <button type="button"
+        onclick="this.classList.add('speak-active'); speakSpanish({{ card_context.word_sentence | tojson }})"
+        class="inline ml-1 text-slate-400 hover:text-emerald-300 text-lg"
+        title="Listen">🔊</button>
+    </p>
   </div>
 
   <div class="grid gap-3">
@@ -174,6 +192,194 @@
   </form>
 </div>
 
+{% elif card_context.card_type == 'sentence_builder' %}
+<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-amber-500/20" id="sb-card">
+  <header class="flex items-center justify-between mb-4">
+    <span class="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-300">
+      {{ concept_name }}
+    </span>
+  </header>
+
+  <p class="text-sm font-bold uppercase tracking-[0.2em] text-amber-300 mb-3">Build the sentence</p>
+
+  <div id="sb-answer" class="min-h-[3.5rem] rounded-xl bg-[#0f1a1f] px-4 py-3 mb-4 flex flex-wrap gap-2 items-center">
+    <span class="text-slate-500 text-sm" id="sb-placeholder">Tap words in order...</span>
+  </div>
+
+  <div id="sb-tiles" class="flex flex-wrap gap-2 mb-6 justify-center">
+    {% for word in card_context.scrambled_words %}
+      <button
+        type="button"
+        class="sb-tile rounded-lg bg-[#162028] px-4 py-2.5 text-lg font-medium text-slate-200 transition hover:bg-amber-500/20 hover:ring-1 hover:ring-amber-500/30 active:scale-95"
+        data-word="{{ word }}"
+      >
+        {{ word }}
+      </button>
+    {% endfor %}
+  </div>
+
+  <form hx-post="/flow/answer" hx-target="#flow-card-slot" hx-swap="innerHTML" id="sb-form">
+    <input type="hidden" name="session_id" value="{{ session_id }}" />
+    <input type="hidden" name="card_json" value='{{ card_json }}' />
+    <input type="hidden" name="chosen_option" value="" id="sb-chosen" />
+    <input type="hidden" name="start_time" value="0" />
+    <button
+      type="submit"
+      id="sb-submit"
+      class="w-full rounded-xl bg-amber-500 px-6 py-3.5 text-base font-black text-amber-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-400 active:scale-[0.98] opacity-50 pointer-events-none"
+      disabled
+    >
+      Check Answer
+    </button>
+  </form>
+</div>
+
+<script>
+  (function () {
+    var chosen = [];
+    var card = document.getElementById("sb-card");
+    if (!card) return;
+    var tiles = card.querySelectorAll(".sb-tile");
+    var answerArea = card.querySelector("#sb-answer");
+    var placeholder = card.querySelector("#sb-placeholder");
+    var submitBtn = card.querySelector("#sb-submit");
+    var chosenInput = card.querySelector("#sb-chosen");
+    var totalWords = tiles.length;
+
+    function updateSubmitState() {
+      if (chosen.length === totalWords) {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove("opacity-50", "pointer-events-none");
+        chosenInput.value = chosen.join(" ");
+      } else {
+        submitBtn.disabled = true;
+        submitBtn.classList.add("opacity-50", "pointer-events-none");
+        chosenInput.value = "";
+      }
+      if (chosen.length === 0) {
+        placeholder.classList.remove("hidden");
+      } else {
+        placeholder.classList.add("hidden");
+      }
+    }
+
+    function renderAnswer() {
+      var existing = answerArea.querySelectorAll(".sb-answer-word");
+      existing.forEach(function (el) { el.remove(); });
+
+      chosen.forEach(function (word, idx) {
+        var span = document.createElement("button");
+        span.type = "button";
+        span.className = "sb-answer-word rounded-lg bg-amber-500/20 px-3 py-1.5 text-lg font-medium text-slate-100 transition hover:bg-red-500/20";
+        span.textContent = word;
+        span.addEventListener("click", function () {
+          chosen.splice(idx, 1);
+          var tile = Array.from(tiles).find(function (t) {
+            return t.getAttribute("data-word") === word && t.classList.contains("hidden");
+          });
+          if (tile) tile.classList.remove("hidden");
+          renderAnswer();
+          updateSubmitState();
+        });
+        answerArea.appendChild(span);
+      });
+    }
+
+    tiles.forEach(function (tile) {
+      tile.addEventListener("click", function () {
+        var word = tile.getAttribute("data-word");
+        chosen.push(word);
+        tile.classList.add("hidden");
+        renderAnswer();
+        updateSubmitState();
+      });
+    });
+  })();
+</script>
+
+{% elif card_context.card_type == 'emoji_association' %}
+<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-pink-500/20">
+  <header class="flex items-center justify-between mb-4">
+    <span class="rounded-full bg-pink-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-pink-300">
+      {{ concept_name }}
+    </span>
+  </header>
+
+  <p class="text-sm font-bold uppercase tracking-[0.2em] text-pink-300 mb-2">{{ card_context.question }}</p>
+
+  <div class="text-center my-6">
+    <p class="text-7xl">{{ card_context.word_emoji }}</p>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3">
+    {% for option in card_context.options %}
+      <form hx-post="/flow/answer" hx-target="#flow-card-slot" hx-swap="innerHTML">
+        <input type="hidden" name="session_id" value="{{ session_id }}" />
+        <input type="hidden" name="card_json" value='{{ card_json }}' />
+        <input type="hidden" name="chosen_option" value="{{ option }}" />
+        <input type="hidden" name="start_time" value="0" />
+        <button type="submit"
+          class="w-full text-center rounded-xl bg-[#0f1a1f] px-4 py-4 text-lg font-semibold text-slate-200 transition hover:bg-[#162028] hover:ring-1 hover:ring-pink-500/30 active:scale-[0.98] active:bg-pink-500/10">
+          {{ option }}
+        </button>
+      </form>
+    {% endfor %}
+  </div>
+</div>
+
+{% elif card_context.card_type == 'fill_blank' %}
+{% set concept_toggle = concept_teach_html is defined and concept_teach_html %}
+<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-cyan-500/20" data-concept-wrapper>
+  <header class="flex items-center justify-between mb-4">
+    {% if concept_toggle %}
+      <button type="button" class="flex items-center gap-2 rounded-full bg-cyan-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-cyan-300 transition hover:bg-cyan-500/25" data-concept-toggle aria-expanded="false">
+        <span>{{ concept_name }}</span>
+        <span class="text-[10px] text-cyan-200 font-normal normal-case">View lesson</span>
+      </button>
+    {% else %}
+      <span class="rounded-full bg-cyan-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-cyan-300">
+        {{ concept_name }}
+      </span>
+    {% endif %}
+  </header>
+
+  {% if concept_toggle %}
+    <div class="hidden rounded-2xl border border-cyan-500/20 bg-[#0f1a1f] px-4 py-3 mb-5" data-concept-panel>
+      <p class="text-[11px] uppercase tracking-wide text-cyan-400 font-bold mb-2">Lesson snippet</p>
+      <div class="prose prose-invert prose-sm max-w-none text-slate-300">
+        {{ concept_teach_html | safe }}
+      </div>
+    </div>
+  {% endif %}
+
+  <p class="text-sm font-bold uppercase tracking-[0.2em] text-cyan-300 mb-2">{{ card_context.question }}</p>
+
+  <div class="mb-6">
+    <p class="text-2xl font-bold text-slate-50 leading-snug">
+      {{ card_context.word_sentence }}
+      <button type="button"
+        onclick="this.classList.add('speak-active'); speakSpanish({{ card_context.word_sentence | tojson }})"
+        class="inline ml-1 text-slate-400 hover:text-cyan-300 text-lg"
+        title="Listen">🔊</button>
+    </p>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3">
+    {% for option in card_context.options %}
+      <form hx-post="/flow/answer" hx-target="#flow-card-slot" hx-swap="innerHTML">
+        <input type="hidden" name="session_id" value="{{ session_id }}" />
+        <input type="hidden" name="card_json" value='{{ card_json }}' />
+        <input type="hidden" name="chosen_option" value="{{ option }}" />
+        <input type="hidden" name="start_time" value="0" />
+        <button type="submit"
+          class="w-full text-center rounded-xl bg-[#0f1a1f] px-4 py-4 text-lg font-semibold text-slate-200 transition hover:bg-[#162028] hover:ring-1 hover:ring-cyan-500/30 active:scale-[0.98] active:bg-cyan-500/10">
+          {{ option }}
+        </button>
+      </form>
+    {% endfor %}
+  </div>
+</div>
+
 {% else %}
 {% set concept_toggle = concept_teach_html is defined and concept_teach_html %}
 <div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-emerald-500/20" data-concept-wrapper>
@@ -200,7 +406,13 @@
   {% endif %}
 
   <div class="mb-6">
-    <p class="text-2xl font-bold text-slate-50 leading-snug">{{ card_context.question }}</p>
+    <p class="text-2xl font-bold text-slate-50 leading-snug">
+      {{ card_context.question }}
+      <button type="button"
+        onclick="this.classList.add('speak-active'); speakSpanish({{ card_context.question | tojson }})"
+        class="inline ml-1 text-slate-400 hover:text-emerald-300 text-lg"
+        title="Listen">🔊</button>
+    </p>
   </div>
 
   <div class="grid gap-3">
@@ -220,7 +432,7 @@
 </div>
 {% endif %}
 
-{% if card_context.card_type in ['mcq', 'word_practice', 'word_match'] and concept_teach_html %}
+{% if card_context.card_type in ['mcq', 'word_practice', 'word_match', 'fill_blank'] and concept_teach_html %}
 <script>
   (function() {
     var card = document.currentScript.previousElementSibling;

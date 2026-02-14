@@ -4,7 +4,13 @@
     <span class="text-3xl">✓</span>
     <div>
       <p class="text-lg font-bold text-emerald-300">Correct!</p>
-      <p class="text-sm text-emerald-200/80">{{ correct_answer }}</p>
+      <p class="text-sm text-emerald-200/80">
+        {{ correct_answer }}
+        <button type="button"
+          onclick="this.classList.add('speak-active'); speakSpanish({{ correct_answer | tojson }})"
+          class="inline ml-1 text-slate-400 hover:text-emerald-300"
+          title="Listen">🔊</button>
+      </p>
     </div>
   </div>
 
@@ -52,6 +58,10 @@
       <p class="text-lg font-bold text-red-300">Not quite</p>
       <p class="mt-1 text-sm text-red-200/80">
         Correct answer: <span class="font-bold text-red-200">{{ correct_answer }}</span>
+        <button type="button"
+          onclick="this.classList.add('speak-active'); speakSpanish({{ correct_answer | tojson }})"
+          class="inline ml-1 text-slate-400 hover:text-emerald-300"
+          title="Listen">🔊</button>
       </p>
       <p class="mt-1 text-sm text-red-200/60">
         You chose: <span class="font-semibold">{{ chosen_option or '—' }}</span>

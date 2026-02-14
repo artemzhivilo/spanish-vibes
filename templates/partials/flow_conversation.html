@@ -29,6 +29,11 @@
           <div class="shrink-0 w-7 h-7 rounded-full bg-slate-600 flex items-center justify-center text-xs font-bold text-slate-300">{{ display_name[:2] | upper }}</div>
           <div class="rounded-2xl rounded-tl-sm bg-slate-700 px-4 py-2.5 text-sm text-slate-200 leading-relaxed">
             {{ msg.content | tappable | safe }}
+            <button type="button"
+              onclick="this.classList.add('speak-active'); speakSpanish(this.dataset.speechText || this.parentElement.textContent.replace('🔊', '').trim())"
+              data-speech-text="{{ msg.content }}"
+              class="inline ml-1 text-slate-400 hover:text-violet-300 text-xs opacity-60 hover:opacity-100 transition"
+              title="Listen">🔊</button>
           </div>
         </div>
       {% elif msg.role == 'system' %}
@@ -109,18 +114,29 @@
   {% else %}
     <!-- Input area -->
     <form hx-post="/flow/conversation/respond" hx-target="#flow-card-slot" hx-swap="innerHTML"
-          class="flex gap-2">
+          class="flex flex-col gap-2">
       <input type="hidden" name="session_id" value="{{ session_id }}" />
       <input type="hidden" name="conversation_id" value="{{ conversation_id }}" />
-      <input type="text" name="user_message"
-             placeholder="Escribe en español..."
-             autocomplete="off"
-             autofocus
-             class="flex-1 rounded-xl bg-[#0f1a1f] px-4 py-3 text-sm text-slate-200 placeholder-slate-600 ring-1 ring-slate-700 focus:ring-violet-500/50 focus:outline-none transition" />
-      <button type="submit"
-              class="rounded-xl bg-violet-500 px-4 py-3 text-sm font-bold text-violet-950 transition hover:bg-violet-400 active:scale-[0.98]">
-        Send
-      </button>
+      <div class="flex items-center gap-2">
+        <input type="text" name="user_message"
+               id="conv-user-input"
+               placeholder="Escribe en español..."
+               autocomplete="off"
+               autofocus
+               class="flex-1 rounded-xl bg-[#0f1a1f] px-4 py-3 text-sm text-slate-200 placeholder-slate-600 ring-1 ring-slate-700 focus:ring-violet-500/50 focus:outline-none transition" />
+        <button type="button"
+          id="conv-mic-btn"
+          onclick="startSpanishListening('#conv-user-input', '#conv-mic-status', '#conv-mic-btn')"
+          class="shrink-0 rounded-xl bg-[#0f1a1f] p-3 text-xl text-slate-400 transition hover:text-violet-300 hover:bg-violet-500/10"
+          title="Speak in Spanish">
+          🎤
+        </button>
+        <button type="submit"
+                class="rounded-xl bg-violet-500 px-4 py-3 text-sm font-bold text-violet-950 transition hover:bg-violet-400 active:scale-[0.98]">
+          Send
+        </button>
+      </div>
+      <p id="conv-mic-status" class="hidden text-xs text-violet-300 mt-1 text-center"></p>
     </form>
     <div class="mt-2 flex justify-end">
       <a href="/flow/conversation/summary?conversation_id={{ conversation_id }}&session_id={{ session_id }}"

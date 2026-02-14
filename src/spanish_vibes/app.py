@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -24,6 +25,7 @@ from .db import (
     get_xp,
     init_db,
     record_practice_today,
+    seed_interest_topics,
     update_card_schedule,
 )
 from .models import CardDetail, CardKind, CardDirection, DeckSummary, PlayerProgress
@@ -31,6 +33,7 @@ from .srs import GradingStrategy, SRS_FAST, calculate_xp_award, compare_answers,
 from .flow_routes import router as flow_router
 from .template_helpers import register_template_filters
 from .web import router as lesson_router
+from .words import seed_words
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = PACKAGE_ROOT.parent.parent
@@ -52,11 +55,15 @@ templates.env.filters["chapter_label"] = _chapter_label
 
 # Ensure schema exists even if lifespan is bypassed (e.g. during tests).
 init_db()
+seed_interest_topics()
+seed_words()
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    seed_interest_topics()
+    seed_words()
     # Seed concept graph on startup
     from .concepts import seed_concepts_to_db, CONCEPTS_FILE
     if CONCEPTS_FILE.exists():
@@ -530,7 +537,11 @@ async def check_card(
 def main() -> None:
     import uvicorn
 
-    uvicorn.run("spanish_vibes.app:app", host="127.0.0.1", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    host = os.environ.get("HOST", "127.0.0.1")
+    reload = os.environ.get("RELOAD", "false").lower() in ("1", "true", "yes")
+
+    uvicorn.run("spanish_vibes.app:app", host=host, port=port, reload=reload)
 
 
 if __name__ == "__main__":

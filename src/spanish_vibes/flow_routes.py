@@ -64,7 +64,6 @@ from .evaluation import (
 )
 from .template_helpers import register_template_filters
 from .words import (
-    seed_words,
     mark_word_introduced,
     mark_word_practice_result,
     record_word_tap,
@@ -84,8 +83,6 @@ TEMPLATES_DIR = PROJECT_ROOT / "templates"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 register_template_filters(templates.env)
-seed_interest_topics()
-seed_words()
 
 
 def _count_mastered() -> tuple[int, int]:
@@ -308,6 +305,35 @@ async def flow_card(
         }
         return templates.TemplateResponse(request, "partials/flow_card.html", context)
 
+    if card_context.card_type in {"sentence_builder", "emoji_association", "fill_blank"}:
+        concept_teach_html = _get_concept_teach_html(card_context.concept_id)
+        context = {
+            "session_id": session_id,
+            "card_context": card_context,
+            "concept_name": _get_concept_name(card_context.concept_id),
+            "concept_teach_html": concept_teach_html,
+            "persona_id": "",
+            "conversation_type": card_context.conversation_type,
+            "card_json": json.dumps({
+                "card_type": card_context.card_type,
+                "concept_id": card_context.concept_id,
+                "question": card_context.question,
+                "correct_answer": card_context.correct_answer,
+                "options": card_context.options,
+                "option_misconceptions": card_context.option_misconceptions,
+                "difficulty": card_context.difficulty,
+                "mcq_card_id": card_context.mcq_card_id,
+                "word_id": card_context.word_id,
+                "word_spanish": card_context.word_spanish,
+                "word_emoji": card_context.word_emoji,
+                "word_english": card_context.word_english,
+                "word_sentence": card_context.word_sentence,
+                "scrambled_words": card_context.scrambled_words,
+                "correct_sentence": card_context.correct_sentence,
+            }),
+        }
+        return templates.TemplateResponse(request, "partials/flow_card.html", context)
+
     if card_context.card_type == "word_match":
         concept_teach_html = _get_concept_teach_html(card_context.concept_id)
         context = {
@@ -370,6 +396,11 @@ async def flow_answer(
         mcq_card_id=card_data.get("mcq_card_id"),
         word_id=card_data.get("word_id"),
         word_spanish=card_data.get("word_spanish", ""),
+        word_emoji=card_data.get("word_emoji"),
+        word_english=card_data.get("word_english", ""),
+        word_sentence=card_data.get("word_sentence", ""),
+        scrambled_words=card_data.get("scrambled_words", []),
+        correct_sentence=card_data.get("correct_sentence", ""),
     )
 
     result = process_mcq_answer(
@@ -379,7 +410,7 @@ async def flow_answer(
         response_time_ms=response_time_ms,
     )
 
-    if card_context.card_type == "word_practice" and card_context.word_id:
+    if card_context.card_type in {"word_practice", "emoji_association"} and card_context.word_id:
         mark_word_practice_result(card_context.word_id, result.is_correct)
 
     # Record interest signal (topic_id=None until cards are topic-tagged)
@@ -1961,6 +1992,12 @@ def _infer_card_selection_reason(
         return "New concept detected; teach card shown before practice."
     if card_type in {"word_intro", "word_practice", "word_match"}:
         return "Word-tracking progression selected for this concept."
+    if card_type == "sentence_builder":
+        return "Sentence-building card selected from concept example sentences."
+    if card_type == "emoji_association":
+        return "Emoji-based vocabulary association selected from learned words."
+    if card_type == "fill_blank":
+        return "Grammar fill-in-the-blank selected from concept-specific prompts."
     if card_type == "mcq":
         return f"MCQ selected from {current_bucket} bucket."
     if current_concept is not None and getattr(current_concept, "n_attempts", 0) == 0:

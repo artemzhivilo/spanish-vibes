@@ -1,0 +1,2634 @@
+{
+  "greetings": [
+    {
+      "spanish": "hola",
+      "english": "hello",
+      "emoji": "👋",
+      "example": "Hola, ¿cómo estás hoy?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "buenos días",
+      "english": "good morning",
+      "emoji": "🌅",
+      "example": "Buenos días, profesora.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "buenas tardes",
+      "english": "good afternoon",
+      "emoji": "☀️",
+      "example": "Buenas tardes, ¿todo bien?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "buenas noches",
+      "english": "good evening / good night",
+      "emoji": "🌙",
+      "example": "Buenas noches, hasta mañana.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "¿cómo estás?",
+      "english": "how are you?",
+      "emoji": "🙂",
+      "example": "Hola, Ana. ¿Cómo estás?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "me llamo...",
+      "english": "my name is...",
+      "emoji": "🪪",
+      "example": "Me llamo Carlos y soy de Chile.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "mucho gusto",
+      "english": "nice to meet you",
+      "emoji": "🤝",
+      "example": "Mucho gusto, encantado de conocerte.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "adiós",
+      "english": "goodbye",
+      "emoji": "👋",
+      "example": "Adiós, nos vemos pronto.",
+      "topic_slug": null
+    }
+  ],
+  "numbers_1_20": [
+    {
+      "spanish": "uno",
+      "english": "one",
+      "emoji": "1️⃣",
+      "example": "Tengo un hermano.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "dos",
+      "english": "two",
+      "emoji": "2️⃣",
+      "example": "Veo dos perros en el parque.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "tres",
+      "english": "three",
+      "emoji": "3️⃣",
+      "example": "Compré tres manzanas.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "cuatro",
+      "english": "four",
+      "emoji": "4️⃣",
+      "example": "Hay cuatro sillas en la mesa.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "cinco",
+      "english": "five",
+      "emoji": "5️⃣",
+      "example": "Estudio español cinco días por semana.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "seis",
+      "english": "six",
+      "emoji": "6️⃣",
+      "example": "Llegamos a las seis.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "siete",
+      "english": "seven",
+      "emoji": "7️⃣",
+      "example": "Mi clase empieza a las siete.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "ocho",
+      "english": "eight",
+      "emoji": "8️⃣",
+      "example": "Trabajo ocho horas al día.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "nueve",
+      "english": "nine",
+      "emoji": "9️⃣",
+      "example": "Son las nueve en punto.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "diez",
+      "english": "ten",
+      "emoji": "🔟",
+      "example": "Necesito diez minutos más.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "once",
+      "english": "eleven",
+      "emoji": "1️⃣1️⃣",
+      "example": "Mi vuelo sale a las once.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "doce",
+      "english": "twelve",
+      "emoji": "1️⃣2️⃣",
+      "example": "Tengo doce mensajes nuevos.",
+      "topic_slug": null
+    }
+  ],
+  "colors_basic": [
+    {
+      "spanish": "rojo",
+      "english": "red",
+      "emoji": "🔴",
+      "example": "Mi camiseta es roja.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "azul",
+      "english": "blue",
+      "emoji": "🔵",
+      "example": "El cielo está azul hoy.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "verde",
+      "english": "green",
+      "emoji": "🟢",
+      "example": "Me gusta el té verde.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "amarillo",
+      "english": "yellow",
+      "emoji": "🟡",
+      "example": "El sol amarillo brilla mucho.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "blanco",
+      "english": "white",
+      "emoji": "⚪",
+      "example": "La pared es blanca.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "negro",
+      "english": "black",
+      "emoji": "⚫",
+      "example": "Llevo zapatos negros.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "naranja",
+      "english": "orange",
+      "emoji": "🟠",
+      "example": "Compré una mochila naranja.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "rosa",
+      "english": "pink",
+      "emoji": "🌸",
+      "example": "Su vestido es rosa.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "morado",
+      "english": "purple",
+      "emoji": "🟣",
+      "example": "Prefiero el cuaderno morado.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "marrón",
+      "english": "brown",
+      "emoji": "🟤",
+      "example": "La mesa marrón es de madera.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "gris",
+      "english": "gray",
+      "emoji": "🌫️",
+      "example": "Hoy el día está gris.",
+      "topic_slug": null
+    }
+  ],
+  "subject_pronouns": [
+    {
+      "spanish": "yo",
+      "english": "I",
+      "emoji": null,
+      "example": "Yo en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "tú",
+      "english": "you (informal)",
+      "emoji": null,
+      "example": "Tú en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "él",
+      "english": "he / she / you (formal)",
+      "emoji": null,
+      "example": "Él en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "ella",
+      "english": "he / she / you (formal)",
+      "emoji": null,
+      "example": "Ella en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "usted",
+      "english": "he / she / you (formal)",
+      "emoji": null,
+      "example": "Usted en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "nosotros",
+      "english": "we",
+      "emoji": null,
+      "example": "Nosotros en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "nosotras",
+      "english": "we",
+      "emoji": null,
+      "example": "Nosotras en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "vosotros",
+      "english": "you all (Spain)",
+      "emoji": null,
+      "example": "Vosotros en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "vosotras",
+      "english": "you all (Spain)",
+      "emoji": null,
+      "example": "Vosotras en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "ellos",
+      "english": "they / you all",
+      "emoji": null,
+      "example": "Ellos en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "ellas",
+      "english": "they / you all",
+      "emoji": null,
+      "example": "Ellas en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "ustedes",
+      "english": "they / you all",
+      "emoji": null,
+      "example": "Ustedes en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "nouns_gender": [],
+  "family_vocab": [
+    {
+      "spanish": "la madre",
+      "english": "mother",
+      "emoji": "👩",
+      "example": "Mi madre vive en Sevilla.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "mamá",
+      "english": "mom",
+      "emoji": "🤱",
+      "example": "Mi mamá cocina muy bien.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "el padre",
+      "english": "father",
+      "emoji": "👨",
+      "example": "Mi padre trabaja en casa.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "papá",
+      "english": "dad",
+      "emoji": "👨‍👧",
+      "example": "Mi papá juega fútbol los domingos.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "el hermano",
+      "english": "brother",
+      "emoji": "👦",
+      "example": "Mi hermano estudia medicina.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "la hermana",
+      "english": "sister",
+      "emoji": "👧",
+      "example": "Mi hermana canta en un coro.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "el hijo",
+      "english": "son",
+      "emoji": "👦",
+      "example": "Su hijo tiene diez años.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "la hija",
+      "english": "daughter",
+      "emoji": "👧",
+      "example": "Nuestra hija va a la escuela.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "el abuelo",
+      "english": "grandfather",
+      "emoji": "👴",
+      "example": "Mi abuelo cuenta historias divertidas.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "la abuela",
+      "english": "grandmother",
+      "emoji": "👵",
+      "example": "Mi abuela hace sopa los sábados.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "el tío",
+      "english": "uncle",
+      "emoji": "🧔",
+      "example": "Mi tío vive cerca del mar.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "la tía",
+      "english": "aunt",
+      "emoji": "👩‍🦱",
+      "example": "Mi tía trabaja en una tienda.",
+      "topic_slug": null
+    }
+  ],
+  "food_vocab": [
+    {
+      "spanish": "el pan",
+      "english": "bread",
+      "emoji": "🍞",
+      "example": "Quiero pan con mantequilla.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "la leche",
+      "english": "milk",
+      "emoji": "🥛",
+      "example": "La leche está en la nevera.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "el agua",
+      "english": "water",
+      "emoji": "💧",
+      "example": "Bebo mucha agua en verano.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "la fruta",
+      "english": "fruit",
+      "emoji": "🍎",
+      "example": "Comemos fruta después de cenar.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "la manzana",
+      "english": "apple",
+      "emoji": "🍎",
+      "example": "La manzana está muy dulce.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "el pollo",
+      "english": "chicken",
+      "emoji": "🍗",
+      "example": "Hoy cocino pollo con arroz.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "el arroz",
+      "english": "rice",
+      "emoji": "🍚",
+      "example": "Prefiero arroz con verduras.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "la ensalada",
+      "english": "salad",
+      "emoji": "🥗",
+      "example": "La ensalada lleva tomate y cebolla.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "el café",
+      "english": "coffee",
+      "emoji": "☕",
+      "example": "Tomo café por la mañana.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "el jugo",
+      "english": "juice",
+      "emoji": "🧃",
+      "example": "Quiero jugo de naranja, por favor.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "la carne",
+      "english": "meat",
+      "emoji": "🥩",
+      "example": "No como mucha carne roja.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "el pescado",
+      "english": "fish",
+      "emoji": "🐟",
+      "example": "El pescado está fresco hoy.",
+      "topic_slug": "food-cooking"
+    }
+  ],
+  "animals_vocab": [
+    {
+      "spanish": "el perro",
+      "english": "dog",
+      "emoji": "🐶",
+      "example": "Mi perro se llama Max.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "el gato",
+      "english": "cat",
+      "emoji": "🐱",
+      "example": "El gato duerme en el sofá.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "el pájaro",
+      "english": "bird",
+      "emoji": "🐦",
+      "example": "Ese pájaro canta por la mañana.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "el pez",
+      "english": "fish",
+      "emoji": "🐠",
+      "example": "El pez nada en el acuario.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "el caballo",
+      "english": "horse",
+      "emoji": "🐴",
+      "example": "El caballo corre muy rápido.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "la vaca",
+      "english": "cow",
+      "emoji": "🐄",
+      "example": "La vaca está en el campo.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "el ratón",
+      "english": "mouse",
+      "emoji": "🐭",
+      "example": "El ratón es pequeño y gris.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "la mariposa",
+      "english": "butterfly",
+      "emoji": "🦋",
+      "example": "La mariposa vuela sobre las flores.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "el conejo",
+      "english": "rabbit",
+      "emoji": "🐰",
+      "example": "El conejo come zanahorias.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "la tortuga",
+      "english": "turtle",
+      "emoji": "🐢",
+      "example": "La tortuga camina despacio.",
+      "topic_slug": "nature-animals"
+    }
+  ],
+  "numbers_21_100": [
+    {
+      "spanish": "veintiuno",
+      "english": "twenty-one",
+      "emoji": null,
+      "example": "Veintiuno en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "veintidós",
+      "english": "twenty-two",
+      "emoji": null,
+      "example": "Veintidós en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "veintinueve",
+      "english": "twenty-nine",
+      "emoji": null,
+      "example": "Veintinueve en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "treinta",
+      "english": "thirty",
+      "emoji": null,
+      "example": "Treinta en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "cuarenta",
+      "english": "forty",
+      "emoji": null,
+      "example": "Cuarenta en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "cincuenta",
+      "english": "fifty",
+      "emoji": null,
+      "example": "Cincuenta en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "sesenta",
+      "english": "sixty",
+      "emoji": null,
+      "example": "Sesenta en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "setenta",
+      "english": "seventy",
+      "emoji": null,
+      "example": "Setenta en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "ochenta",
+      "english": "eighty",
+      "emoji": null,
+      "example": "Ochenta en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "noventa",
+      "english": "ninety",
+      "emoji": null,
+      "example": "Noventa en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "cien",
+      "english": "one hundred",
+      "emoji": null,
+      "example": "Cien en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "clothing_vocab": [
+    {
+      "spanish": "la camisa",
+      "english": "shirt",
+      "emoji": null,
+      "example": "La camisa en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "la camiseta",
+      "english": "t-shirt",
+      "emoji": null,
+      "example": "La camiseta en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "los pantalones",
+      "english": "pants",
+      "emoji": null,
+      "example": "Los pantalones en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "la falda",
+      "english": "skirt",
+      "emoji": null,
+      "example": "La falda en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "el vestido",
+      "english": "dress",
+      "emoji": null,
+      "example": "El vestido en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "los zapatos",
+      "english": "shoes",
+      "emoji": null,
+      "example": "Los zapatos en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "la chaqueta",
+      "english": "jacket",
+      "emoji": null,
+      "example": "La chaqueta en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "el abrigo",
+      "english": "coat",
+      "emoji": null,
+      "example": "El abrigo en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "el sombrero",
+      "english": "hat",
+      "emoji": null,
+      "example": "El sombrero en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "las gafas",
+      "english": "glasses",
+      "emoji": null,
+      "example": "Las gafas en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "los calcetines",
+      "english": "socks",
+      "emoji": null,
+      "example": "Los calcetines en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "la ropa",
+      "english": "clothes",
+      "emoji": null,
+      "example": "La ropa en una frase simple.",
+      "topic_slug": "fashion"
+    }
+  ],
+  "body_parts": [
+    {
+      "spanish": "la cabeza",
+      "english": "head",
+      "emoji": null,
+      "example": "La cabeza en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "el pelo",
+      "english": "hair",
+      "emoji": null,
+      "example": "El pelo en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "la cara",
+      "english": "face",
+      "emoji": null,
+      "example": "La cara en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "los ojos",
+      "english": "eyes",
+      "emoji": null,
+      "example": "Los ojos en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "la nariz",
+      "english": "nose",
+      "emoji": null,
+      "example": "La nariz en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "la boca",
+      "english": "mouth",
+      "emoji": null,
+      "example": "La boca en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "las orejas",
+      "english": "ears",
+      "emoji": null,
+      "example": "Las orejas en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "el brazo",
+      "english": "arm",
+      "emoji": null,
+      "example": "El brazo en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "la mano",
+      "english": "hand",
+      "emoji": null,
+      "example": "La mano en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "la pierna",
+      "english": "leg",
+      "emoji": null,
+      "example": "La pierna en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "el pie",
+      "english": "foot",
+      "emoji": null,
+      "example": "El pie en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "el dedo",
+      "english": "finger/toe",
+      "emoji": null,
+      "example": "El dedo en una frase simple.",
+      "topic_slug": "health"
+    }
+  ],
+  "articles_definite": [
+    {
+      "spanish": "el",
+      "english": "the (masculine singular) → el libro",
+      "emoji": null,
+      "example": "El en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "la",
+      "english": "the (feminine singular) → la mesa",
+      "emoji": null,
+      "example": "La en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "los",
+      "english": "the (masculine plural) → los libros",
+      "emoji": null,
+      "example": "Los en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "las",
+      "english": "the (feminine plural) → las mesas",
+      "emoji": null,
+      "example": "Las en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "articles_indefinite": [
+    {
+      "spanish": "un",
+      "english": "a/an (masculine) → un libro",
+      "emoji": null,
+      "example": "Un en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "una",
+      "english": "a/an (feminine) → una mesa",
+      "emoji": null,
+      "example": "Una en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "unos",
+      "english": "some (masculine) → unos libros",
+      "emoji": null,
+      "example": "Unos en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "unas",
+      "english": "some (feminine) → unas mesas",
+      "emoji": null,
+      "example": "Unas en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "ser_present": [
+    {
+      "spanish": "ser",
+      "english": "to be (essential)",
+      "emoji": "🧩",
+      "example": "Ser puntual es importante.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "soy",
+      "english": "I am",
+      "emoji": "🙋",
+      "example": "Soy estudiante de español.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "eres",
+      "english": "you are",
+      "emoji": "👤",
+      "example": "Eres muy amable.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "es",
+      "english": "he/she/it is",
+      "emoji": "✅",
+      "example": "Ella es médica.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "somos",
+      "english": "we are",
+      "emoji": "👥",
+      "example": "Somos de Argentina.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "sois",
+      "english": "you all are (Spain)",
+      "emoji": "👥",
+      "example": "Vosotros sois mis amigos.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "son",
+      "english": "they are",
+      "emoji": "👨‍👩‍👧‍👦",
+      "example": "Ellos son muy simpáticos.",
+      "topic_slug": null
+    }
+  ],
+  "tener_present": [
+    {
+      "spanish": "tener",
+      "english": "to have",
+      "emoji": "🫴",
+      "example": "Tener paciencia ayuda mucho.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "tengo",
+      "english": "I have",
+      "emoji": "🙋",
+      "example": "Tengo dos gatos.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "tienes",
+      "english": "you have",
+      "emoji": "👤",
+      "example": "¿Tienes hermanos?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "tiene",
+      "english": "he/she has",
+      "emoji": "✅",
+      "example": "Mi hermana tiene un perro.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "tenemos",
+      "english": "we have",
+      "emoji": "👥",
+      "example": "Tenemos clase hoy.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "tenéis",
+      "english": "you all have (Spain)",
+      "emoji": "👥",
+      "example": "Vosotros tenéis razón.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "tienen",
+      "english": "they have",
+      "emoji": "👨‍👩‍👧‍👦",
+      "example": "Ellos tienen una casa grande.",
+      "topic_slug": null
+    }
+  ],
+  "hay": [
+    {
+      "spanish": "libro",
+      "english": "book",
+      "emoji": null,
+      "example": "Libro en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "mesa",
+      "english": "table",
+      "emoji": null,
+      "example": "Mesa en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "gatos",
+      "english": "cats",
+      "emoji": null,
+      "example": "Gatos en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "aquí",
+      "english": "here",
+      "emoji": null,
+      "example": "Aquí en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "plurals": [],
+  "possessive_adjectives": [
+    {
+      "spanish": "mi",
+      "english": "my: *mi casa",
+      "emoji": null,
+      "example": "Mi en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "mis",
+      "english": "my: *mi casa",
+      "emoji": null,
+      "example": "Mis en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "tu",
+      "english": "your (informal): *tu perro",
+      "emoji": null,
+      "example": "Tu en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "tus",
+      "english": "your (informal): *tu perro",
+      "emoji": null,
+      "example": "Tus en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "su",
+      "english": "his/her/your(formal)/their: *su madre",
+      "emoji": null,
+      "example": "Su en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "sus",
+      "english": "his/her/your(formal)/their: *su madre",
+      "emoji": null,
+      "example": "Sus en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "nuestro",
+      "english": "our: *nuestro coche",
+      "emoji": null,
+      "example": "Nuestro en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "nuestros",
+      "english": "our: *nuestro coche",
+      "emoji": null,
+      "example": "Nuestros en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "as",
+      "english": "our: *nuestro coche",
+      "emoji": null,
+      "example": "As en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "demonstratives": [
+    {
+      "spanish": "este",
+      "english": "this (near me): *este libro",
+      "emoji": null,
+      "example": "Este en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "esta",
+      "english": "this (near me): *este libro",
+      "emoji": null,
+      "example": "Esta en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "ese",
+      "english": "that (near you): *ese chico",
+      "emoji": null,
+      "example": "Ese en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "esa",
+      "english": "that (near you): *ese chico",
+      "emoji": null,
+      "example": "Esa en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "aquel",
+      "english": "that (far away): *aquel edificio*",
+      "emoji": null,
+      "example": "Aquel en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "aquella",
+      "english": "that (far away): *aquel edificio*",
+      "emoji": null,
+      "example": "Aquella en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "basic_questions": [
+    {
+      "spanish": "¿qué?",
+      "english": "what?",
+      "emoji": "❓",
+      "example": "¿Qué quieres comer hoy?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "¿quién?",
+      "english": "who?",
+      "emoji": "🙋",
+      "example": "¿Quién es tu profesora?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "¿dónde?",
+      "english": "where?",
+      "emoji": "📍",
+      "example": "¿Dónde está la estación?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "¿cuándo?",
+      "english": "when?",
+      "emoji": "🕒",
+      "example": "¿Cuándo empieza la película?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "¿cómo?",
+      "english": "how?",
+      "emoji": "🧠",
+      "example": "¿Cómo se dice \"library\" en español?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "¿por qué?",
+      "english": "why?",
+      "emoji": "🤔",
+      "example": "¿Por qué estudias español?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "¿cuánto?",
+      "english": "how much?",
+      "emoji": "💵",
+      "example": "¿Cuánto cuesta este libro?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "¿cuánta?",
+      "english": "how much? (feminine)",
+      "emoji": "💧",
+      "example": "¿Cuánta agua bebes al día?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "¿cuántos?",
+      "english": "how many? (masculine)",
+      "emoji": "🔢",
+      "example": "¿Cuántos hermanos tienes?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "¿cuántas?",
+      "english": "how many? (feminine)",
+      "emoji": "🔢",
+      "example": "¿Cuántas clases tienes hoy?",
+      "topic_slug": null
+    }
+  ],
+  "places_in_town": [
+    {
+      "spanish": "el banco",
+      "english": "bank",
+      "emoji": "🏦",
+      "example": "El banco abre a las nueve.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "la tienda",
+      "english": "shop",
+      "emoji": "🏪",
+      "example": "Voy a la tienda de ropa.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "el hospital",
+      "english": "hospital",
+      "emoji": "🏥",
+      "example": "El hospital está cerca de aquí.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "la escuela",
+      "english": "school",
+      "emoji": "🏫",
+      "example": "La escuela está al lado del parque.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "el supermercado",
+      "english": "supermarket",
+      "emoji": "🛒",
+      "example": "Compramos comida en el supermercado.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "la farmacia",
+      "english": "pharmacy",
+      "emoji": "💊",
+      "example": "Necesito ir a la farmacia.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "el restaurante",
+      "english": "restaurant",
+      "emoji": "🍽️",
+      "example": "Cenamos en un restaurante italiano.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "la iglesia",
+      "english": "church",
+      "emoji": "⛪",
+      "example": "La iglesia es muy antigua.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "el parque",
+      "english": "park",
+      "emoji": "🌳",
+      "example": "Corro en el parque por la tarde.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "la biblioteca",
+      "english": "library",
+      "emoji": "📚",
+      "example": "Estudio en la biblioteca los lunes.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "la estación",
+      "english": "station",
+      "emoji": "🚉",
+      "example": "La estación está a diez minutos.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "el cine",
+      "english": "movie theater",
+      "emoji": "🎬",
+      "example": "Vamos al cine este sábado.",
+      "topic_slug": "travel"
+    }
+  ],
+  "professions": [
+    {
+      "spanish": "el",
+      "english": "teacher",
+      "emoji": null,
+      "example": "El en una frase simple.",
+      "topic_slug": "business"
+    },
+    {
+      "spanish": "la profesor(a)",
+      "english": "teacher",
+      "emoji": null,
+      "example": "La profesor(a) en una frase simple.",
+      "topic_slug": "business"
+    },
+    {
+      "spanish": "la médico",
+      "english": "doctor",
+      "emoji": null,
+      "example": "La médico en una frase simple.",
+      "topic_slug": "business"
+    },
+    {
+      "spanish": "la estudiante",
+      "english": "student",
+      "emoji": null,
+      "example": "La estudiante en una frase simple.",
+      "topic_slug": "business"
+    },
+    {
+      "spanish": "la abogado",
+      "english": "lawyer",
+      "emoji": null,
+      "example": "La abogado en una frase simple.",
+      "topic_slug": "business"
+    },
+    {
+      "spanish": "la enfermero",
+      "english": "nurse",
+      "emoji": null,
+      "example": "La enfermero en una frase simple.",
+      "topic_slug": "business"
+    },
+    {
+      "spanish": "la cocinero",
+      "english": "cook",
+      "emoji": null,
+      "example": "La cocinero en una frase simple.",
+      "topic_slug": "business"
+    },
+    {
+      "spanish": "la ingeniero",
+      "english": "engineer",
+      "emoji": null,
+      "example": "La ingeniero en una frase simple.",
+      "topic_slug": "business"
+    },
+    {
+      "spanish": "la policía",
+      "english": "police officer",
+      "emoji": null,
+      "example": "La policía en una frase simple.",
+      "topic_slug": "business"
+    }
+  ],
+  "weather_seasons": [
+    {
+      "spanish": "hace sol",
+      "english": "it is sunny",
+      "emoji": "☀️",
+      "example": "Hoy hace sol y calor.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "hace frío",
+      "english": "it is cold",
+      "emoji": "🥶",
+      "example": "En invierno hace frío.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "hace calor",
+      "english": "it is hot",
+      "emoji": "🥵",
+      "example": "En agosto hace mucho calor.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "llueve",
+      "english": "it rains",
+      "emoji": "🌧️",
+      "example": "En primavera llueve mucho aquí.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "nieva",
+      "english": "it snows",
+      "emoji": "❄️",
+      "example": "A veces nieva en enero.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "está nublado",
+      "english": "it is cloudy",
+      "emoji": "☁️",
+      "example": "Hoy está nublado y gris.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "es primavera",
+      "english": "it is spring",
+      "emoji": "🌸",
+      "example": "En marzo es primavera.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "es verano",
+      "english": "it is summer",
+      "emoji": "🏖️",
+      "example": "En verano vamos a la playa.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "es otoño",
+      "english": "it is autumn",
+      "emoji": "🍂",
+      "example": "En otoño caen las hojas.",
+      "topic_slug": "nature-animals"
+    },
+    {
+      "spanish": "es invierno",
+      "english": "it is winter",
+      "emoji": "🧥",
+      "example": "En invierno llevo abrigo.",
+      "topic_slug": "nature-animals"
+    }
+  ],
+  "estar_present": [
+    {
+      "spanish": "estar",
+      "english": "to be (state/location)",
+      "emoji": "📍",
+      "example": "Estar aquí es fácil.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "estoy",
+      "english": "I am",
+      "emoji": "🙋",
+      "example": "Estoy cansado hoy.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "estás",
+      "english": "you are",
+      "emoji": "👤",
+      "example": "¿Estás en casa?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "está",
+      "english": "he/she is",
+      "emoji": "✅",
+      "example": "La tienda está cerrada.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "estamos",
+      "english": "we are",
+      "emoji": "👥",
+      "example": "Estamos listos para salir.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "estáis",
+      "english": "you all are (Spain)",
+      "emoji": "👥",
+      "example": "¿Estáis en Madrid ahora?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "están",
+      "english": "they are",
+      "emoji": "👨‍👩‍👧‍👦",
+      "example": "Mis padres están de viaje.",
+      "topic_slug": null
+    }
+  ],
+  "ir_a": [],
+  "gustar": [
+    {
+      "spanish": "me gusta",
+      "english": "I like (singular)",
+      "emoji": "❤️",
+      "example": "Me gusta el café.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "me gustan",
+      "english": "I like (plural)",
+      "emoji": "💛",
+      "example": "Me gustan los perros.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "te gusta",
+      "english": "you like",
+      "emoji": "🙂",
+      "example": "¿Te gusta esta canción?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "le gusta",
+      "english": "he/she likes",
+      "emoji": "👍",
+      "example": "A Marta le gusta cocinar.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "nos gusta",
+      "english": "we like",
+      "emoji": "🤝",
+      "example": "Nos gusta viajar juntos.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "gustar",
+      "english": "to like",
+      "emoji": "🧠",
+      "example": "El verbo gustar funciona diferente.",
+      "topic_slug": null
+    }
+  ],
+  "querer": [
+    {
+      "spanish": "querer",
+      "english": "to want",
+      "emoji": "🎯",
+      "example": "Querer aprender ayuda mucho.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "quiero",
+      "english": "I want",
+      "emoji": "🙋",
+      "example": "Quiero practicar más español.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "quieres",
+      "english": "you want",
+      "emoji": "👤",
+      "example": "¿Quieres venir conmigo?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "quiere",
+      "english": "he/she wants",
+      "emoji": "✅",
+      "example": "Ella quiere un té.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "queremos",
+      "english": "we want",
+      "emoji": "👥",
+      "example": "Queremos viajar a México.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "queréis",
+      "english": "you all want (Spain)",
+      "emoji": "👥",
+      "example": "¿Queréis ir al cine?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "quieren",
+      "english": "they want",
+      "emoji": "👨‍👩‍👧‍👦",
+      "example": "Ellos quieren aprender rápido.",
+      "topic_slug": null
+    }
+  ],
+  "adjective_agreement": [],
+  "negation": [
+    {
+      "spanish": "nunca",
+      "english": "never: *Nunca como carne.* — I never eat meat.",
+      "emoji": null,
+      "example": "Nunca en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "nada",
+      "english": "nothing: *No quiero nada.* — I don't want anything.",
+      "emoji": null,
+      "example": "Nada en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "nadie",
+      "english": "nobody: *No hay nadie.* — There is nobody.",
+      "emoji": null,
+      "example": "Nadie en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "muy_mucho": [],
+  "present_tense_ar": [],
+  "present_tense_er_ir": [],
+  "basic_prepositions": [
+    {
+      "spanish": "en",
+      "english": "in/on",
+      "emoji": "📍",
+      "example": "Estoy en casa.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "de",
+      "english": "of/from",
+      "emoji": "🧭",
+      "example": "Soy de Colombia.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "con",
+      "english": "with",
+      "emoji": "🤝",
+      "example": "Voy al cine con Ana.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "sin",
+      "english": "without",
+      "emoji": "🚫",
+      "example": "Café sin azúcar, por favor.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "para",
+      "english": "for/to",
+      "emoji": "🎁",
+      "example": "Este regalo es para ti.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "por",
+      "english": "through/by/for",
+      "emoji": "🛣️",
+      "example": "Caminamos por el parque.",
+      "topic_slug": null
+    }
+  ],
+  "telling_time": [
+    {
+      "spanish": "¿qué hora es?",
+      "english": "what time is it?",
+      "emoji": "🕒",
+      "example": "Perdón, ¿qué hora es?",
+      "topic_slug": null
+    },
+    {
+      "spanish": "es la una",
+      "english": "it is one o’clock",
+      "emoji": "1️⃣",
+      "example": "Es la una en punto.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "son las dos",
+      "english": "it is two o’clock",
+      "emoji": "2️⃣",
+      "example": "Son las dos y media.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "son las tres",
+      "english": "it is three o’clock",
+      "emoji": "3️⃣",
+      "example": "Son las tres menos cuarto.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "son las cuatro",
+      "english": "it is four o’clock",
+      "emoji": "4️⃣",
+      "example": "Son las cuatro de la tarde.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "y media",
+      "english": ":30",
+      "emoji": "🕧",
+      "example": "La clase empieza a las ocho y media.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "y cuarto",
+      "english": ":15",
+      "emoji": "🕒",
+      "example": "Nos vemos a las seis y cuarto.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "menos cuarto",
+      "english": ":45",
+      "emoji": "⏰",
+      "example": "El tren sale a las nueve menos cuarto.",
+      "topic_slug": null
+    }
+  ],
+  "days_months": [
+    {
+      "spanish": "lunes",
+      "english": "monday",
+      "emoji": "📅",
+      "example": "Lunes en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "martes",
+      "english": "tuesday",
+      "emoji": "📅",
+      "example": "Martes en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "miércoles",
+      "english": "wednesday",
+      "emoji": "📅",
+      "example": "Miércoles en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "jueves",
+      "english": "thursday",
+      "emoji": "📅",
+      "example": "Jueves en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "viernes",
+      "english": "friday",
+      "emoji": "📅",
+      "example": "Viernes en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "sábado",
+      "english": "saturday",
+      "emoji": "📅",
+      "example": "Sábado en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "domingo",
+      "english": "sunday",
+      "emoji": "📅",
+      "example": "Domingo en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "enero",
+      "english": "january",
+      "emoji": "📅",
+      "example": "Enero en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "febrero",
+      "english": "february",
+      "emoji": "📅",
+      "example": "Febrero en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "marzo",
+      "english": "march",
+      "emoji": "📅",
+      "example": "Marzo en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "house_rooms": [
+    {
+      "spanish": "la casa",
+      "english": "house",
+      "emoji": null,
+      "example": "La casa en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "el apartamento",
+      "english": "apartment",
+      "emoji": null,
+      "example": "El apartamento en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "la cocina",
+      "english": "kitchen",
+      "emoji": null,
+      "example": "La cocina en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "el baño",
+      "english": "bathroom",
+      "emoji": null,
+      "example": "El baño en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "el dormitorio",
+      "english": "bedroom",
+      "emoji": null,
+      "example": "El dormitorio en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "el salón",
+      "english": "living room",
+      "emoji": null,
+      "example": "El salón en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "el comedor",
+      "english": "dining room",
+      "emoji": null,
+      "example": "El comedor en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "el jardín",
+      "english": "garden",
+      "emoji": null,
+      "example": "El jardín en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "la puerta",
+      "english": "door",
+      "emoji": null,
+      "example": "La puerta en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "la ventana",
+      "english": "window",
+      "emoji": null,
+      "example": "La ventana en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "frequency_adverbs": [
+    {
+      "spanish": "siempre",
+      "english": "always: *Siempre estudio por la noche.*",
+      "emoji": null,
+      "example": "Siempre en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "casi siempre",
+      "english": "almost always",
+      "emoji": null,
+      "example": "Casi siempre en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "a menudo",
+      "english": "often",
+      "emoji": null,
+      "example": "A menudo en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "frecuentemente",
+      "english": "often",
+      "emoji": null,
+      "example": "Frecuentemente en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "a veces",
+      "english": "sometimes: *A veces como pizza.*",
+      "emoji": null,
+      "example": "A veces en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "casi nunca",
+      "english": "hardly ever",
+      "emoji": null,
+      "example": "Casi nunca en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "nunca",
+      "english": "never: *Nunca bebo café.*",
+      "emoji": null,
+      "example": "Nunca en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "todos los días",
+      "english": "every day",
+      "emoji": null,
+      "example": "Todos los días en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "cada semana",
+      "english": "every week",
+      "emoji": null,
+      "example": "Cada semana en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "describing_people": [],
+  "ordering_food": [
+    {
+      "spanish": "quiero...",
+      "english": "I want...",
+      "emoji": "🗣️",
+      "example": "Quiero una sopa, por favor.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "¿me puede traer...?",
+      "english": "can you bring me...?",
+      "emoji": "🍽️",
+      "example": "¿Me puede traer el menú, por favor?",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "la cuenta, por favor.",
+      "english": "the check, please.",
+      "emoji": "🧾",
+      "example": "La cuenta, por favor, cuando pueda.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "¿qué recomienda?",
+      "english": "what do you recommend?",
+      "emoji": "👨‍🍳",
+      "example": "¿Qué recomienda hoy?",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "para mí...",
+      "english": "for me...",
+      "emoji": "🙋",
+      "example": "Para mí, la paella.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "de beber, quiero...",
+      "english": "to drink, I want...",
+      "emoji": "🥤",
+      "example": "De beber, quiero agua con gas.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "quisiera...",
+      "english": "I would like...",
+      "emoji": "🙏",
+      "example": "Quisiera una mesa para dos.",
+      "topic_slug": "food-cooking"
+    }
+  ],
+  "asking_directions": [
+    {
+      "spanish": "¿dónde está...?",
+      "english": "where is...?",
+      "emoji": "📍",
+      "example": "¿Dónde está el museo?",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "a la derecha",
+      "english": "to the right",
+      "emoji": "➡️",
+      "example": "El banco está a la derecha.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "a la izquierda",
+      "english": "to the left",
+      "emoji": "⬅️",
+      "example": "La farmacia está a la izquierda.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "todo recto",
+      "english": "straight ahead",
+      "emoji": "⬆️",
+      "example": "Sigue todo recto dos calles.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "cerca de",
+      "english": "near",
+      "emoji": "📌",
+      "example": "El hotel está cerca de la estación.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "lejos de",
+      "english": "far from",
+      "emoji": "🗺️",
+      "example": "Mi casa está lejos del centro.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "al lado de",
+      "english": "next to",
+      "emoji": "🏘️",
+      "example": "La tienda está al lado del banco.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "¿cómo llego a...?",
+      "english": "how do I get to...?",
+      "emoji": "🧭",
+      "example": "¿Cómo llego al aeropuerto?",
+      "topic_slug": "travel"
+    }
+  ],
+  "daily_routine": [
+    {
+      "spanish": "me despierto",
+      "english": "I wake up",
+      "emoji": "⏰",
+      "example": "Me despierto a las siete.",
+      "topic_slug": "relationships"
+    },
+    {
+      "spanish": "me levanto",
+      "english": "I get up",
+      "emoji": "🛏️",
+      "example": "Me levanto y preparo café.",
+      "topic_slug": "relationships"
+    },
+    {
+      "spanish": "me ducho",
+      "english": "I shower",
+      "emoji": "🚿",
+      "example": "Me ducho antes de salir.",
+      "topic_slug": "relationships"
+    },
+    {
+      "spanish": "desayuno",
+      "english": "I have breakfast",
+      "emoji": "🥣",
+      "example": "Desayuno pan y fruta.",
+      "topic_slug": "relationships"
+    },
+    {
+      "spanish": "almuerzo",
+      "english": "I have lunch",
+      "emoji": "🍽️",
+      "example": "Almuerzo con mis compañeros.",
+      "topic_slug": "relationships"
+    },
+    {
+      "spanish": "ceno",
+      "english": "I have dinner",
+      "emoji": "🌙",
+      "example": "Ceno en casa con mi familia.",
+      "topic_slug": "relationships"
+    },
+    {
+      "spanish": "me acuesto",
+      "english": "I go to bed",
+      "emoji": "😴",
+      "example": "Me acuesto a las once.",
+      "topic_slug": "relationships"
+    }
+  ],
+  "tener_que_hay_que": [],
+  "estar_gerund": [],
+  "poder_infinitive": [],
+  "conjunctions": [
+    {
+      "spanish": "pero",
+      "english": "but: *Quiero ir",
+      "emoji": null,
+      "example": "Pero en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "porque",
+      "english": "because: *Estudio porque quiero aprender.* — I study because I want to learn.",
+      "emoji": null,
+      "example": "Porque en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "cuando",
+      "english": "when: *Cuando llueve",
+      "emoji": null,
+      "example": "Cuando en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "si",
+      "english": "if: *Si tienes tiempo",
+      "emoji": null,
+      "example": "Si en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "reflexive_verbs": [],
+  "hobbies_free_time": [
+    {
+      "spanish": "leer",
+      "english": "to read",
+      "emoji": "📚",
+      "example": "Me gusta leer novelas.",
+      "topic_slug": "music"
+    },
+    {
+      "spanish": "nadar",
+      "english": "to swim",
+      "emoji": "🏊",
+      "example": "Nado en la piscina los sábados.",
+      "topic_slug": "sports"
+    },
+    {
+      "spanish": "correr",
+      "english": "to run",
+      "emoji": "🏃",
+      "example": "Salgo a correr por el parque.",
+      "topic_slug": "sports"
+    },
+    {
+      "spanish": "cocinar",
+      "english": "to cook",
+      "emoji": "🍳",
+      "example": "Me encanta cocinar pasta.",
+      "topic_slug": "food-cooking"
+    },
+    {
+      "spanish": "bailar",
+      "english": "to dance",
+      "emoji": "💃",
+      "example": "Nos gusta bailar salsa.",
+      "topic_slug": "music"
+    },
+    {
+      "spanish": "cantar",
+      "english": "to sing",
+      "emoji": "🎤",
+      "example": "Mi hermana quiere cantar en un grupo.",
+      "topic_slug": "music"
+    },
+    {
+      "spanish": "ver la televisión",
+      "english": "to watch TV",
+      "emoji": "📺",
+      "example": "Veo la televisión por la noche.",
+      "topic_slug": "gaming"
+    },
+    {
+      "spanish": "escuchar música",
+      "english": "to listen to music",
+      "emoji": "🎧",
+      "example": "Escucho música mientras estudio.",
+      "topic_slug": "music"
+    },
+    {
+      "spanish": "ir de compras",
+      "english": "to go shopping",
+      "emoji": "🛍️",
+      "example": "Vamos a ir de compras mañana.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "jugar",
+      "english": "to play",
+      "emoji": "🎮",
+      "example": "Mis amigos quieren jugar videojuegos.",
+      "topic_slug": "gaming"
+    }
+  ],
+  "direct_object_pronouns": [
+    {
+      "spanish": "te",
+      "english": "you",
+      "emoji": null,
+      "example": "Te en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "lo",
+      "english": "him/it(m)",
+      "emoji": null,
+      "example": "Lo en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "la",
+      "english": "her/it(f)",
+      "emoji": null,
+      "example": "La en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "nos",
+      "english": "us",
+      "emoji": null,
+      "example": "Nos en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "os",
+      "english": "you all",
+      "emoji": null,
+      "example": "Os en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "los",
+      "english": "them(m)",
+      "emoji": null,
+      "example": "Los en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "las",
+      "english": "them(f)",
+      "emoji": null,
+      "example": "Las en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "indirect_object_pronouns": [
+    {
+      "spanish": "me",
+      "english": "to me",
+      "emoji": null,
+      "example": "Me en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "te",
+      "english": "to you",
+      "emoji": null,
+      "example": "Te en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "le",
+      "english": "to him/her/you(formal)",
+      "emoji": null,
+      "example": "Le en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "nos",
+      "english": "to us",
+      "emoji": null,
+      "example": "Nos en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "os",
+      "english": "to you all",
+      "emoji": null,
+      "example": "Os en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "les",
+      "english": "to them/you all",
+      "emoji": null,
+      "example": "Les en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "comparatives": [
+    {
+      "spanish": "más... que",
+      "english": "more than: *Soy más alto que tú.* — I'm taller than you.",
+      "emoji": null,
+      "example": "Más... que en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "menos... que",
+      "english": "less than: *Es menos caro que el otro.*",
+      "emoji": null,
+      "example": "Menos... que en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "tan... como",
+      "english": "as... as: *Es tan bonito como el tuyo.*",
+      "emoji": null,
+      "example": "Tan... como en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "tanto",
+      "english": "as much as: *Tengo tanto dinero como ella.*",
+      "emoji": null,
+      "example": "Tanto en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "a... como",
+      "english": "as much as: *Tengo tanto dinero como ella.*",
+      "emoji": null,
+      "example": "A... como en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "el",
+      "english": "*Es el más alto de la clase.*",
+      "emoji": null,
+      "example": "El en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "la más...",
+      "english": "*Es el más alto de la clase.*",
+      "emoji": null,
+      "example": "La más... en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "present_perfect": [],
+  "preterite_regular": [],
+  "por_vs_para": [
+    {
+      "spanish": "para",
+      "english": "purpose",
+      "emoji": null,
+      "example": "Para en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "por",
+      "english": "cause",
+      "emoji": null,
+      "example": "Por en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "por la mañana",
+      "english": "in the morning",
+      "emoji": null,
+      "example": "Por la mañana en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "para ti",
+      "english": "for you",
+      "emoji": null,
+      "example": "Para ti en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "por eso",
+      "english": "that is why",
+      "emoji": null,
+      "example": "Por eso en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "para comer",
+      "english": "in order to eat",
+      "emoji": null,
+      "example": "Para comer en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "shopping": [
+    {
+      "spanish": "¿cuánto cuesta?",
+      "english": "How much does it cost?",
+      "emoji": null,
+      "example": "¿cuánto cuesta? en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "¿cuánto cuestan?",
+      "english": "How much do they cost? (plural)",
+      "emoji": null,
+      "example": "¿cuánto cuestan? en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "comprar",
+      "english": "to buy",
+      "emoji": null,
+      "example": "Comprar en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "pagar",
+      "english": "to pay",
+      "emoji": null,
+      "example": "Pagar en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "vender",
+      "english": "to sell",
+      "emoji": null,
+      "example": "Vender en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "caro",
+      "english": "expensive",
+      "emoji": null,
+      "example": "Caro en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "barato",
+      "english": "cheap",
+      "emoji": null,
+      "example": "Barato en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "la talla",
+      "english": "size (clothes)",
+      "emoji": null,
+      "example": "La talla en una frase simple.",
+      "topic_slug": "fashion"
+    },
+    {
+      "spanish": "el precio",
+      "english": "price",
+      "emoji": null,
+      "example": "El precio en una frase simple.",
+      "topic_slug": "fashion"
+    }
+  ],
+  "health_doctor": [
+    {
+      "spanish": "tengo fiebre",
+      "english": "I have a fever",
+      "emoji": null,
+      "example": "Tengo fiebre en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "tengo tos",
+      "english": "I have a cough",
+      "emoji": null,
+      "example": "Tengo tos en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "estoy enfermo",
+      "english": "I am sick",
+      "emoji": null,
+      "example": "Estoy enfermo en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "el",
+      "english": "doctor",
+      "emoji": null,
+      "example": "El en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "la médico",
+      "english": "doctor",
+      "emoji": null,
+      "example": "La médico en una frase simple.",
+      "topic_slug": "health"
+    },
+    {
+      "spanish": "la medicina",
+      "english": "medicine",
+      "emoji": null,
+      "example": "La medicina en una frase simple.",
+      "topic_slug": "health"
+    }
+  ],
+  "travel_transport": [
+    {
+      "spanish": "el tren",
+      "english": "train",
+      "emoji": "🚆",
+      "example": "Voy a Madrid en tren.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "el autobús",
+      "english": "bus",
+      "emoji": "🚌",
+      "example": "Tomamos el autobús al centro.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "el avión",
+      "english": "airplane",
+      "emoji": "✈️",
+      "example": "El avión sale a las ocho.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "el coche",
+      "english": "car",
+      "emoji": "🚗",
+      "example": "Viajamos en coche este fin de semana.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "el taxi",
+      "english": "taxi",
+      "emoji": "🚕",
+      "example": "Necesito un taxi al hotel.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "la bicicleta",
+      "english": "bicycle",
+      "emoji": "🚲",
+      "example": "Voy al trabajo en bicicleta.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "el billete",
+      "english": "ticket",
+      "emoji": "🎫",
+      "example": "Compro un billete de ida.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "el boleto",
+      "english": "ticket",
+      "emoji": "🎟️",
+      "example": "Guarda el boleto del tren.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "la estación",
+      "english": "station",
+      "emoji": "🚉",
+      "example": "La estación está muy cerca.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "el aeropuerto",
+      "english": "airport",
+      "emoji": "🛫",
+      "example": "Llegamos temprano al aeropuerto.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "viajar",
+      "english": "to travel",
+      "emoji": "🧳",
+      "example": "Me encanta viajar en verano.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "llegar",
+      "english": "to arrive",
+      "emoji": "📬",
+      "example": "Voy a llegar a las nueve.",
+      "topic_slug": "travel"
+    }
+  ],
+  "my_city": [
+    {
+      "spanish": "norte",
+      "english": "north",
+      "emoji": "🧭",
+      "example": "Mi barrio está al norte de la ciudad.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "sur",
+      "english": "south",
+      "emoji": "🧭",
+      "example": "La playa está al sur.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "este",
+      "english": "east",
+      "emoji": "🧭",
+      "example": "La universidad queda al este.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "oeste",
+      "english": "west",
+      "emoji": "🧭",
+      "example": "Vivimos al oeste del centro.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "grande",
+      "english": "big",
+      "emoji": "🏙️",
+      "example": "Es una ciudad grande y moderna.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "pequeño",
+      "english": "small",
+      "emoji": "🏘️",
+      "example": "Vivo en un pueblo pequeño.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "tranquilo",
+      "english": "quiet",
+      "emoji": "😌",
+      "example": "Mi barrio es tranquilo por la noche.",
+      "topic_slug": "travel"
+    },
+    {
+      "spanish": "ruidoso",
+      "english": "noisy",
+      "emoji": "🔊",
+      "example": "El centro es muy ruidoso.",
+      "topic_slug": "travel"
+    }
+  ],
+  "preterite_irregular": [],
+  "imperfect_intro": [],
+  "conditional_politeness": [
+    {
+      "spanish": "quisiera",
+      "english": "I would like (polite querer): *Quisiera un café",
+      "emoji": null,
+      "example": "Quisiera en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "podría",
+      "english": "could (polite poder): *¿Podría ayudarme?* — Could you help me?",
+      "emoji": null,
+      "example": "Podría en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "me gustaría",
+      "english": "I would like: *Me gustaría ir a España.*",
+      "emoji": null,
+      "example": "Me gustaría en una frase simple.",
+      "topic_slug": null
+    },
+    {
+      "spanish": "¿sería posible...?",
+      "english": "Would it be possible...?",
+      "emoji": null,
+      "example": "¿sería posible...? en una frase simple.",
+      "topic_slug": null
+    }
+  ],
+  "imperative_basic": []
+}

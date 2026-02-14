@@ -527,6 +527,7 @@ def _create_word_tables(connection: sqlite3.Connection) -> None:
             emoji TEXT,
             example_sentence TEXT,
             concept_id TEXT,
+            topic_slug TEXT,
             status TEXT NOT NULL DEFAULT 'unseen',
             mastery_score REAL NOT NULL DEFAULT 0.0,
             times_seen INTEGER NOT NULL DEFAULT 0,
@@ -541,6 +542,13 @@ def _create_word_tables(connection: sqlite3.Connection) -> None:
     )
     connection.execute(
         "CREATE INDEX IF NOT EXISTS idx_words_status ON words(status)"
+    )
+    try:
+        connection.execute("ALTER TABLE words ADD COLUMN topic_slug TEXT")
+    except Exception:
+        pass
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_words_topic ON words(topic_slug)"
     )
     connection.execute(
         """

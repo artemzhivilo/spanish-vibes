@@ -12,7 +12,14 @@ from .bkt import bkt_update, is_mastered
 from .concepts import get_next_new_concepts, load_concepts
 from .flow_ai import ai_available
 from .interest import InterestTracker
-from .words import get_intro_candidate, build_practice_card, build_match_card
+from .words import (
+    get_intro_candidate_weighted,
+    build_practice_card,
+    build_match_card,
+    build_sentence_builder_card,
+    build_emoji_card,
+    build_fill_blank_card,
+)
 from .conversation_types import select_conversation_type
 from .db import consume_dev_override, get_dev_override
 from .flow_db import (
@@ -50,6 +57,9 @@ _FORCEABLE_CARD_TYPES: tuple[str, ...] = (
     "word_intro",
     "word_practice",
     "word_match",
+    "sentence_builder",
+    "emoji_association",
+    "fill_blank",
 )
 
 _USER_LEVEL_CACHE: dict[str, object] = {}
@@ -294,11 +304,12 @@ def select_next_card(session_id: int) -> FlowCardContext | None:
             interest_topics=interest_topic_names,
         )
 
-    intro_word = get_intro_candidate(concept_id)
+    top_interest_slugs = [t.slug for t in top_interests] if top_interests else None
+    intro_word = get_intro_candidate_weighted(concept_id, top_interest_slugs)
     if forced_card_type == "word_intro" and intro_word is None:
         forced_card_type = None
     if intro_word:
-        if forced_card_type in (None, "word_intro"):
+        if forced_card_type == "word_intro" or (forced_card_type is None and random.random() < 0.25):
             return FlowCardContext(
                 card_type="word_intro",
                 concept_id=concept_id,
@@ -324,6 +335,38 @@ def select_next_card(session_id: int) -> FlowCardContext | None:
             interest_topics=interest_topic_names,
         )
 
+    sentence_builder = build_sentence_builder_card(concept_id)
+    if sentence_builder and (
+        forced_card_type == "sentence_builder"
+        or (forced_card_type is None and random.random() < 0.25)
+    ):
+        return FlowCardContext(
+            card_type="sentence_builder",
+            concept_id=concept_id,
+            question="Build the sentence",
+            correct_answer=sentence_builder["correct_sentence"],
+            scrambled_words=sentence_builder["scrambled_words"],
+            correct_sentence=sentence_builder["correct_sentence"],
+            interest_topics=interest_topic_names,
+        )
+
+    emoji_card = build_emoji_card(concept_id)
+    if emoji_card and (
+        forced_card_type == "emoji_association"
+        or (forced_card_type is None and random.random() < 0.20)
+    ):
+        return FlowCardContext(
+            card_type="emoji_association",
+            concept_id=concept_id,
+            question="What's this word?",
+            correct_answer=emoji_card["correct_spanish"],
+            options=emoji_card["options"],
+            word_id=emoji_card["word_id"],
+            word_emoji=emoji_card["emoji"],
+            word_english=emoji_card["english_hint"],
+            interest_topics=interest_topic_names,
+        )
+
     practice_card = build_practice_card(concept_id)
     if practice_card and forced_card_type in (None, "word_practice"):
         return FlowCardContext(
@@ -337,6 +380,21 @@ def select_next_card(session_id: int) -> FlowCardContext | None:
             word_english=practice_card["english"],
             word_emoji=practice_card["emoji"],
             word_sentence=practice_card["sentence"],
+            interest_topics=interest_topic_names,
+        )
+
+    fill_blank = build_fill_blank_card(concept_id)
+    if fill_blank and (
+        forced_card_type == "fill_blank"
+        or (forced_card_type is None and random.random() < 0.30)
+    ):
+        return FlowCardContext(
+            card_type="fill_blank",
+            concept_id=concept_id,
+            question="Complete the sentence",
+            correct_answer=fill_blank["correct_answer"],
+            options=fill_blank["options"],
+            word_sentence=fill_blank["sentence"],
             interest_topics=interest_topic_names,
         )
 
@@ -557,7 +615,7 @@ def process_mcq_answer(
     if state is None:
         raise ValueError(f"Session {session_id} not found")
 
-    is_correct = chosen_option == card_context.correct_answer
+    is_correct = chosen_option.strip().lower() == card_context.correct_answer.strip().lower()
     concept_id = card_context.concept_id
 
     # BKT update on target concept

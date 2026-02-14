@@ -1,0 +1,1731 @@
+{
+  "ser_present": [
+    {
+      "sentence": "Ella ___ de México.",
+      "answer": "es",
+      "distractors": [
+        "está",
+        "son",
+        "soy"
+      ]
+    },
+    {
+      "sentence": "Yo ___ estudiante.",
+      "answer": "soy",
+      "distractors": [
+        "estoy",
+        "es",
+        "somos"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ amigos.",
+      "answer": "somos",
+      "distractors": [
+        "son",
+        "es",
+        "estamos"
+      ]
+    },
+    {
+      "sentence": "Ellos ___ muy simpáticos.",
+      "answer": "son",
+      "distractors": [
+        "están",
+        "somos",
+        "es"
+      ]
+    },
+    {
+      "sentence": "¿Tú ___ de España?",
+      "answer": "eres",
+      "distractors": [
+        "estás",
+        "soy",
+        "son"
+      ]
+    },
+    {
+      "sentence": "Madrid ___ una ciudad grande.",
+      "answer": "es",
+      "distractors": [
+        "está",
+        "son",
+        "soy"
+      ]
+    }
+  ],
+  "estar_present": [
+    {
+      "sentence": "Yo ___ en casa.",
+      "answer": "estoy",
+      "distractors": [
+        "soy",
+        "está",
+        "es"
+      ]
+    },
+    {
+      "sentence": "La farmacia ___ cerca.",
+      "answer": "está",
+      "distractors": [
+        "es",
+        "están",
+        "soy"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ cansados.",
+      "answer": "estamos",
+      "distractors": [
+        "somos",
+        "están",
+        "estoy"
+      ]
+    },
+    {
+      "sentence": "¿Dónde ___ tú ahora?",
+      "answer": "estás",
+      "distractors": [
+        "eres",
+        "estoy",
+        "es"
+      ]
+    },
+    {
+      "sentence": "Mis padres ___ de viaje.",
+      "answer": "están",
+      "distractors": [
+        "son",
+        "estamos",
+        "es"
+      ]
+    },
+    {
+      "sentence": "Vosotros ___ en la clase.",
+      "answer": "estáis",
+      "distractors": [
+        "sois",
+        "estoy",
+        "están"
+      ]
+    }
+  ],
+  "tener_present": [
+    {
+      "sentence": "Yo ___ dos hermanos.",
+      "answer": "tengo",
+      "distractors": [
+        "tiene",
+        "tenemos",
+        "eres"
+      ]
+    },
+    {
+      "sentence": "¿Tú ___ tiempo hoy?",
+      "answer": "tienes",
+      "distractors": [
+        "tengo",
+        "tiene",
+        "estás"
+      ]
+    },
+    {
+      "sentence": "Ella ___ una bicicleta.",
+      "answer": "tiene",
+      "distractors": [
+        "tengo",
+        "tienen",
+        "es"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ clase mañana.",
+      "answer": "tenemos",
+      "distractors": [
+        "tienen",
+        "tenéis",
+        "somos"
+      ]
+    },
+    {
+      "sentence": "Ellos ___ mucha energía.",
+      "answer": "tienen",
+      "distractors": [
+        "tiene",
+        "tenemos",
+        "están"
+      ]
+    },
+    {
+      "sentence": "Vosotros ___ un examen.",
+      "answer": "tenéis",
+      "distractors": [
+        "tienen",
+        "tenemos",
+        "sois"
+      ]
+    }
+  ],
+  "hay": [
+    {
+      "sentence": "___ un libro en la mesa.",
+      "answer": "Hay",
+      "distractors": [
+        "Está",
+        "Es",
+        "Son"
+      ]
+    },
+    {
+      "sentence": "En mi barrio ___ dos parques.",
+      "answer": "hay",
+      "distractors": [
+        "están",
+        "son",
+        "es"
+      ]
+    },
+    {
+      "sentence": "No ___ leche en la nevera.",
+      "answer": "hay",
+      "distractors": [
+        "está",
+        "tiene",
+        "son"
+      ]
+    },
+    {
+      "sentence": "¿___ una farmacia cerca?",
+      "answer": "Hay",
+      "distractors": [
+        "Está",
+        "Es",
+        "Son"
+      ]
+    }
+  ],
+  "articles_definite": [
+    {
+      "sentence": "___ libro está aquí.",
+      "answer": "El",
+      "distractors": [
+        "La",
+        "Los",
+        "Un"
+      ]
+    },
+    {
+      "sentence": "___ mesa es grande.",
+      "answer": "La",
+      "distractors": [
+        "El",
+        "Los",
+        "Un"
+      ]
+    },
+    {
+      "sentence": "___ perros corren mucho.",
+      "answer": "Los",
+      "distractors": [
+        "Las",
+        "El",
+        "Un"
+      ]
+    },
+    {
+      "sentence": "___ chicas estudian español.",
+      "answer": "Las",
+      "distractors": [
+        "Los",
+        "La",
+        "Una"
+      ]
+    },
+    {
+      "sentence": "Voy a ___ biblioteca.",
+      "answer": "la",
+      "distractors": [
+        "el",
+        "los",
+        "un"
+      ]
+    },
+    {
+      "sentence": "Veo ___ coche azul.",
+      "answer": "el",
+      "distractors": [
+        "la",
+        "los",
+        "un"
+      ]
+    }
+  ],
+  "articles_indefinite": [
+    {
+      "sentence": "Tengo ___ perro pequeño.",
+      "answer": "un",
+      "distractors": [
+        "una",
+        "el",
+        "los"
+      ]
+    },
+    {
+      "sentence": "Ella compra ___ camisa roja.",
+      "answer": "una",
+      "distractors": [
+        "un",
+        "la",
+        "las"
+      ]
+    },
+    {
+      "sentence": "Necesitamos ___ libros nuevos.",
+      "answer": "unos",
+      "distractors": [
+        "unas",
+        "los",
+        "el"
+      ]
+    },
+    {
+      "sentence": "Ellas llevan ___ botas negras.",
+      "answer": "unas",
+      "distractors": [
+        "unos",
+        "las",
+        "la"
+      ]
+    },
+    {
+      "sentence": "Quiero ___ café.",
+      "answer": "un",
+      "distractors": [
+        "una",
+        "el",
+        "la"
+      ]
+    },
+    {
+      "sentence": "Busco ___ tienda barata.",
+      "answer": "una",
+      "distractors": [
+        "un",
+        "la",
+        "el"
+      ]
+    }
+  ],
+  "present_tense_ar": [
+    {
+      "sentence": "Yo ___ español todos los días.",
+      "answer": "hablo",
+      "distractors": [
+        "hablas",
+        "habla",
+        "hablan"
+      ]
+    },
+    {
+      "sentence": "Tú ___ en casa.",
+      "answer": "estudias",
+      "distractors": [
+        "estudio",
+        "estudia",
+        "estudian"
+      ]
+    },
+    {
+      "sentence": "Ella ___ temprano.",
+      "answer": "trabaja",
+      "distractors": [
+        "trabajo",
+        "trabajas",
+        "trabajan"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ en Madrid.",
+      "answer": "vivimos",
+      "distractors": [
+        "vivo",
+        "vives",
+        "vive"
+      ]
+    },
+    {
+      "sentence": "Ellos ___ con sus amigos.",
+      "answer": "cenan",
+      "distractors": [
+        "ceno",
+        "cenas",
+        "cena"
+      ]
+    },
+    {
+      "sentence": "Vosotros ___ música.",
+      "answer": "escucháis",
+      "distractors": [
+        "escucho",
+        "escuchas",
+        "escuchan"
+      ]
+    }
+  ],
+  "present_tense_er_ir": [
+    {
+      "sentence": "Yo ___ café por la mañana.",
+      "answer": "bebo",
+      "distractors": [
+        "bebes",
+        "bebe",
+        "beben"
+      ]
+    },
+    {
+      "sentence": "Tú ___ en un banco.",
+      "answer": "vives",
+      "distractors": [
+        "vivo",
+        "vive",
+        "viven"
+      ]
+    },
+    {
+      "sentence": "Ella ___ en clase.",
+      "answer": "escribe",
+      "distractors": [
+        "escribo",
+        "escribes",
+        "escriben"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ una película.",
+      "answer": "vemos",
+      "distractors": [
+        "veo",
+        "ves",
+        "ven"
+      ]
+    },
+    {
+      "sentence": "Ellos ___ mucho.",
+      "answer": "comen",
+      "distractors": [
+        "como",
+        "comes",
+        "come"
+      ]
+    },
+    {
+      "sentence": "Yo ___ al gimnasio.",
+      "answer": "subo",
+      "distractors": [
+        "subes",
+        "sube",
+        "suben"
+      ]
+    }
+  ],
+  "gustar": [
+    {
+      "sentence": "A mí ___ el chocolate.",
+      "answer": "me gusta",
+      "distractors": [
+        "me gustan",
+        "te gusta",
+        "le gusta"
+      ]
+    },
+    {
+      "sentence": "A nosotros ___ los viajes.",
+      "answer": "nos gustan",
+      "distractors": [
+        "nos gusta",
+        "les gusta",
+        "me gusta"
+      ]
+    },
+    {
+      "sentence": "¿A ti ___ esta canción?",
+      "answer": "te gusta",
+      "distractors": [
+        "te gustan",
+        "me gusta",
+        "les gusta"
+      ]
+    },
+    {
+      "sentence": "A Marta ___ las flores.",
+      "answer": "le gustan",
+      "distractors": [
+        "le gusta",
+        "me gustan",
+        "nos gusta"
+      ]
+    },
+    {
+      "sentence": "A ellos ___ bailar.",
+      "answer": "les gusta",
+      "distractors": [
+        "les gustan",
+        "le gusta",
+        "nos gustan"
+      ]
+    }
+  ],
+  "querer": [
+    {
+      "sentence": "Yo ___ un café.",
+      "answer": "quiero",
+      "distractors": [
+        "quieres",
+        "quiere",
+        "quieren"
+      ]
+    },
+    {
+      "sentence": "¿Tú ___ venir?",
+      "answer": "quieres",
+      "distractors": [
+        "quiero",
+        "quiere",
+        "queremos"
+      ]
+    },
+    {
+      "sentence": "Ella ___ estudiar medicina.",
+      "answer": "quiere",
+      "distractors": [
+        "quiero",
+        "quieres",
+        "queremos"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ viajar este verano.",
+      "answer": "queremos",
+      "distractors": [
+        "quieren",
+        "quiere",
+        "quieres"
+      ]
+    },
+    {
+      "sentence": "Ellos ___ una mesa para dos.",
+      "answer": "quieren",
+      "distractors": [
+        "quiero",
+        "quiere",
+        "queremos"
+      ]
+    }
+  ],
+  "ir_a": [
+    {
+      "sentence": "Yo ___ estudiar esta noche.",
+      "answer": "voy a",
+      "distractors": [
+        "va a",
+        "vamos a",
+        "fui a"
+      ]
+    },
+    {
+      "sentence": "Tú ___ comprar pan.",
+      "answer": "vas a",
+      "distractors": [
+        "voy a",
+        "va a",
+        "van a"
+      ]
+    },
+    {
+      "sentence": "Ella ___ llamar a su madre.",
+      "answer": "va a",
+      "distractors": [
+        "voy a",
+        "vamos a",
+        "van a"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ salir temprano.",
+      "answer": "vamos a",
+      "distractors": [
+        "van a",
+        "voy a",
+        "va a"
+      ]
+    },
+    {
+      "sentence": "Ellos ___ comer fuera.",
+      "answer": "van a",
+      "distractors": [
+        "vamos a",
+        "va a",
+        "voy a"
+      ]
+    }
+  ],
+  "adjective_agreement": [
+    {
+      "sentence": "La casa es ___ .",
+      "answer": "bonita",
+      "distractors": [
+        "bonito",
+        "bonitos",
+        "bonitas"
+      ]
+    },
+    {
+      "sentence": "Los coches son ___ .",
+      "answer": "rápidos",
+      "distractors": [
+        "rápido",
+        "rápidas",
+        "rápida"
+      ]
+    },
+    {
+      "sentence": "Las flores son ___ .",
+      "answer": "rojas",
+      "distractors": [
+        "rojo",
+        "rojos",
+        "roja"
+      ]
+    },
+    {
+      "sentence": "El libro es ___ .",
+      "answer": "interesante",
+      "distractors": [
+        "interesantes",
+        "interesanta",
+        "interesantos"
+      ]
+    },
+    {
+      "sentence": "Mis amigas son ___ .",
+      "answer": "altas",
+      "distractors": [
+        "alto",
+        "altos",
+        "alta"
+      ]
+    }
+  ],
+  "negation": [
+    {
+      "sentence": "Yo ___ hablo inglés.",
+      "answer": "no",
+      "distractors": [
+        "sí",
+        "muy",
+        "ya"
+      ]
+    },
+    {
+      "sentence": "Ella ___ quiere café.",
+      "answer": "no",
+      "distractors": [
+        "sí",
+        "también",
+        "mucho"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ vamos hoy.",
+      "answer": "no",
+      "distractors": [
+        "sí",
+        "ya",
+        "muy"
+      ]
+    },
+    {
+      "sentence": "Ellos ___ tienen coche.",
+      "answer": "no",
+      "distractors": [
+        "sí",
+        "también",
+        "más"
+      ]
+    }
+  ],
+  "subject_pronouns": [
+    {
+      "sentence": "___ soy estudiante.",
+      "answer": "Yo",
+      "distractors": [
+        "Tú",
+        "Él",
+        "Nosotros"
+      ]
+    },
+    {
+      "sentence": "___ eres de Perú.",
+      "answer": "Tú",
+      "distractors": [
+        "Yo",
+        "Ella",
+        "Nosotras"
+      ]
+    },
+    {
+      "sentence": "___ tiene un perro.",
+      "answer": "Él",
+      "distractors": [
+        "Yo",
+        "Tú",
+        "Nosotros"
+      ]
+    },
+    {
+      "sentence": "___ vivimos en Chile.",
+      "answer": "Nosotros",
+      "distractors": [
+        "Ellos",
+        "Yo",
+        "Ella"
+      ]
+    }
+  ],
+  "possessive_adjectives": [
+    {
+      "sentence": "Esta es ___ casa.",
+      "answer": "mi",
+      "distractors": [
+        "tu",
+        "su",
+        "nuestra"
+      ]
+    },
+    {
+      "sentence": "¿Dónde está ___ mochila?",
+      "answer": "tu",
+      "distractors": [
+        "mi",
+        "su",
+        "nuestras"
+      ]
+    },
+    {
+      "sentence": "Ellos visitan ___ abuela.",
+      "answer": "su",
+      "distractors": [
+        "mi",
+        "tu",
+        "vuestro"
+      ]
+    },
+    {
+      "sentence": "Nosotros limpiamos ___ cuarto.",
+      "answer": "nuestro",
+      "distractors": [
+        "mi",
+        "su",
+        "vuestros"
+      ]
+    }
+  ],
+  "demonstratives": [
+    {
+      "sentence": "___ libro aquí es mío.",
+      "answer": "Este",
+      "distractors": [
+        "Ese",
+        "Aquel",
+        "Esta"
+      ]
+    },
+    {
+      "sentence": "¿Te gusta ___ camisa?",
+      "answer": "esa",
+      "distractors": [
+        "esta",
+        "aquella",
+        "estos"
+      ]
+    },
+    {
+      "sentence": "___ casas son nuevas.",
+      "answer": "Estas",
+      "distractors": [
+        "Esas",
+        "Aquellas",
+        "Este"
+      ]
+    },
+    {
+      "sentence": "Prefiero ___ restaurante de allí.",
+      "answer": "aquel",
+      "distractors": [
+        "este",
+        "ese",
+        "esta"
+      ]
+    }
+  ],
+  "basic_prepositions": [
+    {
+      "sentence": "Vivo ___ Madrid.",
+      "answer": "en",
+      "distractors": [
+        "de",
+        "con",
+        "por"
+      ]
+    },
+    {
+      "sentence": "Soy ___ Colombia.",
+      "answer": "de",
+      "distractors": [
+        "en",
+        "con",
+        "por"
+      ]
+    },
+    {
+      "sentence": "Voy al cine ___ Ana.",
+      "answer": "con",
+      "distractors": [
+        "sin",
+        "en",
+        "de"
+      ]
+    },
+    {
+      "sentence": "Café ___ azúcar, por favor.",
+      "answer": "sin",
+      "distractors": [
+        "con",
+        "por",
+        "de"
+      ]
+    },
+    {
+      "sentence": "Este regalo es ___ ti.",
+      "answer": "para",
+      "distractors": [
+        "por",
+        "con",
+        "de"
+      ]
+    },
+    {
+      "sentence": "Caminamos ___ el parque.",
+      "answer": "por",
+      "distractors": [
+        "para",
+        "de",
+        "en"
+      ]
+    }
+  ],
+  "por_vs_para": [
+    {
+      "sentence": "Trabajo ___ mi familia.",
+      "answer": "para",
+      "distractors": [
+        "por",
+        "con",
+        "de"
+      ]
+    },
+    {
+      "sentence": "Gracias ___ tu ayuda.",
+      "answer": "por",
+      "distractors": [
+        "para",
+        "de",
+        "con"
+      ]
+    },
+    {
+      "sentence": "Salgo ___ la noche.",
+      "answer": "por",
+      "distractors": [
+        "para",
+        "de",
+        "con"
+      ]
+    },
+    {
+      "sentence": "Este regalo es ___ ti.",
+      "answer": "para",
+      "distractors": [
+        "por",
+        "con",
+        "a"
+      ]
+    },
+    {
+      "sentence": "Estudio español ___ viajar.",
+      "answer": "para",
+      "distractors": [
+        "por",
+        "de",
+        "en"
+      ]
+    },
+    {
+      "sentence": "Pagamos 10 euros ___ el libro.",
+      "answer": "por",
+      "distractors": [
+        "para",
+        "de",
+        "con"
+      ]
+    }
+  ],
+  "direct_object_pronouns": [
+    {
+      "sentence": "¿Ves a Ana? Sí, ___ veo.",
+      "answer": "la",
+      "distractors": [
+        "le",
+        "lo",
+        "las"
+      ]
+    },
+    {
+      "sentence": "¿Comes pan? Sí, ___ como.",
+      "answer": "lo",
+      "distractors": [
+        "le",
+        "la",
+        "los"
+      ]
+    },
+    {
+      "sentence": "Tengo las llaves y ___ llevo.",
+      "answer": "las",
+      "distractors": [
+        "los",
+        "les",
+        "la"
+      ]
+    },
+    {
+      "sentence": "¿Conoces a Pedro y Juan? Sí, ___ conozco.",
+      "answer": "los",
+      "distractors": [
+        "les",
+        "las",
+        "lo"
+      ]
+    }
+  ],
+  "indirect_object_pronouns": [
+    {
+      "sentence": "A Marta ___ doy un libro.",
+      "answer": "le",
+      "distractors": [
+        "la",
+        "lo",
+        "les"
+      ]
+    },
+    {
+      "sentence": "A mis padres ___ escribo cada semana.",
+      "answer": "les",
+      "distractors": [
+        "los",
+        "las",
+        "le"
+      ]
+    },
+    {
+      "sentence": "¿A ti ___ gusta el café?",
+      "answer": "te",
+      "distractors": [
+        "me",
+        "le",
+        "nos"
+      ]
+    },
+    {
+      "sentence": "A nosotros ___ explican la tarea.",
+      "answer": "nos",
+      "distractors": [
+        "les",
+        "se",
+        "te"
+      ]
+    }
+  ],
+  "reflexive_verbs": [
+    {
+      "sentence": "Yo ___ levanto temprano.",
+      "answer": "me",
+      "distractors": [
+        "te",
+        "se",
+        "nos"
+      ]
+    },
+    {
+      "sentence": "Tú ___ duchas por la mañana.",
+      "answer": "te",
+      "distractors": [
+        "me",
+        "se",
+        "os"
+      ]
+    },
+    {
+      "sentence": "Ella ___ acuesta tarde.",
+      "answer": "se",
+      "distractors": [
+        "me",
+        "te",
+        "nos"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ despertamos a las siete.",
+      "answer": "nos",
+      "distractors": [
+        "se",
+        "os",
+        "te"
+      ]
+    }
+  ],
+  "estar_gerund": [
+    {
+      "sentence": "Yo estoy ___ ahora.",
+      "answer": "estudiando",
+      "distractors": [
+        "estudio",
+        "estudiar",
+        "estudié"
+      ]
+    },
+    {
+      "sentence": "Ella está ___ una carta.",
+      "answer": "escribiendo",
+      "distractors": [
+        "escribe",
+        "escribir",
+        "escribió"
+      ]
+    },
+    {
+      "sentence": "Estamos ___ la cena.",
+      "answer": "preparando",
+      "distractors": [
+        "preparamos",
+        "preparar",
+        "preparado"
+      ]
+    },
+    {
+      "sentence": "Ellos están ___ fútbol.",
+      "answer": "jugando",
+      "distractors": [
+        "juegan",
+        "jugar",
+        "jugado"
+      ]
+    }
+  ],
+  "poder_infinitive": [
+    {
+      "sentence": "¿___ ayudarme?",
+      "answer": "Puedes",
+      "distractors": [
+        "Puedo",
+        "Puede",
+        "Pueden"
+      ]
+    },
+    {
+      "sentence": "No ___ venir hoy.",
+      "answer": "puedo",
+      "distractors": [
+        "puede",
+        "puedes",
+        "pudiste"
+      ]
+    },
+    {
+      "sentence": "Ella ___ hablar español.",
+      "answer": "puede",
+      "distractors": [
+        "puedo",
+        "pueden",
+        "pudo"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ salir temprano.",
+      "answer": "podemos",
+      "distractors": [
+        "pueden",
+        "puedo",
+        "puedes"
+      ]
+    }
+  ],
+  "comparatives": [
+    {
+      "sentence": "Mi coche es ___ rápido que el tuyo.",
+      "answer": "más",
+      "distractors": [
+        "menos",
+        "tan",
+        "muy"
+      ]
+    },
+    {
+      "sentence": "Hoy hace ___ frío que ayer.",
+      "answer": "menos",
+      "distractors": [
+        "más",
+        "tan",
+        "muy"
+      ]
+    },
+    {
+      "sentence": "Esta casa es ___ grande como aquella.",
+      "answer": "tan",
+      "distractors": [
+        "más",
+        "menos",
+        "muy"
+      ]
+    },
+    {
+      "sentence": "Pedro es ___ alto que Luis.",
+      "answer": "más",
+      "distractors": [
+        "menos",
+        "tan",
+        "mucho"
+      ]
+    }
+  ],
+  "conjunctions": [
+    {
+      "sentence": "Quiero té ___ café.",
+      "answer": "o",
+      "distractors": [
+        "y",
+        "pero",
+        "porque"
+      ]
+    },
+    {
+      "sentence": "Estudio ___ trabajo.",
+      "answer": "y",
+      "distractors": [
+        "o",
+        "pero",
+        "porque"
+      ]
+    },
+    {
+      "sentence": "Voy, ___ estoy cansado.",
+      "answer": "pero",
+      "distractors": [
+        "y",
+        "o",
+        "porque"
+      ]
+    },
+    {
+      "sentence": "No salgo ___ llueve.",
+      "answer": "porque",
+      "distractors": [
+        "pero",
+        "y",
+        "o"
+      ]
+    }
+  ],
+  "tener_que_hay_que": [
+    {
+      "sentence": "Yo ___ estudiar más.",
+      "answer": "tengo que",
+      "distractors": [
+        "hay que",
+        "puedo",
+        "quiero"
+      ]
+    },
+    {
+      "sentence": "___ comer verduras.",
+      "answer": "Hay que",
+      "distractors": [
+        "Tengo que",
+        "Puedo",
+        "Quiero"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ salir temprano.",
+      "answer": "tenemos que",
+      "distractors": [
+        "hay que",
+        "pueden",
+        "quieres"
+      ]
+    },
+    {
+      "sentence": "En clase ___ escuchar al profesor.",
+      "answer": "hay que",
+      "distractors": [
+        "tenemos que",
+        "quiero",
+        "puede"
+      ]
+    }
+  ],
+  "muy_mucho": [
+    {
+      "sentence": "El café está ___ caliente.",
+      "answer": "muy",
+      "distractors": [
+        "mucho",
+        "mucha",
+        "muchos"
+      ]
+    },
+    {
+      "sentence": "Tengo ___ trabajo hoy.",
+      "answer": "mucho",
+      "distractors": [
+        "muy",
+        "muchos",
+        "muchas"
+      ]
+    },
+    {
+      "sentence": "Ella es ___ amable.",
+      "answer": "muy",
+      "distractors": [
+        "mucho",
+        "muchos",
+        "muchas"
+      ]
+    },
+    {
+      "sentence": "Comemos ___ fruta.",
+      "answer": "mucha",
+      "distractors": [
+        "muy",
+        "mucho",
+        "muchos"
+      ]
+    }
+  ],
+  "present_perfect": [
+    {
+      "sentence": "Yo ___ comido ya.",
+      "answer": "he",
+      "distractors": [
+        "ha",
+        "has",
+        "han"
+      ]
+    },
+    {
+      "sentence": "Ella ___ vivido en Lima.",
+      "answer": "ha",
+      "distractors": [
+        "he",
+        "has",
+        "han"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ terminado.",
+      "answer": "hemos",
+      "distractors": [
+        "han",
+        "ha",
+        "he"
+      ]
+    },
+    {
+      "sentence": "Ellos ___ visto la película.",
+      "answer": "han",
+      "distractors": [
+        "ha",
+        "hemos",
+        "he"
+      ]
+    }
+  ],
+  "preterite_regular": [
+    {
+      "sentence": "Ayer yo ___ al mercado.",
+      "answer": "fui",
+      "distractors": [
+        "voy",
+        "iba",
+        "iré"
+      ]
+    },
+    {
+      "sentence": "Ella ___ una carta.",
+      "answer": "escribió",
+      "distractors": [
+        "escribe",
+        "escribía",
+        "escribir"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ paella.",
+      "answer": "comimos",
+      "distractors": [
+        "comemos",
+        "comíamos",
+        "comeremos"
+      ]
+    },
+    {
+      "sentence": "Ellos ___ en casa.",
+      "answer": "hablaron",
+      "distractors": [
+        "hablan",
+        "hablaban",
+        "hablarán"
+      ]
+    }
+  ],
+  "preterite_irregular": [
+    {
+      "sentence": "Yo ___ una sorpresa.",
+      "answer": "tuve",
+      "distractors": [
+        "tenía",
+        "tengo",
+        "tendré"
+      ]
+    },
+    {
+      "sentence": "Ella ___ al cine anoche.",
+      "answer": "fue",
+      "distractors": [
+        "iba",
+        "va",
+        "irá"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ tarde.",
+      "answer": "hicimos",
+      "distractors": [
+        "hacemos",
+        "hacíamos",
+        "haremos"
+      ]
+    },
+    {
+      "sentence": "Ellos ___ la verdad.",
+      "answer": "dijeron",
+      "distractors": [
+        "dicen",
+        "decían",
+        "dirán"
+      ]
+    }
+  ],
+  "imperfect_intro": [
+    {
+      "sentence": "Cuando era niño, yo ___ fútbol.",
+      "answer": "jugaba",
+      "distractors": [
+        "jugué",
+        "juego",
+        "jugaré"
+      ]
+    },
+    {
+      "sentence": "Antes nosotros ___ en Madrid.",
+      "answer": "vivíamos",
+      "distractors": [
+        "vivimos",
+        "vivimos",
+        "viviremos"
+      ]
+    },
+    {
+      "sentence": "Ella siempre ___ café.",
+      "answer": "tomaba",
+      "distractors": [
+        "tomó",
+        "toma",
+        "tomará"
+      ]
+    },
+    {
+      "sentence": "De pequeño, mi padre ___ en bici.",
+      "answer": "iba",
+      "distractors": [
+        "fue",
+        "va",
+        "irá"
+      ]
+    }
+  ],
+  "conditional_politeness": [
+    {
+      "sentence": "___ un café, por favor.",
+      "answer": "Quisiera",
+      "distractors": [
+        "Quiero",
+        "Quise",
+        "Querré"
+      ]
+    },
+    {
+      "sentence": "¿___ ayudarme?",
+      "answer": "Podría",
+      "distractors": [
+        "Puedo",
+        "Pude",
+        "Podré"
+      ]
+    },
+    {
+      "sentence": "Nos ___ una mesa para dos.",
+      "answer": "gustaría",
+      "distractors": [
+        "gusta",
+        "gustó",
+        "gustará"
+      ]
+    }
+  ],
+  "imperative_basic": [
+    {
+      "sentence": "Por favor, ___ la puerta.",
+      "answer": "abre",
+      "distractors": [
+        "abres",
+        "abrió",
+        "abrir"
+      ]
+    },
+    {
+      "sentence": "___ despacio, por favor.",
+      "answer": "habla",
+      "distractors": [
+        "hablas",
+        "habló",
+        "hablar"
+      ]
+    },
+    {
+      "sentence": "No ___ tarde.",
+      "answer": "llegues",
+      "distractors": [
+        "llegas",
+        "llega",
+        "llegó"
+      ]
+    },
+    {
+      "sentence": "___ aquí un momento.",
+      "answer": "ven",
+      "distractors": [
+        "vienes",
+        "vino",
+        "venir"
+      ]
+    }
+  ],
+  "frequency_adverbs": [
+    {
+      "sentence": "Yo ___ desayuno en casa.",
+      "answer": "siempre",
+      "distractors": [
+        "nunca",
+        "a veces",
+        "ya"
+      ]
+    },
+    {
+      "sentence": "Ella ___ va al gimnasio.",
+      "answer": "a menudo",
+      "distractors": [
+        "nunca",
+        "siempre",
+        "todavía"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ comemos fuera.",
+      "answer": "a veces",
+      "distractors": [
+        "siempre",
+        "nunca",
+        "ya"
+      ]
+    },
+    {
+      "sentence": "Ellos ___ beben café.",
+      "answer": "nunca",
+      "distractors": [
+        "siempre",
+        "a veces",
+        "todavía"
+      ]
+    }
+  ],
+  "plurals": [
+    {
+      "sentence": "Un libro, dos ___.",
+      "answer": "libros",
+      "distractors": [
+        "libro",
+        "libras",
+        "libres"
+      ]
+    },
+    {
+      "sentence": "Una flor, muchas ___.",
+      "answer": "flores",
+      "distractors": [
+        "flors",
+        "floras",
+        "flor"
+      ]
+    },
+    {
+      "sentence": "El papel, los ___.",
+      "answer": "papeles",
+      "distractors": [
+        "papels",
+        "papelos",
+        "papel"
+      ]
+    },
+    {
+      "sentence": "La ciudad, las ___.",
+      "answer": "ciudades",
+      "distractors": [
+        "ciudads",
+        "ciudads",
+        "ciudadas"
+      ]
+    }
+  ],
+  "basic_questions": [
+    {
+      "sentence": "___ estás?",
+      "answer": "Cómo",
+      "distractors": [
+        "Dónde",
+        "Cuándo",
+        "Quién"
+      ]
+    },
+    {
+      "sentence": "___ vives?",
+      "answer": "Dónde",
+      "distractors": [
+        "Cómo",
+        "Cuánto",
+        "Quién"
+      ]
+    },
+    {
+      "sentence": "___ años tienes?",
+      "answer": "Cuántos",
+      "distractors": [
+        "Cuánto",
+        "Cómo",
+        "Dónde"
+      ]
+    },
+    {
+      "sentence": "___ estudias español?",
+      "answer": "Por qué",
+      "distractors": [
+        "Cómo",
+        "Dónde",
+        "Quién"
+      ]
+    }
+  ],
+  "ordering_food": [
+    {
+      "sentence": "___ una sopa, por favor.",
+      "answer": "Quiero",
+      "distractors": [
+        "Tengo",
+        "Soy",
+        "Hago"
+      ]
+    },
+    {
+      "sentence": "La ___, por favor.",
+      "answer": "cuenta",
+      "distractors": [
+        "mesa",
+        "carta",
+        "cocina"
+      ]
+    },
+    {
+      "sentence": "¿Me puede ___ agua?",
+      "answer": "traer",
+      "distractors": [
+        "tener",
+        "hacer",
+        "ser"
+      ]
+    },
+    {
+      "sentence": "De beber, ___ un jugo.",
+      "answer": "quiero",
+      "distractors": [
+        "tengo",
+        "estoy",
+        "hago"
+      ]
+    }
+  ],
+  "asking_directions": [
+    {
+      "sentence": "Sigue ___ recto.",
+      "answer": "todo",
+      "distractors": [
+        "muy",
+        "más",
+        "tan"
+      ]
+    },
+    {
+      "sentence": "Está ___ la derecha.",
+      "answer": "a",
+      "distractors": [
+        "en",
+        "de",
+        "con"
+      ]
+    },
+    {
+      "sentence": "La estación está ___ de aquí.",
+      "answer": "cerca",
+      "distractors": [
+        "lejos",
+        "nada",
+        "muy"
+      ]
+    },
+    {
+      "sentence": "¿Cómo ___ al museo?",
+      "answer": "llego",
+      "distractors": [
+        "llegas",
+        "llega",
+        "llegan"
+      ]
+    }
+  ],
+  "daily_routine": [
+    {
+      "sentence": "Yo me ___ a las siete.",
+      "answer": "levanto",
+      "distractors": [
+        "levantas",
+        "levanta",
+        "levantan"
+      ]
+    },
+    {
+      "sentence": "Ella ___ a las once.",
+      "answer": "se acuesta",
+      "distractors": [
+        "me acuesto",
+        "te acuestas",
+        "se acostamos"
+      ]
+    },
+    {
+      "sentence": "Nosotros ___ antes de trabajar.",
+      "answer": "desayunamos",
+      "distractors": [
+        "desayuno",
+        "desayunas",
+        "desayunan"
+      ]
+    },
+    {
+      "sentence": "Tú te ___ por la mañana.",
+      "answer": "duchas",
+      "distractors": [
+        "ducho",
+        "ducha",
+        "duchan"
+      ]
+    }
+  ],
+  "describing_people": [
+    {
+      "sentence": "Mi amiga es ___ y simpática.",
+      "answer": "alta",
+      "distractors": [
+        "alto",
+        "altos",
+        "altas"
+      ]
+    },
+    {
+      "sentence": "Él tiene el pelo ___ .",
+      "answer": "negro",
+      "distractors": [
+        "negra",
+        "negros",
+        "negras"
+      ]
+    },
+    {
+      "sentence": "Somos personas ___ .",
+      "answer": "tranquilas",
+      "distractors": [
+        "tranquilo",
+        "tranquilos",
+        "tranquila"
+      ]
+    }
+  ],
+  "shopping": [
+    {
+      "sentence": "¿Cuánto ___ esta camisa?",
+      "answer": "cuesta",
+      "distractors": [
+        "cuestan",
+        "costó",
+        "costar"
+      ]
+    },
+    {
+      "sentence": "Me ___ estos zapatos.",
+      "answer": "pruebo",
+      "distractors": [
+        "prueba",
+        "pruebas",
+        "probé"
+      ]
+    },
+    {
+      "sentence": "Busco una talla ___ .",
+      "answer": "mediana",
+      "distractors": [
+        "mediano",
+        "medianos",
+        "medianas"
+      ]
+    }
+  ]
+}

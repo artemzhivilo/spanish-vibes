@@ -189,6 +189,8 @@ class FlowCardContext:
     word_emoji: str | None = None
     word_sentence: str = ""
     word_pairs: list[dict[str, str]] = field(default_factory=list)
+    scrambled_words: list[str] = field(default_factory=list)
+    correct_sentence: str = ""
     conversation_type: str = "general_chat"
     target_concept_id: str | None = None
 
