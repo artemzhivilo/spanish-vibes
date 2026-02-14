@@ -182,6 +182,7 @@ class FlowCardContext:
     difficulty: int = 1
     mcq_card_id: int | None = None
     teach_content: str = ""
+    interest_topics: list[str] = field(default_factory=list)
 
 
 @dataclass(slots=True)

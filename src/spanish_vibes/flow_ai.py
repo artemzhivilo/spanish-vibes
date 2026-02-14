@@ -28,14 +28,17 @@ def _get_client() -> Any:
 MIN_CACHE_COUNT = 5
 
 
-def ensure_cache_populated(concept_id: str) -> int:
+def ensure_cache_populated(concept_id: str, topic: str | None = None) -> int:
     """Check cache count for concept, generate if < MIN_CACHE_COUNT. Returns count."""
     count = count_cached_mcqs(concept_id)
     if count >= MIN_CACHE_COUNT:
         return count
 
     if ai_available():
-        generated = generate_mcq_batch(concept_id)
+        generated = generate_mcq_batch(concept_id, topic=topic)
+        if not generated and topic is not None:
+            # Fallback: retry without topic
+            generated = generate_mcq_batch(concept_id)
         return count + len(generated)
 
     # Offline fallback
@@ -43,7 +46,7 @@ def ensure_cache_populated(concept_id: str) -> int:
     return count + len(converted)
 
 
-def generate_mcq_batch(concept_id: str, count: int = 15) -> list[int]:
+def generate_mcq_batch(concept_id: str, count: int = 15, topic: str | None = None) -> list[int]:
     """Generate MCQ batch via GPT-4o-mini. Returns list of saved MCQ IDs."""
     if not ai_available():
         return []
@@ -59,6 +62,15 @@ def generate_mcq_batch(concept_id: str, count: int = 15) -> list[int]:
 
     # Build concept list for misconception mapping
     all_concept_ids = [c.id for c in concepts.values() if c.difficulty_level <= concept.difficulty_level + 1]
+
+    # Build topic theming instruction
+    topic_instruction = ""
+    if topic:
+        topic_instruction = (
+            f"\nIMPORTANT: Theme the content around '{topic}'. "
+            f"Use vocabulary and scenarios related to {topic}. "
+            f"Ensure the grammar being tested is '{concept.name}', not vocabulary.\n"
+        )
 
     try:
         response = client.chat.completions.create(
@@ -76,6 +88,7 @@ def generate_mcq_batch(concept_id: str, count: int = 15) -> list[int]:
                         "- Good question types: translation ('What does X mean?'), grammar ('Which is correct?'), "
                         "vocabulary matching ('How do you say X in Spanish?').\n"
                         "- Distractors should be plausible but clearly wrong (e.g. wrong gender, wrong conjugation, wrong meaning).\n"
+                        f"{topic_instruction}"
                         "Return ONLY a JSON array, no extra text."
                     ),
                 },
@@ -122,15 +135,18 @@ def generate_mcq_batch(concept_id: str, count: int = 15) -> list[int]:
             if not question or not correct:
                 continue
 
-            content_hash = _mcq_hash(concept_id, question, correct)
-            cards.append({
+            content_hash = _mcq_hash(concept_id, question, correct, topic)
+            card_dict: dict[str, Any] = {
                 "question": question,
                 "correct_answer": correct,
                 "distractors": distractors,
                 "difficulty": difficulty,
                 "source": "ai",
                 "content_hash": content_hash,
-            })
+            }
+            if topic:
+                card_dict["topic"] = topic
+            cards.append(card_dict)
 
         if cards:
             return save_mcq_batch(concept_id, cards)
@@ -224,15 +240,112 @@ def _pick_distractors(correct: str, pool: list[str], count: int) -> list[str]:
     return candidates[:count]
 
 
-def _mcq_hash(concept_id: str, question: str, answer: str) -> str:
-    raw = f"mcq:{concept_id}:{question}:{answer}"
+def _mcq_hash(concept_id: str, question: str, answer: str, topic: str | None = None) -> str:
+    topic_part = f":{topic}" if topic else ""
+    raw = f"mcq:{concept_id}:{question}:{answer}{topic_part}"
     return hashlib.sha256(raw.encode()).hexdigest()[:32]
+
+
+def generate_teach_card(concept_id: str, topic: str | None = None) -> str:
+    """Generate themed teach content via GPT, or return static content as fallback."""
+    concepts = load_concepts()
+    concept = concepts.get(concept_id)
+    if concept is None:
+        return ""
+
+    static_content = concept.teach_content or ""
+
+    if not topic or not ai_available():
+        return static_content
+
+    client = _get_client()
+    if client is None:
+        return static_content
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a friendly Spanish language teacher. "
+                        "Create a brief, engaging teach card (2-4 paragraphs in markdown) "
+                        "that explains the grammar concept using examples themed around the given topic. "
+                        "Keep it A1-level appropriate."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Concept: {concept.name}\n"
+                        f"Description: {concept.description}\n"
+                        f"Original teach content:\n{static_content}\n\n"
+                        f"Theme: {topic}\n\n"
+                        f"Rewrite the teach content with examples themed around '{topic}'."
+                    ),
+                },
+            ],
+            temperature=0.7,
+            max_tokens=1000,
+        )
+        content = response.choices[0].message.content or ""
+        return content.strip() if content.strip() else static_content
+    except Exception:
+        return static_content
+
+
+def generate_conversation_opener(concept_id: str, topic: str, difficulty: int = 1) -> str:
+    """Generate a 1-2 sentence conversation starter in Spanish themed to topic."""
+    if not ai_available():
+        return ""
+
+    client = _get_client()
+    if client is None:
+        return ""
+
+    concepts = load_concepts()
+    concept = concepts.get(concept_id)
+    concept_name = concept.name if concept else concept_id
+
+    difficulty_label = {1: "simple A1", 2: "A1-A2", 3: "A2"}.get(difficulty, "A1")
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a Spanish conversation partner. "
+                        "Generate a single conversation opener (1-2 sentences) in Spanish "
+                        "that naturally uses the given grammar concept and is themed around the topic. "
+                        "Return ONLY the Spanish sentence(s), nothing else."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Grammar concept: {concept_name}\n"
+                        f"Topic: {topic}\n"
+                        f"Difficulty: {difficulty_label}\n"
+                    ),
+                },
+            ],
+            temperature=0.9,
+            max_tokens=200,
+        )
+        return (response.choices[0].message.content or "").strip()
+    except Exception:
+        return ""
 
 
 __all__ = [
     "ai_available",
     "convert_existing_cards_to_mcq",
     "ensure_cache_populated",
+    "generate_conversation_opener",
     "generate_mcq_batch",
+    "generate_teach_card",
     "prefetch_next_concepts",
 ]

@@ -74,6 +74,8 @@ SCAFFOLDING (A2 - Minimal support):
 
 CONCEPT_STEERING: dict[str, str] = {
     "preterite": "Ask about completed past actions: what they did, where they went, what happened. Questions like '¿Qué hiciste...?' or '¿Adónde fuiste...?'",
+    "imperfect": "Ask about childhood memories, habitual past actions, descriptions of how things used to be. '¿Qué hacías cuando eras niño?' or '¿Cómo era tu escuela?'",
+    "present_perfect": "Ask about recent experiences or life experiences: '¿Has viajado a España?' '¿Qué has comido hoy?' '¿Has visto esa película?'",
     "present": "Ask about daily routines, habits, current states. Questions like '¿Qué haces normalmente...?' or '¿Cómo es tu día típico?'",
     "ser_estar": "Ask questions that require describing states (estar) vs identity/characteristics (ser). Mix both: '¿Cómo es tu ciudad?' and '¿Cómo estás hoy?'",
     "gustar": "Ask about preferences, likes/dislikes. '¿Qué tipo de música te gusta?' or '¿Te gustan los deportes?'",
@@ -85,6 +87,27 @@ CONCEPT_STEERING: dict[str, str] = {
     "articles": "Ask questions requiring articles: '¿Cuál es el libro que más te gusta?' '¿Tienes una mascota?'",
     "adjective": "Ask descriptive questions: '¿Cómo es tu mejor amigo?' '¿Cómo fue la película?'",
     "possessive": "Ask about belongings and relationships: '¿Dónde está tu casa?' '¿Cómo se llama tu hermano?'",
+    "demonstratives": "Ask questions requiring this/that: '¿Te gusta este libro o ese?' '¿Quién es aquella chica?'",
+    "plurals": "Ask questions requiring plural nouns and articles: '¿Cuántos hermanos tienes?' '¿Qué ciudades conoces?'",
+    "weather": "Ask about weather and seasons: '¿Qué tiempo hace hoy?' '¿Cuál es tu estación favorita?'",
+    "tener_que": "Ask about obligations and responsibilities: '¿Qué tienes que hacer hoy?' '¿Qué hay que hacer para aprender español?'",
+    "gerund": "Ask about what someone is doing right now: '¿Qué estás haciendo?' '¿Qué está pasando?'",
+    "poder": "Ask about abilities and possibilities: '¿Qué puedes hacer bien?' '¿Puedes cocinar?'",
+    "comparativ": "Ask questions requiring comparisons: '¿Qué es más divertido, el cine o la playa?' '¿Quién es mayor, tú o tu hermano?'",
+    "por_para": "Ask questions that require por or para: '¿Para qué estudias español?' '¿Por dónde caminas?'",
+    "conjunct": "Create scenarios requiring linking sentences: '¿Por qué te gusta...?' (porque) or '¿Qué haces cuando...?' (cuando)",
+    "conditional": "Create polite request scenarios: '¿Qué te gustaría hacer?' 'Imagine you're at a restaurant — ask politely.'",
+    "direct_object": "Ask questions where the learner needs to replace a noun with lo/la/los/las: '¿Tienes el libro?' → 'Sí, lo tengo.'",
+    "indirect_object": "Ask about giving, telling, showing: '¿Qué le dices a tu amigo?' '¿Qué me recomiendas?'",
+    "shopping": "Create a shopping scenario: '¿Cuánto cuesta?' '¿Qué quieres comprar?'",
+    "health": "Ask about health: '¿Cómo te sientes?' '¿Qué te duele?'",
+    "travel": "Ask about trips and transport: '¿Cómo viajas?' '¿Adónde quieres ir?'",
+    "hobbies": "Ask about free time activities: '¿Qué te gusta hacer los fines de semana?'",
+    "house": "Ask about home and rooms: '¿Cómo es tu casa?' '¿Cuántas habitaciones tiene?'",
+    "city": "Ask about cities and neighborhoods: '¿Cómo es tu ciudad?' '¿Qué hay cerca de tu casa?'",
+    "profes": "Ask about jobs and work: '¿A qué te dedicas?' '¿Qué quieres ser?'",
+    "frequency": "Ask about how often someone does things: '¿Con qué frecuencia...?' '¿Siempre desayunas?'",
+    "muy_mucho": "Ask questions that require muy or mucho: '¿Es muy grande tu ciudad?' '¿Comes mucho?'",
 }
 
 

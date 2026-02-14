@@ -25,6 +25,7 @@ from .flow import (
 from .flow_ai import ai_available, ensure_cache_populated, prefetch_next_concepts
 from .interest import CardSignal, InterestTracker
 from .flow_db import (
+    clear_mcq_cache,
     get_session,
     mark_teach_shown,
     get_all_concept_knowledge,
@@ -154,10 +155,12 @@ async def flow_card(
         return templates.TemplateResponse(request, "partials/flow_conversation.html", context)
 
     # MCQ card
+    concept_teach_html = _get_concept_teach_html(card_context.concept_id)
     context = {
         "session_id": session_id,
         "card_context": card_context,
         "concept_name": _get_concept_name(card_context.concept_id),
+        "concept_teach_html": concept_teach_html,
         "card_json": json.dumps({
             "card_type": card_context.card_type,
             "concept_id": card_context.concept_id,
@@ -832,45 +835,68 @@ async def conversation_summary(
     if row is None:
         return HTMLResponse("<p>Conversation not found.</p>", status_code=404)
 
-    topic = str(row["topic"])
-    concept_id = str(row["concept_id"] or "")
-    difficulty = int(row["difficulty"])
-    existing_messages = json.loads(row["messages_json"])
-    messages = [ConversationMessage.from_dict(m) for m in existing_messages]
-    score_was_none = row["score"] is None
+    try:
+        topic = str(row["topic"])
+        concept_id = str(row["concept_id"] or "")
+        difficulty = int(row["difficulty"]) if row["difficulty"] is not None else 1
+        existing_messages = json.loads(row["messages_json"])
+        messages = [ConversationMessage.from_dict(m) for m in existing_messages]
+        score_was_none = row["score"] is None
 
-    card = ConversationCard(
-        topic=topic,
-        concept=concept_id,
-        difficulty=difficulty,
-        opener=messages[0].content if messages else "",
-        messages=messages,
-    )
-
-    summary = engine.generate_summary(card)
-
-    # Save score to DB
-    with _open_connection() as conn:
-        conn.execute(
-            "UPDATE flow_conversations SET score = ?, completed = 1 WHERE id = ?",
-            (summary.score, conversation_id),
+        card = ConversationCard(
+            topic=topic,
+            concept=concept_id,
+            difficulty=difficulty,
+            opener=messages[0].content if messages else "",
+            messages=messages,
         )
-        conn.commit()
 
-    if score_was_none:
-        session = get_session(session_id)
-        if session:
-            update_session(session_id, cards_answered=session.cards_answered + 1)
+        summary = engine.generate_summary(card)
 
-    context = {
-        "session_id": session_id,
-        "conversation_id": conversation_id,
-        "card": card,
-        "summary": summary,
-        "concept_name": _get_concept_name(concept_id),
-        "score_pct": int(summary.score * 100),
-    }
-    return templates.TemplateResponse(request, "partials/flow_conversation_summary.html", context)
+        # Save score to DB
+        with _open_connection() as conn:
+            conn.execute(
+                "UPDATE flow_conversations SET score = ?, completed = 1 WHERE id = ?",
+                (summary.score, conversation_id),
+            )
+            conn.commit()
+
+        if score_was_none:
+            session = get_session(session_id)
+            if session:
+                update_session(session_id, cards_answered=session.cards_answered + 1)
+
+        context = {
+            "session_id": session_id,
+            "conversation_id": conversation_id,
+            "card": card,
+            "summary": summary,
+            "concept_name": _get_concept_name(concept_id),
+            "score_pct": int(summary.score * 100),
+        }
+        return templates.TemplateResponse(request, "partials/flow_conversation_summary.html", context)
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        return HTMLResponse(
+            f'<div class="rounded-2xl bg-red-500/10 p-6 ring-1 ring-red-500/30 text-center">'
+            f'<p class="text-sm text-red-300 mb-3">Summary failed: {escape(str(exc))}</p>'
+            f'<button hx-get="/flow/card?session_id={session_id}" hx-target="#flow-card-slot" hx-swap="innerHTML"'
+            f' class="rounded-xl bg-slate-700 px-5 py-3 text-sm font-bold text-slate-200 hover:bg-slate-600">'
+            f'Skip to Next Card</button></div>',
+            status_code=200,
+        )
+
+
+@router.post("/flow/clear-mcq-cache", response_class=HTMLResponse)
+async def clear_mcq_cache_endpoint(
+    concept_id: str = Form(default=""),
+) -> Response:
+    """Clear AI-generated MCQ cache so questions regenerate with improved prompts."""
+    cid = concept_id.strip() or None
+    deleted = clear_mcq_cache(concept_id=cid, source="ai")
+    label = f"concept '{cid}'" if cid else "all concepts"
+    return HTMLResponse(f"<p>Cleared {deleted} cached MCQs for {label}. Fresh questions will generate on next play.</p>")
 
 
 def _render_teach(content: str | None) -> str:
@@ -884,6 +910,14 @@ def _get_concept_name(concept_id: str) -> str:
     concepts = load_concepts()
     concept = concepts.get(concept_id)
     return concept.name if concept else concept_id
+
+
+def _get_concept_teach_html(concept_id: str) -> str:
+    concepts = load_concepts()
+    concept = concepts.get(concept_id)
+    if concept and concept.teach_content:
+        return _render_teach(concept.teach_content)
+    return ""
 
 
 def _get_misconception_hint(misconception_id: str | None) -> str:

@@ -9,6 +9,11 @@ from datetime import datetime, timezone
 
 from .bkt import bkt_update, is_mastered
 from .concepts import get_next_new_concepts, load_concepts
+from .flow_ai import ai_available
+from .interest import InterestTracker
+
+# Conversation card injection: every N MCQ cards, offer a conversation
+CONVERSATION_EVERY_N_CARDS = 5
 from .flow_db import (
     create_session,
     end_session,
@@ -16,6 +21,7 @@ from .flow_db import (
     get_all_concept_knowledge,
     get_cached_mcqs,
     get_concept_knowledge,
+    get_last_conversation_info,
     get_or_create_flow_state,
     get_session,
     get_session_responses,
@@ -122,6 +128,55 @@ def select_next_card(session_id: int) -> FlowCardContext | None:
     if concept_id is None:
         return None
 
+    # Get top interest topics for theming
+    tracker = InterestTracker()
+    top_interests = tracker.get_top_interests(5)
+    interest_topic_names = [t.name for t in top_interests]
+
+    # Pick a topic for theming (random from top 3, or None)
+    chosen_topic: str | None = None
+    if top_interests:
+        chosen_topic = random.choice([t.name for t in top_interests[:3]])
+
+    # Conversation card injection: every N cards, offer a conversation
+    # Only for learning/mastered concepts (not brand-new ones) and when AI is available
+    session = get_session(session_id)
+    cards_so_far = session.cards_answered if session else 0
+    ck_check = knowledge.get(concept_id)
+    is_experienced = ck_check is not None and ck_check.n_attempts >= 3
+    if (
+        cards_so_far > 0
+        and cards_so_far % CONVERSATION_EVERY_N_CARDS == 0
+        and is_experienced
+        and ai_available()
+    ):
+        from .conversation import get_random_topic
+
+        # Avoid repeating the last conversation's topic and concept
+        last_conv = get_last_conversation_info(session_id)
+        last_topic = last_conv["topic"] if last_conv else None
+        last_concept = last_conv["concept_id"] if last_conv else None
+
+        # Prefer a different concept: pick from learning over mastered
+        conv_concept_id = concept_id
+        conv_candidates = [c for c in learning_ids if c != last_concept and knowledge.get(c, ConceptKnowledge(
+            concept_id=c, p_mastery=0.0, n_attempts=0, n_correct=0, n_wrong=0, teach_shown=False, last_seen_at=None,
+        )).n_attempts >= 3]
+        if not conv_candidates:
+            conv_candidates = [c for c in mastered_ids if c != last_concept]
+        if conv_candidates:
+            conv_concept_id = random.choice(conv_candidates)
+
+        topic = chosen_topic or get_random_topic(exclude=last_topic)
+        return FlowCardContext(
+            card_type="conversation",
+            concept_id=conv_concept_id,
+            question="",
+            correct_answer="",
+            interest_topics=interest_topic_names,
+            difficulty=min(3, max(1, concepts[conv_concept_id].difficulty_level)),
+        )
+
     # For new concepts: return teach card if teach_shown == 0
     ck = knowledge.get(concept_id)
     if ck is not None and ck.n_attempts == 0 and not ck.teach_shown:
@@ -132,6 +187,7 @@ def select_next_card(session_id: int) -> FlowCardContext | None:
             question="",
             correct_answer="",
             teach_content=concept.teach_content,
+            interest_topics=interest_topic_names,
         )
 
     # Fetch MCQ from cache
@@ -169,6 +225,7 @@ def select_next_card(session_id: int) -> FlowCardContext | None:
         option_misconceptions=option_misconceptions,
         difficulty=mcq.difficulty,
         mcq_card_id=mcq.id,
+        interest_topics=interest_topic_names,
     )
 
 

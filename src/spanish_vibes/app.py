@@ -29,6 +29,7 @@ from .db import (
 from .models import CardDetail, CardKind, CardDirection, DeckSummary, PlayerProgress
 from .srs import GradingStrategy, SRS_FAST, calculate_xp_award, compare_answers, level_from_xp, person_label
 from .flow_routes import router as flow_router
+from .template_helpers import register_template_filters
 from .web import router as lesson_router
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
@@ -36,6 +37,7 @@ PROJECT_ROOT = PACKAGE_ROOT.parent.parent
 TEMPLATES_DIR = PROJECT_ROOT / "templates"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+register_template_filters(templates.env)
 
 
 def _chapter_label(slug: str) -> str:

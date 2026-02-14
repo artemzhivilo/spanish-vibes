@@ -44,6 +44,7 @@ from spanish_vibes.flow_db import (
     save_mcq_batch,
     increment_mcq_usage,
     count_cached_mcqs,
+    store_vocabulary_gap,
 )
 
 
@@ -380,3 +381,21 @@ class TestMCQCache:
         mcqs = get_cached_mcqs("greetings", exclude_ids=[ids[0]])
         assert len(mcqs) == 1
         assert mcqs[0].id == ids[1]
+
+class TestVocabularyGapStorage:
+    def test_store_gap_upserts(self):
+        from spanish_vibes.db import _open_connection
+
+        store_vocabulary_gap("store", "tienda", "shopping")
+        store_vocabulary_gap("store", "tienda", "shopping")
+
+        with _open_connection() as conn:
+            row = conn.execute(
+                "SELECT english_word, spanish_word, concept_id, times_seen FROM vocabulary_gaps WHERE english_word = ?",
+                ("store",),
+            ).fetchone()
+
+        assert row is not None
+        assert row["spanish_word"] == "tienda"
+        assert row["concept_id"] == "shopping"
+        assert row["times_seen"] == 2

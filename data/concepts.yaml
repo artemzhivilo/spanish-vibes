@@ -1,5 +1,5 @@
-# A1 Spanish Concepts — Prerequisite DAG
-# ~35 concepts in 6 difficulty tiers
+# Spanish Concepts — Prerequisite DAG
+# A1 complete + A2 grammar & communicative tasks
 
 # Tier 1 — No prerequisites (entry points)
 - id: greetings
@@ -91,6 +91,40 @@
     **el ratón** — mouse, **la mariposa** — butterfly
     **el conejo** — rabbit, **la tortuga** — turtle
 
+- id: numbers_21_100
+  name: Numbers 21–100
+  difficulty_level: 2
+  prerequisites: [numbers_1_20]
+  teach_content: |
+    **21** veintiuno, **22** veintidós... **29** veintinueve (one word)
+    **30** treinta, **31** treinta y uno... **39** treinta y nueve
+    **40** cuarenta, **50** cincuenta, **60** sesenta
+    **70** setenta, **80** ochenta, **90** noventa, **100** cien
+    Pattern: tens + **y** + units → *cuarenta y cinco* (45)
+
+- id: clothing_vocab
+  name: Clothing Vocabulary
+  difficulty_level: 2
+  prerequisites: [greetings]
+  teach_content: |
+    **la camisa** — shirt, **la camiseta** — t-shirt
+    **los pantalones** — pants, **la falda** — skirt
+    **el vestido** — dress, **los zapatos** — shoes
+    **la chaqueta** — jacket, **el abrigo** — coat
+    **el sombrero** — hat, **las gafas** — glasses
+    **los calcetines** — socks, **la ropa** — clothes
+
+- id: body_parts
+  name: Body Parts
+  difficulty_level: 2
+  prerequisites: [greetings]
+  teach_content: |
+    **la cabeza** — head, **el pelo** — hair, **la cara** — face
+    **los ojos** — eyes, **la nariz** — nose, **la boca** — mouth
+    **las orejas** — ears, **el brazo** — arm, **la mano** — hand
+    **la pierna** — leg, **el pie** — foot, **el dedo** — finger/toe
+    **el estómago** — stomach, **la espalda** — back
+
 # Tier 3 — Core grammar
 - id: articles_definite
   name: Definite Articles (el, la, los, las)
@@ -144,6 +178,39 @@
     *Hay tres gatos.* — There are three cats.
     **No hay** = there isn't / there aren't
 
+- id: plurals
+  name: Forming Plurals
+  difficulty_level: 3
+  prerequisites: [nouns_gender]
+  teach_content: |
+    Add **-s** to vowel endings: libro → libros, mesa → mesas
+    Add **-es** to consonant endings: ciudad → ciudades, color → colores
+    **-z → -ces**: lápiz → lápices, pez → peces
+    Articles change too: el → los, la → las, un → unos, una → unas
+    *los libros rojos* — the red books
+
+- id: possessive_adjectives
+  name: Possessive Adjectives
+  difficulty_level: 3
+  prerequisites: [nouns_gender]
+  teach_content: |
+    **mi / mis** — my: *mi casa, mis libros*
+    **tu / tus** — your (informal): *tu perro, tus amigos*
+    **su / sus** — his/her/your(formal)/their: *su madre, sus hijos*
+    **nuestro/a / nuestros/as** — our: *nuestro coche, nuestra casa*
+    Possessives agree in number (and nuestro in gender) with the thing owned.
+
+- id: demonstratives
+  name: Demonstratives (este, ese, aquel)
+  difficulty_level: 3
+  prerequisites: [nouns_gender]
+  teach_content: |
+    **este / esta** — this (near me): *este libro, esta mesa*
+    **ese / esa** — that (near you): *ese chico, esa casa*
+    **aquel / aquella** — that (far away): *aquel edificio*
+    Plurals: estos, estas, esos, esas, aquellos, aquellas
+    *¿Quieres este o ese?* — Do you want this one or that one?
+
 - id: basic_questions
   name: Basic Question Words
   difficulty_level: 3
@@ -157,6 +224,42 @@
     **¿Por qué?** — Why?
     **¿Cuánto/a?** — How much?
     **¿Cuántos/as?** — How many?
+
+- id: places_in_town
+  name: Places in Town
+  difficulty_level: 3
+  prerequisites: [articles_definite]
+  teach_content: |
+    **el banco** — bank, **la tienda** — shop/store
+    **el hospital** — hospital, **la escuela** — school
+    **el supermercado** — supermarket, **la farmacia** — pharmacy
+    **el restaurante** — restaurant, **la iglesia** — church
+    **el parque** — park, **la biblioteca** — library
+    **la estación** — station, **el cine** — cinema
+
+- id: professions
+  name: Professions & Occupations
+  difficulty_level: 3
+  prerequisites: [ser_present]
+  teach_content: |
+    Use **ser** + profession (no article): *Soy profesor.*
+    **el/la profesor(a)** — teacher, **el/la médico/a** — doctor
+    **el/la estudiante** — student, **el/la abogado/a** — lawyer
+    **el/la enfermero/a** — nurse, **el/la cocinero/a** — cook
+    **el/la ingeniero/a** — engineer, **el/la policía** — police officer
+    *¿A qué te dedicas?* — What do you do for work?
+
+- id: weather_seasons
+  name: Weather & Seasons
+  difficulty_level: 3
+  prerequisites: [hay]
+  teach_content: |
+    **Hace** + noun: *hace frío* (it's cold), *hace calor* (it's hot)
+    *hace sol* (it's sunny), *hace viento* (it's windy)
+    **Llueve** — it's raining, **Nieva** — it's snowing
+    **Está nublado** — it's cloudy
+    **Seasons**: la primavera, el verano, el otoño, el invierno
+    *¿Qué tiempo hace?* — What's the weather like?
 
 # Tier 4 — More verbs + adjective grammar
 - id: estar_present
@@ -227,6 +330,17 @@
     **nada** — nothing: *No quiero nada.* — I don't want anything.
     **nadie** — nobody: *No hay nadie.* — There is nobody.
 
+- id: muy_mucho
+  name: Muy vs Mucho
+  difficulty_level: 4
+  prerequisites: [adjective_agreement]
+  teach_content: |
+    **muy** + adjective/adverb: *muy grande* (very big), *muy bien* (very well)
+    **mucho** + noun: *mucho dinero* (a lot of money), *mucha agua* (a lot of water)
+    **mucho** after verb: *como mucho* (I eat a lot), *habla mucho* (he talks a lot)
+    Never say ~~muy mucho~~ — just **muchísimo**!
+    *Tengo mucha hambre.* — I'm very hungry.
+
 # Tier 5 — Regular verb conjugation + time/place
 - id: present_tense_ar
   name: Present Tense — AR Verbs
@@ -281,7 +395,32 @@
     *Hoy es lunes.* — Today is Monday.
     *Mi cumpleaños es en mayo.* — My birthday is in May.
 
-# Tier 6 — Communicative tasks
+- id: house_rooms
+  name: The House & Rooms
+  difficulty_level: 5
+  prerequisites: [articles_definite, basic_prepositions]
+  teach_content: |
+    **la casa** — house, **el apartamento** — apartment
+    **la cocina** — kitchen, **el baño** — bathroom
+    **el dormitorio** — bedroom, **el salón** — living room
+    **el comedor** — dining room, **el jardín** — garden
+    **la puerta** — door, **la ventana** — window
+    *Mi dormitorio está al lado del baño.* — My bedroom is next to the bathroom.
+
+- id: frequency_adverbs
+  name: Frequency Adverbs
+  difficulty_level: 5
+  prerequisites: [present_tense_ar]
+  teach_content: |
+    **siempre** — always: *Siempre estudio por la noche.*
+    **casi siempre** — almost always
+    **a menudo / frecuentemente** — often
+    **a veces** — sometimes: *A veces como pizza.*
+    **casi nunca** — hardly ever
+    **nunca** — never: *Nunca bebo café.*
+    **todos los días** — every day, **cada semana** — every week
+
+# Tier 6 — Communicative tasks + A2 grammar foundations
 - id: describing_people
   name: Describing People
   difficulty_level: 6
@@ -330,3 +469,256 @@
     **ceno** — I have dinner
     **me acuesto** — I go to bed
     *Me despierto a las siete.* — I wake up at seven.
+
+- id: tener_que_hay_que
+  name: "Obligation: Tener que / Hay que"
+  difficulty_level: 6
+  prerequisites: [tener_present]
+  teach_content: |
+    **tener que** + infinitive = personal obligation (have to)
+    *Tengo que estudiar.* — I have to study.
+    *Tienes que comer.* — You have to eat.
+    **hay que** + infinitive = impersonal obligation (one must)
+    *Hay que practicar.* — One must practice.
+    **deber** + infinitive = should/ought to
+    *Debes dormir más.* — You should sleep more.
+
+- id: estar_gerund
+  name: "Estar + Gerund (Present Progressive)"
+  difficulty_level: 6
+  prerequisites: [estar_present]
+  teach_content: |
+    **estar** + **-ando/-iendo** = what's happening right now
+    -ar → **-ando**: hablar → hablando, estudiar → estudiando
+    -er/-ir → **-iendo**: comer → comiendo, escribir → escribiendo
+    *Estoy comiendo.* — I am eating (right now).
+    *¿Qué estás haciendo?* — What are you doing?
+    *Está lloviendo.* — It is raining.
+
+- id: poder_infinitive
+  name: "Poder — Can / To Be Able To"
+  difficulty_level: 6
+  prerequisites: [present_tense_er_ir]
+  teach_content: |
+    **poder** = can / to be able to (stem-change o→ue)
+    yo **puedo**, tú **puedes**, él/ella **puede**
+    nosotros **podemos**, vosotros **podéis**, ellos **pueden**
+    **poder + infinitive**: *Puedo hablar español.* — I can speak Spanish.
+    *¿Puedes ayudarme?* — Can you help me?
+    *No puedo ir.* — I can't go.
+
+- id: conjunctions
+  name: Conjunctions (pero, porque, cuando)
+  difficulty_level: 6
+  prerequisites: [present_tense_ar]
+  teach_content: |
+    **y** — and: *Leo y escribo.* — I read and write.
+    **o** — or: *¿Café o té?* — Coffee or tea?
+    **pero** — but: *Quiero ir, pero no puedo.* — I want to go, but I can't.
+    **porque** — because: *Estudio porque quiero aprender.* — I study because I want to learn.
+    **cuando** — when: *Cuando llueve, me quedo en casa.*
+    **si** — if: *Si tienes tiempo, vamos al parque.*
+
+- id: reflexive_verbs
+  name: Reflexive Verbs
+  difficulty_level: 6
+  prerequisites: [present_tense_ar]
+  teach_content: |
+    Reflexive verbs use **me/te/se/nos/os/se** before the verb.
+    **llamarse**: *Me llamo Ana.* — My name is Ana.
+    **levantarse**: *Me levanto a las siete.* — I get up at 7.
+    **ducharse**: *Se ducha por la mañana.* — He showers in the morning.
+    **vestirse**: *Nos vestimos rápido.* — We get dressed quickly.
+    **acostarse**: *Me acuesto a las once.* — I go to bed at 11.
+
+- id: hobbies_free_time
+  name: Hobbies & Free Time
+  difficulty_level: 6
+  prerequisites: [gustar]
+  teach_content: |
+    **jugar** (al fútbol, al tenis) — to play (a sport)
+    **leer** — to read, **nadar** — to swim, **correr** — to run
+    **cocinar** — to cook, **bailar** — to dance, **cantar** — to sing
+    **ver la televisión** — to watch TV, **escuchar música** — to listen to music
+    **ir de compras** — to go shopping
+    *Me gusta nadar y leer.* — I like swimming and reading.
+    *¿Qué haces en tu tiempo libre?* — What do you do in your free time?
+
+# Tier 7 — A2 grammar + communicative expansion
+- id: direct_object_pronouns
+  name: Direct Object Pronouns
+  difficulty_level: 7
+  prerequisites: [present_tense_ar, present_tense_er_ir]
+  teach_content: |
+    Replace the direct object (the thing receiving the action):
+    **me** — me, **te** — you, **lo** — him/it(m), **la** — her/it(f)
+    **nos** — us, **os** — you all, **los** — them(m), **las** — them(f)
+    Place BEFORE the conjugated verb:
+    *¿El libro? Lo tengo.* — The book? I have it.
+    *¿La pizza? La quiero.* — The pizza? I want it.
+
+- id: indirect_object_pronouns
+  name: Indirect Object Pronouns
+  difficulty_level: 7
+  prerequisites: [gustar]
+  teach_content: |
+    The person who receives or is affected by the action:
+    **me** — to me, **te** — to you, **le** — to him/her/you(formal)
+    **nos** — to us, **os** — to you all, **les** — to them/you all
+    Place BEFORE the conjugated verb:
+    *Le doy el libro.* — I give him the book.
+    *Me gusta* = it pleases **to me** (gustar uses these!)
+    *¿Te puedo ayudar?* — Can I help you?
+
+- id: comparatives
+  name: Comparatives & Superlatives
+  difficulty_level: 7
+  prerequisites: [adjective_agreement]
+  teach_content: |
+    **más... que** — more than: *Soy más alto que tú.* — I'm taller than you.
+    **menos... que** — less than: *Es menos caro que el otro.*
+    **tan... como** — as... as: *Es tan bonito como el tuyo.*
+    **tanto/a... como** — as much as: *Tengo tanto dinero como ella.*
+    Irregular: **mejor** (better), **peor** (worse), **mayor** (older), **menor** (younger)
+    Superlative: **el/la más...** — *Es el más alto de la clase.*
+
+- id: present_perfect
+  name: Present Perfect (he comido)
+  difficulty_level: 7
+  prerequisites: [present_tense_ar, present_tense_er_ir]
+  teach_content: |
+    **haber** + past participle = what has happened
+    **he, has, ha, hemos, habéis, han** + participle
+    -ar → **-ado**: hablar → hablado, estudiar → estudiado
+    -er/-ir → **-ido**: comer → comido, vivir → vivido
+    *He comido pizza.* — I have eaten pizza.
+    *¿Has estado en España?* — Have you been to Spain?
+    Irregulars: hecho (hacer), dicho (decir), escrito (escribir), visto (ver)
+
+- id: preterite_regular
+  name: Preterite — Regular Verbs
+  difficulty_level: 7
+  prerequisites: [present_tense_ar, present_tense_er_ir]
+  teach_content: |
+    The preterite describes completed past actions.
+    **-ar**: habl**é**, habl**aste**, habl**ó**, habl**amos**, habl**asteis**, habl**aron**
+    **-er/-ir**: com**í**, com**iste**, com**ió**, com**imos**, com**isteis**, com**ieron**
+    *Ayer hablé con mi madre.* — Yesterday I spoke with my mother.
+    *Comimos pizza anoche.* — We ate pizza last night.
+    Time markers: ayer, anoche, la semana pasada, el año pasado
+
+- id: por_vs_para
+  name: Por vs Para
+  difficulty_level: 7
+  prerequisites: [basic_prepositions]
+  teach_content: |
+    **Para** — purpose, destination, deadline, recipient:
+    *Para ti* (for you), *para comer* (in order to eat)
+    *Salgo para Madrid.* (heading to Madrid)
+    **Por** — cause, duration, exchange, through:
+    *Por la mañana* (in the morning), *por eso* (that's why)
+    *Gracias por todo.* (thanks for everything)
+    *Camino por el parque.* (I walk through the park)
+
+- id: shopping
+  name: Shopping
+  difficulty_level: 7
+  prerequisites: [numbers_21_100, querer]
+  teach_content: |
+    **¿Cuánto cuesta?** — How much does it cost?
+    **¿Cuánto cuestan?** — How much do they cost? (plural)
+    **comprar** — to buy, **pagar** — to pay, **vender** — to sell
+    **caro** — expensive, **barato** — cheap
+    **la talla** — size (clothes), **el precio** — price
+    *Quiero comprar esta camisa. ¿Cuánto cuesta?*
+    *Cuesta veinte euros.* — It costs twenty euros.
+
+- id: health_doctor
+  name: Health & At the Doctor
+  difficulty_level: 7
+  prerequisites: [body_parts, tener_present]
+  teach_content: |
+    **Me duele** + body part: *Me duele la cabeza.* — My head hurts.
+    **Me duelen** + plural: *Me duelen los ojos.* — My eyes hurt.
+    **Tengo fiebre** — I have a fever
+    **Tengo tos** — I have a cough
+    **Estoy enfermo/a** — I am sick
+    **el/la médico/a** — doctor, **la medicina** — medicine
+    *¿Qué le pasa?* — What's wrong (with you)?
+    *Necesito ir al médico.* — I need to go to the doctor.
+
+- id: travel_transport
+  name: Travel & Transport
+  difficulty_level: 7
+  prerequisites: [ir_a, basic_prepositions]
+  teach_content: |
+    **el tren** — train, **el autobús** — bus, **el avión** — plane
+    **el coche** — car, **el taxi** — taxi, **la bicicleta** — bicycle
+    **el billete / el boleto** — ticket
+    **la estación** — station, **el aeropuerto** — airport
+    **viajar** — to travel, **llegar** — to arrive, **salir** — to leave
+    *Voy en tren a Barcelona.* — I go by train to Barcelona.
+    *¿A qué hora sale el autobús?* — What time does the bus leave?
+
+- id: my_city
+  name: Describing Your City
+  difficulty_level: 7
+  prerequisites: [hay, estar_present, places_in_town]
+  teach_content: |
+    *Vivo en una ciudad grande.* — I live in a big city.
+    *Hay muchos restaurantes y tiendas.* — There are many restaurants and shops.
+    *Mi ciudad está en el norte.* — My city is in the north.
+    *Es una ciudad muy bonita.* — It's a very beautiful city.
+    **norte/sur/este/oeste** — north/south/east/west
+    **grande/pequeño** — big/small, **tranquilo/ruidoso** — quiet/noisy
+    *¿Cómo es tu ciudad?* — What's your city like?
+
+# Tier 8 — A2 advanced grammar
+- id: preterite_irregular
+  name: Preterite — Irregular Verbs
+  difficulty_level: 8
+  prerequisites: [preterite_regular]
+  teach_content: |
+    Common irregular preterite stems (no accents on yo/él forms):
+    **ir/ser**: fui, fuiste, fue, fuimos, fuisteis, fueron
+    **hacer**: hice, hiciste, hizo, hicimos, hicisteis, hicieron
+    **tener**: tuve, tuviste, tuvo, tuvimos, tuvisteis, tuvieron
+    **estar**: estuve, **poder**: pude, **poner**: puse
+    **decir**: dije, **traer**: traje, **venir**: vine
+    *Ayer fui al cine.* — Yesterday I went to the cinema.
+
+- id: imperfect_intro
+  name: Imperfect Tense — Introduction
+  difficulty_level: 8
+  prerequisites: [preterite_regular]
+  teach_content: |
+    The imperfect describes habitual past actions and descriptions.
+    **-ar**: habl**aba**, habl**abas**, habl**aba**, habl**ábamos**, habl**abais**, habl**aban**
+    **-er/-ir**: com**ía**, com**ías**, com**ía**, com**íamos**, com**íais**, com**ían**
+    Only 3 irregulars: **ser** (era), **ir** (iba), **ver** (veía)
+    *Cuando era niño, jugaba mucho.* — When I was a child, I played a lot.
+    *Siempre comíamos juntos.* — We always ate together.
+
+- id: conditional_politeness
+  name: Polite Requests (quisiera, podría)
+  difficulty_level: 8
+  prerequisites: [gustar, poder_infinitive]
+  teach_content: |
+    **quisiera** — I would like (polite querer): *Quisiera un café, por favor.*
+    **podría** — could (polite poder): *¿Podría ayudarme?* — Could you help me?
+    **me gustaría** — I would like: *Me gustaría ir a España.*
+    **¿Sería posible...?** — Would it be possible...?
+    These are much more polite than quiero/puedo for requests.
+    *Quisiera reservar una mesa para dos.* — I'd like to book a table for two.
+
+- id: imperative_basic
+  name: Basic Commands (Imperative)
+  difficulty_level: 8
+  prerequisites: [present_tense_ar]
+  teach_content: |
+    Affirmative **tú** commands = él/ella present tense form:
+    hablar → **¡Habla!** (Speak!), comer → **¡Come!** (Eat!)
+    escribir → **¡Escribe!** (Write!), mirar → **¡Mira!** (Look!)
+    Irregulars: **ven** (come), **di** (say), **haz** (do/make)
+    **pon** (put), **sal** (leave), **ten** (have), **ve** (go)
+    *¡Escucha!* — Listen! *¡Ven aquí!* — Come here!

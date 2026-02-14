@@ -201,6 +201,7 @@ def _create_tables(connection: sqlite3.Connection) -> None:
 
     _ensure_lesson_content_columns(connection)
     _create_flow_tables(connection)
+    _create_translation_tables(connection)
 
 
 def _drop_if_schema_mismatch(connection: sqlite3.Connection, table: str, *, required: set[str]) -> None:
@@ -293,10 +294,26 @@ def _create_flow_tables(connection: sqlite3.Connection) -> None:
             messages_json TEXT NOT NULL DEFAULT '[]',
             turn_count INTEGER NOT NULL DEFAULT 0,
             completed INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            concept_id TEXT,
+            corrections_json TEXT NOT NULL DEFAULT '[]',
+            difficulty INTEGER NOT NULL DEFAULT 1,
+            score REAL
         )
         """
     )
+    # Ensure conversation columns exist on older DBs
+    if "flow_conversations" in _existing_tables(connection):
+        conv_cols = _get_columns(connection, "flow_conversations")
+        if "concept_id" not in conv_cols:
+            connection.execute("ALTER TABLE flow_conversations ADD COLUMN concept_id TEXT")
+        if "corrections_json" not in conv_cols:
+            connection.execute("ALTER TABLE flow_conversations ADD COLUMN corrections_json TEXT NOT NULL DEFAULT '[]'")
+        if "difficulty" not in conv_cols:
+            connection.execute("ALTER TABLE flow_conversations ADD COLUMN difficulty INTEGER NOT NULL DEFAULT 1")
+        if "score" not in conv_cols:
+            connection.execute("ALTER TABLE flow_conversations ADD COLUMN score REAL")
+
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS flow_skill_profile (
@@ -372,7 +389,8 @@ def _create_flow_tables(connection: sqlite3.Connection) -> None:
             source TEXT NOT NULL DEFAULT 'ai',
             times_used INTEGER NOT NULL DEFAULT 0,
             content_hash TEXT NOT NULL UNIQUE,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            topic TEXT
         )
         """
     )
@@ -380,8 +398,57 @@ def _create_flow_tables(connection: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_mcq_cache_concept ON flow_mcq_cache(concept_id)"
     )
 
+    # Ensure topic column on flow_mcq_cache if missing
+    if "flow_mcq_cache" in _existing_tables(connection):
+        mcq_cols = _get_columns(connection, "flow_mcq_cache")
+        if "topic" not in mcq_cols:
+            connection.execute("ALTER TABLE flow_mcq_cache ADD COLUMN topic TEXT")
+
     # Ensure concept columns on flow_responses if missing
     _ensure_flow_response_concept_columns(connection)
+
+    # Interest tracking tables
+    _create_interest_tables(connection)
+
+    # Translation/vocabulary tables
+    _create_translation_tables(connection)
+
+
+def _create_translation_tables(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS word_translations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            spanish_word TEXT NOT NULL UNIQUE,
+            normalized_word TEXT NOT NULL,
+            english_translation TEXT NOT NULL,
+            context TEXT,
+            source TEXT NOT NULL DEFAULT 'local',
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_word_translations_normalized ON word_translations(normalized_word)"
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS vocabulary_gaps (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            english_word TEXT NOT NULL,
+            spanish_word TEXT NOT NULL,
+            concept_id TEXT,
+            source TEXT NOT NULL DEFAULT 'conversation',
+            times_seen INTEGER NOT NULL DEFAULT 0,
+            times_correct INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            UNIQUE(english_word, spanish_word)
+        )
+        """
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_vocabulary_gaps_concept ON vocabulary_gaps(concept_id)"
+    )
 
 
 def _ensure_flow_response_concept_columns(connection: sqlite3.Connection) -> None:
@@ -394,6 +461,142 @@ def _ensure_flow_response_concept_columns(connection: sqlite3.Connection) -> Non
         connection.execute("ALTER TABLE flow_responses ADD COLUMN chosen_option TEXT")
     if "misconception_concept" not in columns:
         connection.execute("ALTER TABLE flow_responses ADD COLUMN misconception_concept TEXT")
+
+
+def _create_interest_tables(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS interest_topics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            parent_id INTEGER REFERENCES interest_topics(id),
+            slug TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_interest_scores (
+            topic_id INTEGER PRIMARY KEY REFERENCES interest_topics(id),
+            score REAL NOT NULL DEFAULT 0.0,
+            last_updated TEXT NOT NULL,
+            interaction_count INTEGER NOT NULL DEFAULT 0,
+            decay_half_life_days REAL NOT NULL DEFAULT 45.0
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS card_signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            card_id INTEGER,
+            session_id INTEGER,
+            dwell_time_ms INTEGER,
+            was_correct INTEGER NOT NULL DEFAULT 0,
+            response_time_ms INTEGER,
+            was_skipped INTEGER NOT NULL DEFAULT 0,
+            topic_id INTEGER REFERENCES interest_topics(id),
+            concept_id TEXT,
+            card_type TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_card_signals_topic ON card_signals(topic_id)"
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_card_signals_session ON card_signals(session_id)"
+    )
+
+
+_DEFAULT_INTEREST_TOPICS: list[dict[str, str | None]] = [
+    {"name": "Sports", "slug": "sports", "parent_slug": None},
+    {"name": "Football", "slug": "football", "parent_slug": "sports"},
+    {"name": "Technology", "slug": "technology", "parent_slug": None},
+    {"name": "Music", "slug": "music", "parent_slug": None},
+    {"name": "Food & Cooking", "slug": "food-cooking", "parent_slug": None},
+    {"name": "Travel", "slug": "travel", "parent_slug": None},
+    {"name": "Movies & TV", "slug": "movies-tv", "parent_slug": None},
+    {"name": "Science", "slug": "science", "parent_slug": None},
+    {"name": "Politics & News", "slug": "politics-news", "parent_slug": None},
+    {"name": "Fashion", "slug": "fashion", "parent_slug": None},
+    {"name": "Gaming", "slug": "gaming", "parent_slug": None},
+    {"name": "Fitness", "slug": "fitness", "parent_slug": None},
+    {"name": "Business", "slug": "business", "parent_slug": None},
+    {"name": "Art", "slug": "art", "parent_slug": None},
+    {"name": "History", "slug": "history", "parent_slug": None},
+    {"name": "Nature & Animals", "slug": "nature-animals", "parent_slug": None},
+    {"name": "Relationships", "slug": "relationships", "parent_slug": None},
+    {"name": "Literature", "slug": "literature", "parent_slug": None},
+    {"name": "Health", "slug": "health", "parent_slug": None},
+    {"name": "Cars", "slug": "cars", "parent_slug": None},
+    {"name": "Photography", "slug": "photography", "parent_slug": None},
+]
+
+
+def seed_interest_topics() -> int:
+    """Insert default interest topics if they don't exist. Returns count seeded."""
+    timestamp = now_iso()
+    seeded = 0
+
+    # First pass: insert top-level topics (no parent)
+    with _open_connection() as conn:
+        for topic in _DEFAULT_INTEREST_TOPICS:
+            if topic["parent_slug"] is not None:
+                continue
+            existing = conn.execute(
+                "SELECT id FROM interest_topics WHERE slug = ?", (topic["slug"],)
+            ).fetchone()
+            if existing:
+                continue
+            conn.execute(
+                "INSERT INTO interest_topics (name, parent_id, slug, created_at) VALUES (?, NULL, ?, ?)",
+                (topic["name"], topic["slug"], timestamp),
+            )
+            seeded += 1
+        conn.commit()
+
+    # Second pass: insert child topics
+    with _open_connection() as conn:
+        for topic in _DEFAULT_INTEREST_TOPICS:
+            if topic["parent_slug"] is None:
+                continue
+            existing = conn.execute(
+                "SELECT id FROM interest_topics WHERE slug = ?", (topic["slug"],)
+            ).fetchone()
+            if existing:
+                continue
+            parent = conn.execute(
+                "SELECT id FROM interest_topics WHERE slug = ?", (topic["parent_slug"],)
+            ).fetchone()
+            parent_id = int(parent["id"]) if parent else None
+            conn.execute(
+                "INSERT INTO interest_topics (name, parent_id, slug, created_at) VALUES (?, ?, ?, ?)",
+                (topic["name"], parent_id, topic["slug"], timestamp),
+            )
+            seeded += 1
+        conn.commit()
+
+    return seeded
+
+
+def get_all_interest_topics() -> list[dict[str, Any]]:
+    """Return all interest topics as dicts."""
+    with _open_connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM interest_topics ORDER BY id"
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def get_interest_topic_by_slug(slug: str) -> dict[str, Any] | None:
+    with _open_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM interest_topics WHERE slug = ?", (slug,)
+        ).fetchone()
+    return dict(row) if row else None
 
 
 def get_or_create_lesson(slug: str, title: str, level_score: int, difficulty: str) -> int:

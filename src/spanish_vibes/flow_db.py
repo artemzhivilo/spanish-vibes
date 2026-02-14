@@ -196,6 +196,36 @@ def _row_to_response(row: Any) -> FlowResponse:
     )
 
 
+# ── Vocabulary gaps ─────────────────────────────────────────────────────────
+
+
+def store_vocabulary_gap(
+    english_word: str,
+    spanish_word: str,
+    concept_id: str | None = None,
+    *,
+    source: str = "conversation",
+) -> None:
+    """Persist a discovered vocabulary gap (idempotent)."""
+    timestamp = now_iso()
+    english = english_word.strip().lower()
+    spanish = spanish_word.strip().lower()
+    if not english or not spanish:
+        return
+    with _open_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO vocabulary_gaps (english_word, spanish_word, concept_id, source, times_seen, created_at)
+            VALUES (?, ?, ?, ?, 1, ?)
+            ON CONFLICT(english_word, spanish_word) DO UPDATE SET times_seen = times_seen + 1,
+                source = excluded.source,
+                concept_id = COALESCE(excluded.concept_id, vocabulary_gaps.concept_id)
+            """,
+            (english, spanish, concept_id, source, timestamp),
+        )
+        conn.commit()
+
+
 # ── Flow state (singleton) ───────────────────────────────────────────────────
 
 
@@ -551,8 +581,8 @@ def save_mcq_batch(concept_id: str, cards: list[dict[str, Any]]) -> list[int]:
             cursor = conn.execute(
                 """
                 INSERT INTO flow_mcq_cache
-                    (concept_id, question, correct_answer, distractors_json, difficulty, source, content_hash, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    (concept_id, question, correct_answer, distractors_json, difficulty, source, content_hash, created_at, topic)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     concept_id,
@@ -563,6 +593,7 @@ def save_mcq_batch(concept_id: str, cards: list[dict[str, Any]]) -> list[int]:
                     card.get("source", "ai"),
                     card["content_hash"],
                     timestamp,
+                    card.get("topic"),
                 ),
             )
             inserted.append(int(cursor.lastrowid))
@@ -588,6 +619,23 @@ def count_cached_mcqs(concept_id: str) -> int:
             (concept_id,),
         ).fetchone()
     return int(row[0])
+
+
+def get_last_conversation_info(session_id: int | None = None) -> dict[str, str] | None:
+    """Return topic and concept_id from the most recent conversation, or None."""
+    with _open_connection() as conn:
+        if session_id:
+            row = conn.execute(
+                "SELECT topic, concept_id FROM flow_conversations WHERE session_id = ? ORDER BY id DESC LIMIT 1",
+                (session_id,),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT topic, concept_id FROM flow_conversations ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+    if row is None:
+        return None
+    return {"topic": str(row["topic"] or ""), "concept_id": str(row["concept_id"] or "")}
 
 
 def _row_to_mcq(row: Any) -> MCQCard:

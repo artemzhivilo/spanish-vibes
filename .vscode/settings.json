@@ -1,0 +1,11 @@
+{
+    "sqltools.useNodeRuntime": true,
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "SpanishVibes",
+            "database": "${workspaceFolder:spanish-vibes}/data/spanish_vibes.db"
+        }
+    ]
+}

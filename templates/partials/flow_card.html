@@ -25,12 +25,28 @@
 
 {% else %}
 <!-- ═══ MCQ Card ═══ -->
-<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-emerald-500/20">
+<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-emerald-500/20" data-concept-wrapper>
   <header class="flex items-center justify-between mb-4">
-    <span class="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-300">
-      {{ concept_name }}
-    </span>
+    {% if concept_teach_html %}
+      <button type="button" class="flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-300 transition hover:bg-emerald-500/25" data-concept-toggle aria-expanded="false">
+        <span>{{ concept_name }}</span>
+        <span class="text-[10px] text-emerald-200 font-normal normal-case">View lesson</span>
+      </button>
+    {% else %}
+      <span class="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-300">
+        {{ concept_name }}
+      </span>
+    {% endif %}
   </header>
+
+  {% if concept_teach_html %}
+    <div class="hidden rounded-2xl border border-emerald-500/20 bg-[#0f1a1f] px-4 py-3 mb-5" data-concept-panel>
+      <p class="text-[11px] uppercase tracking-wide text-emerald-400 font-bold mb-2">Lesson snippet</p>
+      <div class="prose prose-invert prose-sm max-w-none text-slate-300">
+        {{ concept_teach_html | safe }}
+      </div>
+    </div>
+  {% endif %}
 
   <div class="mb-6">
     <p class="text-2xl font-bold text-slate-50 leading-snug">{{ card_context.question }}</p>
@@ -52,4 +68,21 @@
     {% endfor %}
   </div>
 </div>
+{% endif %}
+
+{% if card_context.card_type != 'teach' %}
+<script>
+  (function() {
+    var card = document.currentScript.previousElementSibling;
+    if (!card) return;
+    var toggle = card.querySelector('[data-concept-toggle]');
+    var panel = card.querySelector('[data-concept-panel]');
+    if (!toggle || !panel) return;
+    toggle.addEventListener('click', function() {
+      var isHidden = panel.classList.contains('hidden');
+      panel.classList.toggle('hidden');
+      toggle.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+    });
+  })();
+</script>
 {% endif %}
