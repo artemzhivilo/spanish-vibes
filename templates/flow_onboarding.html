@@ -23,35 +23,18 @@
             />
             <span class="option-title">Tier {{ tier.tier }}</span>
             <span class="option-note">{{ tier.concepts | length }} concepts</span>
+            <div class="option-concepts">
+              {% for concept in tier.concepts %}
+                <span class="option-concept">{{ concept.name }}</span>
+              {% endfor %}
+            </div>
           </label>
         {% endfor %}
       </div>
     </section>
 
     <section class="onboarding-section">
-      <h2>2. Pick a concept in that tier</h2>
-      <p class="section-help">Optional. If you leave this blank, we will start at the first concept in the tier.</p>
-      <div class="rounded-xl border border-[#2f4755] bg-[#0f1a20] p-3">
-        <label for="start_concept_id" class="block text-sm font-semibold text-slate-200 mb-2">Start concept</label>
-        <select
-          id="start_concept_id"
-          name="start_concept_id"
-          class="w-full rounded-lg bg-[#13222b] border border-[#36505f] px-3 py-2 text-slate-100"
-        >
-          <option value="">Auto-pick first concept in selected tier</option>
-          {% for tier in tier_catalog %}
-            <optgroup label="Tier {{ tier.tier }}">
-              {% for concept in tier.concepts %}
-                <option value="{{ concept.id }}" data-tier="{{ tier.tier }}">{{ concept.name }}</option>
-              {% endfor %}
-            </optgroup>
-          {% endfor %}
-        </select>
-      </div>
-    </section>
-
-    <section class="onboarding-section">
-      <h2>3. What interests you?</h2>
+      <h2>2. What interests you?</h2>
       <p class="section-help">Optional, but this helps personalize your first cards.</p>
       <div class="topic-grid">
         {% for topic in topics %}
@@ -68,32 +51,7 @@
 </div>
 
 <script>
-  (function () {
-    var tierRadios = Array.from(document.querySelectorAll('input[name="start_tier"]'));
-    var conceptSelect = document.getElementById('start_concept_id');
-    if (!tierRadios.length || !conceptSelect) return;
-
-    function syncConceptOptions() {
-      var selectedTier = tierRadios.find(function (r) { return r.checked; });
-      var tierValue = selectedTier ? selectedTier.value : '';
-      Array.from(conceptSelect.options).forEach(function (opt, index) {
-        if (index === 0) {
-          opt.hidden = false;
-          return;
-        }
-        var optTier = opt.getAttribute('data-tier');
-        opt.hidden = !!(optTier && tierValue && optTier !== tierValue);
-      });
-      if (conceptSelect.selectedOptions[0] && conceptSelect.selectedOptions[0].hidden) {
-        conceptSelect.value = '';
-      }
-    }
-
-    tierRadios.forEach(function (radio) {
-      radio.addEventListener('change', syncConceptOptions);
-    });
-    syncConceptOptions();
-  })();
+  // Reserved for future onboarding interactions.
 </script>
 
 <style>
@@ -200,6 +158,24 @@
   .option-note {
     font-size: 0.78rem;
     color: #8ea5b2;
+  }
+
+  .option-concepts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.45rem;
+  }
+
+  .option-concept {
+    border: 1px solid #2f4755;
+    border-radius: 999px;
+    background: #13222b;
+    color: #cfe1ea;
+    font-size: 0.72rem;
+    line-height: 1.1;
+    padding: 0.28rem 0.52rem;
+    white-space: nowrap;
   }
 
   .topic-grid {
