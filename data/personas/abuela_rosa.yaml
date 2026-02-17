@@ -15,6 +15,12 @@ interests:
   music: 0.6
   nature: 0.5
 vocab_level: traditional_a1
+min_difficulty: 1
+max_difficulty: 2
+unlock_concepts:
+  - greetings
+  - family_vocab
+  - food_vocab
 backstory: |
   Rosa is a 68-year-old retired school teacher from Sevilla. Everyone calls her
   Abuela Rosa. She's incredibly warm and patient. She loves cooking, talking about

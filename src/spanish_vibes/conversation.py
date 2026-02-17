@@ -404,6 +404,7 @@ class ConversationEngine:
         difficulty: int = 1,
         persona_prompt: str | None = None,
         persona_name: str = "Marta",
+        conversation_guardrails: str | None = None,
     ) -> str:
         """Create a conversation starter for the selected persona."""
         if not ai_available():
@@ -443,6 +444,12 @@ class ConversationEngine:
                 f"- Keep it {cefr}-appropriate\n"
                 "- Ask a question that requires the target grammar in the answer\n"
                 "- Return ONLY the Spanish text, nothing else"
+            )
+        if conversation_guardrails:
+            system_content = (
+                f"{system_content}\n\n"
+                "LEARNER GUARDRAILS (STRICT):\n"
+                f"{conversation_guardrails}"
             )
 
         try:
@@ -587,6 +594,7 @@ class ConversationEngine:
         difficulty: int = 1,
         persona_prompt: str | None = None,
         persona_name: str = "Marta",
+        conversation_guardrails: str | None = None,
     ) -> RespondResult:
         """Single LLM call: evaluate grammar, generate persona reply with recast,
         decide if conversation should continue, and optionally provide a hint."""
@@ -637,6 +645,12 @@ class ConversationEngine:
                 f"CONCEPT STEERING: {steering}\n\n"
                 f"{scaffolding}\n\n"
                 "Return ONLY valid JSON with keys: reply, corrections, is_correct, should_continue, hint."
+            )
+        if conversation_guardrails:
+            system_prompt = (
+                f"{system_prompt}\n\n"
+                "LEARNER GUARDRAILS (STRICT):\n"
+                f"{conversation_guardrails}"
             )
 
         # Build chat history

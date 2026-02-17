@@ -7,6 +7,7 @@ from html import escape
 from datetime import datetime, timezone
 from pathlib import Path
 from dataclasses import asdict
+import re
 from typing import Any
 
 import markdown
@@ -178,8 +179,7 @@ async def start_placement(
     """Start placement conversation after lightweight onboarding questions."""
     if is_user_onboarded():
         return RedirectResponse(url="/flow", status_code=303)
-
-    session = start_or_resume_session()
+    normalized_experience = experience_level.strip().lower()
 
     base_level_map = {
         "never": 1,
@@ -188,7 +188,7 @@ async def start_placement(
         "advanced": 4,
         "heritage": 4,
     }
-    starting_level = base_level_map.get(experience_level.strip().lower(), 1)
+    starting_level = base_level_map.get(normalized_experience, 1)
 
     comp_level = 0
     for value in comprehension_levels:
@@ -209,6 +209,14 @@ async def start_placement(
         except Exception:
             pass
 
+    # Absolute beginners should go straight into the first learning cards.
+    # Skip placement conversation entirely for the "never studied" path.
+    if normalized_experience == "never":
+        set_user_onboarded(True)
+        return RedirectResponse(url="/flow", status_code=303)
+
+    session = start_or_resume_session()
+
     concept_id = _pick_placement_concept(starting_level)
     topic = _pick_placement_topic(interest_topic_ids, starting_level=starting_level)
 
@@ -228,6 +236,10 @@ async def start_placement(
     )
     persona_prompt = _compose_persona_prompt(persona, type_instruction=type_instruction)
     effective_difficulty = min(3, max(1, starting_level))
+    placement_guardrails = _build_conversation_guardrails(
+        concept_id=concept_id,
+        difficulty=effective_difficulty,
+    )
 
     opener = engine.generate_opener(
         topic,
@@ -235,6 +247,7 @@ async def start_placement(
         effective_difficulty,
         persona_prompt=persona_prompt,
         persona_name=persona.name,
+        conversation_guardrails=placement_guardrails,
     )
 
     timestamp = now_iso()
@@ -435,6 +448,7 @@ async def flow_card(
                     "word_sentence": card_context.word_sentence,
                     "scrambled_words": card_context.scrambled_words,
                     "correct_sentence": card_context.correct_sentence,
+                    "english_prompt": card_context.english_prompt,
                 }
             ),
         }
@@ -471,6 +485,7 @@ async def flow_card(
                 "option_misconceptions": card_context.option_misconceptions,
                 "difficulty": card_context.difficulty,
                 "mcq_card_id": card_context.mcq_card_id,
+                "english_prompt": card_context.english_prompt,
             }
         ),
     }
@@ -509,6 +524,7 @@ async def flow_answer(
         word_sentence=card_data.get("word_sentence", ""),
         scrambled_words=card_data.get("scrambled_words", []),
         correct_sentence=card_data.get("correct_sentence", ""),
+        english_prompt=card_data.get("english_prompt", ""),
     )
 
     result = process_mcq_answer(
@@ -553,6 +569,16 @@ async def flow_answer(
         "total_concepts": result.total_concepts,
         "concept_name": _get_concept_name(result.concept_id),
         "misconception_hint": _get_misconception_hint(result.misconception_concept),
+        "wrong_explanation": (
+            _build_wrong_explanation(
+                card_type=card_context.card_type,
+                chosen_option=chosen_option,
+                correct_answer=result.correct_answer,
+                misconception_hint=_get_misconception_hint(result.misconception_concept),
+            )
+            if not result.is_correct
+            else ""
+        ),
     }
     return templates.TemplateResponse(request, "partials/flow_feedback.html", context)
 
@@ -609,6 +635,7 @@ async def flow_teach_seen(
                 "option_misconceptions": card_context.option_misconceptions,
                 "difficulty": card_context.difficulty,
                 "mcq_card_id": card_context.mcq_card_id,
+                "english_prompt": card_context.english_prompt,
             }
         ),
     }
@@ -628,18 +655,64 @@ async def flow_word_intro_complete(
 @router.post("/flow/word-match/submit", response_class=HTMLResponse)
 async def flow_word_match_submit(
     request: Request,
-    session_id: int = Form(...),
-    pair_count: int = Form(...),
-    **form_data: str,
 ) -> Response:
-    count = int(pair_count)
+    form_data = await request.form()
+    try:
+        session_id = int(str(form_data.get("session_id") or "0"))
+        count = int(str(form_data.get("pair_count") or "0"))
+    except ValueError:
+        return HTMLResponse("<p>Invalid match submission.</p>", status_code=400)
+
+    if session_id <= 0 or count <= 0:
+        return HTMLResponse("<p>Invalid match submission.</p>", status_code=400)
+
+    concept_id = str(form_data.get("concept_id") or "greetings").strip() or "greetings"
+    correct_pairs = 0
     for idx in range(count):
         word_id = form_data.get(f"word_id_{idx}")
         expected = form_data.get(f"answer_key_{idx}")
         answer = form_data.get(f"answer_{idx}")
+        is_pair_correct = bool(expected and answer == expected)
+        if is_pair_correct:
+            correct_pairs += 1
         if word_id and expected:
-            mark_word_practice_result(int(word_id), answer == expected)
-    return await flow_card(request, session_id=session_id)
+            mark_word_practice_result(int(word_id), is_pair_correct)
+
+    all_correct = correct_pairs == count
+    result = process_mcq_answer(
+        session_id=session_id,
+        card_context=FlowCardContext(
+            card_type="word_match",
+            concept_id=concept_id,
+            question="Match the pairs",
+            correct_answer="All pairs matched",
+            difficulty=1,
+        ),
+        chosen_option="All pairs matched" if all_correct else f"{correct_pairs}/{count} pairs",
+        response_time_ms=None,
+    )
+
+    context = {
+        "session_id": session_id,
+        "result": result,
+        "chosen_option": "" if all_correct else f"{correct_pairs}/{count} pairs",
+        "correct_answer": result.correct_answer,
+        "is_correct": result.is_correct,
+        "xp_earned": result.xp_earned,
+        "streak": result.streak,
+        "cards_answered": result.cards_answered,
+        "concepts_mastered": result.concepts_mastered,
+        "total_concepts": result.total_concepts,
+        "concept_name": _get_concept_name(result.concept_id),
+        "misconception_hint": None,
+        "wrong_explanation": (
+            f"You matched {correct_pairs}/{count} pairs. "
+            "Each Spanish item must be linked to its exact English translation."
+            if not all_correct
+            else ""
+        ),
+    }
+    return templates.TemplateResponse(request, "partials/flow_feedback.html", context)
 
 
 @router.post("/flow/end", response_class=HTMLResponse)
@@ -1206,6 +1279,11 @@ async def story_card_submit(
         "total_concepts": result.total_concepts,
         "concept_name": _get_concept_name(result.concept_id),
         "misconception_hint": None,
+        "wrong_explanation": (
+            f"You got {correct}/{total}. A passing score is at least 60%."
+            if not result.is_correct
+            else ""
+        ),
     }
     return templates.TemplateResponse(request, "partials/flow_feedback.html", context)
 
@@ -1267,6 +1345,10 @@ async def conversation_respond(
     )
 
     # Single LLM call: evaluate + reply + steer
+    conversation_guardrails = _build_conversation_guardrails(
+        concept_id=concept_id,
+        difficulty=difficulty,
+    )
     result = engine.respond_to_user(
         messages=messages,
         user_text=user_text_for_engine,
@@ -1275,6 +1357,7 @@ async def conversation_respond(
         difficulty=difficulty,
         persona_prompt=persona_prompt,
         persona_name=persona.name,
+        conversation_guardrails=conversation_guardrails,
     )
 
     # Add user message with corrections from the evaluation
@@ -1383,6 +1466,29 @@ async def conversation_respond(
     return templates.TemplateResponse(
         request, "partials/flow_conversation.html", context
     )
+
+
+@router.post("/flow/conversation/skip", response_class=HTMLResponse)
+async def conversation_skip(
+    request: Request,
+    session_id: int = Form(...),
+    conversation_id: int = Form(...),
+) -> Response:
+    from .db import _open_connection
+
+    with _open_connection() as conn:
+        user_id = _uid()
+        conn.execute(
+            """
+            UPDATE flow_conversations
+            SET completed = 1
+            WHERE user_id = ? AND id = ?
+            """,
+            (user_id, conversation_id),
+        )
+        conn.commit()
+
+    return await flow_card(request, session_id=session_id)
 
 
 @router.get("/flow/conversation/summary", response_class=HTMLResponse)
@@ -2419,6 +2525,79 @@ def _pick_next_learning_concept_name() -> str:
     return first[0].name if first else "your next concept"
 
 
+def _get_seen_and_mastered_concepts() -> tuple[set[str], set[str]]:
+    knowledge = get_all_concept_knowledge()
+    seen = {
+        cid
+        for cid, ck in knowledge.items()
+        if int(ck.n_attempts) > 0 or bool(ck.teach_shown)
+    }
+    mastered = {
+        cid
+        for cid, ck in knowledge.items()
+        if is_mastered(float(ck.p_mastery), int(ck.n_attempts))
+    }
+    return seen, mastered
+
+
+def _build_conversation_guardrails(
+    *,
+    concept_id: str,
+    difficulty: int,
+    seen_concepts: set[str] | None = None,
+    mastered_concepts: set[str] | None = None,
+) -> str:
+    concepts = load_concepts()
+    seen, mastered = (
+        (seen_concepts or set(), mastered_concepts or set())
+        if seen_concepts is not None and mastered_concepts is not None
+        else _get_seen_and_mastered_concepts()
+    )
+    allowed_concepts = set(seen) | set(mastered) | {concept_id}
+
+    concept_names: list[str] = []
+    for cid in sorted(allowed_concepts):
+        concept = concepts.get(cid)
+        if concept:
+            concept_names.append(concept.name)
+        if len(concept_names) >= 10:
+            break
+
+    vocab_items: list[str] = []
+    if allowed_concepts:
+        placeholders = ",".join("?" for _ in allowed_concepts)
+        with _open_connection() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT spanish FROM words
+                WHERE concept_id IN ({placeholders})
+                  AND status IN ('introduced', 'practicing', 'known')
+                ORDER BY times_seen DESC, id DESC
+                LIMIT 80
+                """,
+                tuple(sorted(allowed_concepts)),
+            ).fetchall()
+        vocab_items = [str(row["spanish"]).strip() for row in rows if row["spanish"]]
+
+    vocab_text = ", ".join(vocab_items[:40]) if vocab_items else "hola, sí, no, gracias"
+    concept_text = (
+        ", ".join(concept_names)
+        if concept_names
+        else (_get_concept_name(concept_id) or concept_id)
+    )
+    max_words = 8 if difficulty <= 1 else (12 if difficulty == 2 else 16)
+
+    return (
+        f"- PRIORITY CONCEPT: {concept_id} ({_get_concept_name(concept_id)})\n"
+        f"- ALLOWED CONCEPT SCOPE: {concept_text}\n"
+        f"- ALLOWED VOCAB (prefer strongly): {vocab_text}\n"
+        f"- Use short sentences (max {max_words} words).\n"
+        "- Ask one simple question at a time.\n"
+        "- Do NOT jump to advanced tenses unless the learner uses them first.\n"
+        "- If unsure, simplify and reuse prior learner vocabulary."
+    )
+
+
 def _compose_persona_prompt(
     persona: Any, *, type_instruction: str | None = None
 ) -> str:
@@ -2461,12 +2640,18 @@ def _start_chat_conversation_card(
     from .db import _open_connection, now_iso
 
     engine = ConversationEngine()
+    seen_concepts, mastered_concepts = _get_seen_and_mastered_concepts()
     if forced_persona_id:
         persona = load_persona(forced_persona_id)
     else:
         last_conv = get_last_conversation_info(session_id)
         exclude_persona_id = last_conv.get("persona_id") if last_conv else None
-        persona = select_persona(exclude_id=exclude_persona_id)
+        persona = select_persona(
+            exclude_id=exclude_persona_id,
+            difficulty=difficulty,
+            seen_concepts=seen_concepts,
+            mastered_concepts=mastered_concepts,
+        )
     type_instruction = get_type_instruction(
         conversation_type,
         concept_id=concept_id,
@@ -2477,6 +2662,12 @@ def _start_chat_conversation_card(
     persona_prompt = _compose_persona_prompt(persona, type_instruction=type_instruction)
     user_level_info = get_user_level()
     effective_difficulty = int(user_level_info.get("session_difficulty", difficulty))
+    conversation_guardrails = _build_conversation_guardrails(
+        concept_id=concept_id,
+        difficulty=effective_difficulty,
+        seen_concepts=seen_concepts,
+        mastered_concepts=mastered_concepts,
+    )
 
     opener = engine.generate_opener(
         topic,
@@ -2484,6 +2675,7 @@ def _start_chat_conversation_card(
         effective_difficulty,
         persona_prompt=persona_prompt,
         persona_name=persona.name,
+        conversation_guardrails=conversation_guardrails,
     )
 
     timestamp = now_iso()
@@ -2553,9 +2745,15 @@ def _render_story_comprehension_card(
     from .conversation import get_random_topic
 
     actual_topic = topic or get_random_topic()
+    seen_concepts, mastered_concepts = _get_seen_and_mastered_concepts()
     last_conv = get_last_conversation_info(session_id)
     exclude_persona_id = last_conv.get("persona_id") if last_conv else None
-    persona = select_persona(exclude_id=exclude_persona_id)
+    persona = select_persona(
+        exclude_id=exclude_persona_id,
+        difficulty=difficulty,
+        seen_concepts=seen_concepts,
+        mastered_concepts=mastered_concepts,
+    )
     persona_prompt = _compose_persona_prompt(persona)
     user_level_info = get_user_level()
     effective_difficulty = int(user_level_info.get("session_difficulty", difficulty))
@@ -2612,8 +2810,22 @@ def _get_concept_teach_html(concept_id: str) -> str:
     concepts = load_concepts()
     concept = concepts.get(concept_id)
     if concept and concept.teach_content:
-        return _render_teach(concept.teach_content)
+        return _render_teach(_format_teach_snippet_markdown(concept.teach_content))
     return ""
+
+
+def _format_teach_snippet_markdown(content: str | None) -> str:
+    """Insert readable line breaks for dense one-line snippet content."""
+    text = (content or "").strip()
+    if not text:
+        return ""
+    # Respect authored multiline snippets.
+    if "\n" in text:
+        return text
+    # Break before repeated markdown-bold term definitions:
+    # **un** — ... **una** — ... -> separate paragraphs.
+    text = re.sub(r"\s+(?=\*\*[^*]+\*\*\s+[—-])", "\n\n", text)
+    return text
 
 
 def _get_misconception_hint(misconception_id: str | None) -> str:
@@ -2624,3 +2836,37 @@ def _get_misconception_hint(misconception_id: str | None) -> str:
     if concept:
         return f"Review: {concept.name}"
     return ""
+
+
+def _build_wrong_explanation(
+    *,
+    card_type: str,
+    chosen_option: str,
+    correct_answer: str,
+    misconception_hint: str = "",
+) -> str:
+    if misconception_hint:
+        if chosen_option:
+            return (
+                f"{misconception_hint}. "
+                f"\"{chosen_option}\" does not match the concept required by this question."
+            )
+        return misconception_hint
+
+    if card_type == "sentence_builder":
+        return (
+            "The word order is not correct for this sentence. "
+            "Build the exact Spanish sentence in the right order."
+        )
+    if card_type == "fill_blank":
+        return (
+            f"This blank needs \"{correct_answer}\" based on the sentence context."
+        )
+    if card_type in {"word_practice", "emoji_association", "mcq"}:
+        if chosen_option:
+            return (
+                f"\"{chosen_option}\" is not the correct choice for this prompt. "
+                f"The correct answer is \"{correct_answer}\"."
+            )
+        return f"The correct answer is \"{correct_answer}\"."
+    return f"The correct answer is \"{correct_answer}\"."

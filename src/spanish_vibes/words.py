@@ -130,6 +130,59 @@ def _normalize_spanish(word: str) -> str:
     return word.strip().lower()
 
 
+def _is_placeholder_example_sentence(sentence: str | None) -> bool:
+    if not sentence:
+        return False
+    normalized = sentence.strip().casefold()
+    if not normalized:
+        return False
+    if "simple sentence" in normalized:
+        return True
+    # Catch Spanish template variants and common typo "frasa".
+    if re.search(r"\ben\s+una?\s+fra[sz]e\s+simple\b", normalized):
+        return True
+    if re.search(r"\ben\s+una?\s+oraci[oó]n\s+simple\b", normalized):
+        return True
+    return False
+
+
+def _looks_like_grammar_fragment(text: str | None) -> bool:
+    if not text:
+        return True
+    normalized = text.strip().casefold()
+    if not normalized:
+        return True
+    if normalized.startswith("-"):
+        return True
+    if "**" in normalized or " = " in normalized or "->" in normalized:
+        return True
+    if " + " in normalized:
+        return True
+    if "/" in normalized and len(normalized) <= 24:
+        return True
+    if normalized.count(",") >= 1 and len(normalized.split()) <= 8:
+        return True
+    if _is_placeholder_example_sentence(normalized):
+        return True
+    return False
+
+
+def _is_usable_word_entry(word: Word) -> bool:
+    spanish = word.spanish.strip()
+    english = word.english.strip()
+    if not spanish or not english:
+        return False
+    if spanish.casefold() == english.casefold():
+        return False
+    if _looks_like_grammar_fragment(spanish):
+        return False
+    if _looks_like_grammar_fragment(english):
+        return False
+    if word.example_sentence and _is_placeholder_example_sentence(word.example_sentence):
+        return False
+    return True
+
+
 def seed_words() -> int:
     """Seed words from data/seed_words.json. Returns count inserted."""
     if not SEED_WORDS_PATH.exists():
@@ -272,16 +325,20 @@ def record_word_tap(
 
 def get_intro_candidate(concept_id: str) -> Word | None:
     with _open_connection() as conn:
-        row = conn.execute(
+        rows = conn.execute(
             """
             SELECT * FROM words
             WHERE concept_id = ? AND status = 'unseen'
             ORDER BY created_at
-            LIMIT 1
+            LIMIT 24
             """,
             (concept_id,),
-        ).fetchone()
-    return _row_to_word(row) if row is not None else None
+        ).fetchall()
+    for row in rows:
+        word = _row_to_word(row)
+        if _is_usable_word_entry(word):
+            return word
+    return None
 
 
 def get_intro_candidate_weighted(
@@ -298,27 +355,33 @@ def get_intro_candidate_weighted(
             ]
             if cleaned:
                 placeholders = ",".join("?" for _ in cleaned)
-                row = conn.execute(
+                rows = conn.execute(
                     f"""
                     SELECT * FROM words
                     WHERE concept_id = ? AND status = 'unseen' AND LOWER(COALESCE(topic_slug, '')) IN ({placeholders})
                     ORDER BY created_at
-                    LIMIT 1
+                    LIMIT 24
                     """,
                     (concept_id, *cleaned),
-                ).fetchone()
-                if row is not None:
-                    return _row_to_word(row)
-        row = conn.execute(
+                ).fetchall()
+                for row in rows:
+                    word = _row_to_word(row)
+                    if _is_usable_word_entry(word):
+                        return word
+        rows = conn.execute(
             """
             SELECT * FROM words
             WHERE concept_id = ? AND status = 'unseen'
             ORDER BY created_at
-            LIMIT 1
+            LIMIT 24
             """,
             (concept_id,),
-        ).fetchone()
-    return _row_to_word(row) if row is not None else None
+        ).fetchall()
+    for row in rows:
+        word = _row_to_word(row)
+        if _is_usable_word_entry(word):
+            return word
+    return None
 
 
 def mark_word_introduced(word_id: int) -> None:
@@ -333,16 +396,20 @@ def mark_word_introduced(word_id: int) -> None:
 
 def get_practice_candidate(concept_id: str) -> Word | None:
     with _open_connection() as conn:
-        row = conn.execute(
+        rows = conn.execute(
             """
             SELECT * FROM words
             WHERE concept_id = ? AND status IN ('introduced', 'practicing')
             ORDER BY updated_at
-            LIMIT 1
+            LIMIT 48
             """,
             (concept_id,),
-        ).fetchone()
-    return _row_to_word(row) if row is not None else None
+        ).fetchall()
+    for row in rows:
+        word = _row_to_word(row)
+        if _is_usable_word_entry(word):
+            return word
+    return None
 
 
 def mark_word_practice_result(word_id: int, is_correct: bool) -> None:
@@ -374,6 +441,8 @@ def build_practice_card(concept_id: str) -> dict[str, Any] | None:
     word = get_practice_candidate(concept_id)
     if word is None:
         return None
+    if not _is_usable_word_entry(word):
+        return None
     sentence = _blank_sentence(word)
     options = _build_options(word)
     if len(options) < 4 or not sentence:
@@ -401,18 +470,76 @@ def build_match_card(concept_id: str, count: int = 4) -> dict[str, Any] | None:
             ORDER BY RANDOM()
             LIMIT ?
             """,
-            (concept_id, count + 1),
+            (concept_id, max(24, count * 8)),
         ).fetchall()
     words = [_row_to_word(row) for row in rows]
-    if len(words) < 3:
+    cleaned_pairs: list[tuple[Word, str]] = []
+    seen_english: set[str] = set()
+    for word in words:
+        english_clean = _clean_match_english(word.english)
+        if not _is_usable_match_pair(word.spanish, english_clean):
+            continue
+        key = english_clean.casefold()
+        if key in seen_english:
+            continue
+        seen_english.add(key)
+        cleaned_pairs.append((word, english_clean))
+    if len(cleaned_pairs) < count:
         return None
-    selected = words[: min(len(words), count)]
-    english_options = [w.english for w in selected]
+    selected = cleaned_pairs[:count]
+    english_options = [english for _, english in selected]
     random.shuffle(english_options)
     pairs = [
-        {"word_id": w.id, "spanish": w.spanish, "english": w.english} for w in selected
+        {"word_id": w.id, "spanish": w.spanish, "english": english}
+        for w, english in selected
     ]
     return {"pairs": pairs, "options": english_options}
+
+
+def _is_usable_match_pair(spanish: str, english: str) -> bool:
+    sp = spanish.strip().lower()
+    en = english.strip().lower()
+    if not sp or not en:
+        return False
+    # Skip untranslated/self-translated rows like "aste" -> "aste".
+    if sp == en:
+        return False
+    # Skip morphology fragments and placeholders that produce nonsense cards.
+    if "/" in sp or "/" in en:
+        return False
+    if len(sp) < 2 or len(en) < 2:
+        return False
+    if _looks_like_grammar_fragment(sp) or _looks_like_grammar_fragment(en):
+        return False
+    if _looks_like_sentence_or_example(en):
+        return False
+    return True
+
+
+def _clean_match_english(english: str) -> str:
+    text = english.strip()
+    # Strip markdown emphasis from imported content.
+    text = text.replace("*", "").strip()
+    # Remove trailing example/sentence annotations.
+    for marker in (":", " — ", " - ", "—", "("):
+        idx = text.find(marker)
+        if idx > 0:
+            text = text[:idx].strip()
+            break
+    return text
+
+
+def _looks_like_sentence_or_example(text: str) -> bool:
+    normalized = text.strip()
+    if not normalized:
+        return True
+    if any(ch in normalized for ch in ".!?"):
+        return True
+    if re.search(r"[áéíóúñüÁÉÍÓÚÑÜ]", normalized):
+        return True
+    if len(normalized.split()) > 5:
+        return True
+    return False
 
 
 def build_sentence_builder_card(concept_id: str) -> dict[str, Any] | None:
@@ -420,7 +547,7 @@ def build_sentence_builder_card(concept_id: str) -> dict[str, Any] | None:
     with _open_connection() as conn:
         rows = conn.execute(
             """
-            SELECT example_sentence FROM words
+            SELECT example_sentence, english FROM words
             WHERE concept_id = ? AND example_sentence IS NOT NULL AND example_sentence != ''
             ORDER BY RANDOM()
             LIMIT 8
@@ -431,6 +558,8 @@ def build_sentence_builder_card(concept_id: str) -> dict[str, Any] | None:
     for row in rows:
         sentence = str(row["example_sentence"]).strip()
         if not sentence:
+            continue
+        if _is_placeholder_example_sentence(sentence):
             continue
         clean = sentence.rstrip(".!?¡¿").strip()
         words = [w for w in clean.split() if w]
@@ -444,13 +573,64 @@ def build_sentence_builder_card(concept_id: str) -> dict[str, Any] | None:
                 break
         if scrambled == words:
             continue
+        english_prompt = _translate_sentence_to_english(sentence, concept_id=concept_id)
+        if _is_placeholder_example_sentence(english_prompt):
+            continue
+        if not english_prompt:
+            english_word = str(row["english"] or "").strip()
+            if english_word:
+                english_prompt = f'Use "{english_word}" in Spanish.'
+        if _is_placeholder_example_sentence(english_prompt):
+            continue
+        if not english_prompt:
+            english_prompt = "Build this idea in Spanish."
+
         return {
             "correct_words": words,
             "scrambled_words": scrambled,
             "punctuation": punctuation,
             "correct_sentence": " ".join(words) + punctuation,
+            "english_prompt": english_prompt,
         }
     return None
+
+
+def _translate_sentence_to_english(sentence: str, *, concept_id: str) -> str:
+    from .lexicon import translate_spanish_word
+
+    translated = translate_spanish_word(
+        sentence,
+        context=f"sentence_builder:{concept_id}",
+    )
+    if translated:
+        english = str(translated.get("translation") or "").strip()
+        if english:
+            return english
+    rough = _rough_translate_sentence(sentence)
+    return rough or ""
+
+
+def _rough_translate_sentence(sentence: str) -> str | None:
+    from .lexicon import lookup_local_translation
+
+    tokens = re.findall(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+", sentence)
+    if not tokens:
+        return None
+    translated_count = 0
+    translated_tokens: list[str] = []
+    for token in tokens:
+        english = lookup_local_translation(token.lower())
+        if english:
+            translated_tokens.append(english)
+            translated_count += 1
+        else:
+            translated_tokens.append(token)
+    if translated_count == 0:
+        return None
+    phrase = " ".join(translated_tokens).strip()
+    if not phrase:
+        return None
+    return phrase[0].upper() + phrase[1:]
 
 
 def build_emoji_card(concept_id: str) -> dict[str, Any] | None:
@@ -564,7 +744,7 @@ def _build_options(target: Word) -> list[str]:
         ).fetchall()
     for row in rows:
         spanish = str(row["spanish"])
-        if spanish != target.spanish:
+        if spanish != target.spanish and not _looks_like_grammar_fragment(spanish):
             distractors.append(spanish)
         if len(distractors) >= needed:
             break
@@ -577,7 +757,11 @@ def _build_options(target: Word) -> list[str]:
             ).fetchall()
         for row in rows:
             spanish = _normalize_spanish(str(row["spanish"]))
-            if spanish != target.spanish and spanish not in distractors:
+            if (
+                spanish != target.spanish
+                and spanish not in distractors
+                and not _looks_like_grammar_fragment(spanish)
+            ):
                 distractors.append(spanish)
             if len(distractors) >= needed:
                 break
@@ -586,18 +770,27 @@ def _build_options(target: Word) -> list[str]:
 
 
 def _blank_sentence(word: Word) -> str:
-    sentence = word.example_sentence or f"_____ significa '{word.english}'."
+    if word.example_sentence and not _is_placeholder_example_sentence(word.example_sentence):
+        sentence = word.example_sentence
+    else:
+        sentence = f"Translate: '{word.english}'."
     pattern = re.compile(re.escape(word.spanish), re.IGNORECASE)
-    return pattern.sub("_____", sentence, count=1)
+    blanked = pattern.sub("_____", sentence, count=1)
+    if blanked == sentence and word.example_sentence:
+        return f"Translate: '{word.english}'."
+    return blanked
 
 
 def _row_to_word(row: Any) -> Word:
+    example_sentence = row["example_sentence"]
+    if _is_placeholder_example_sentence(str(example_sentence or "")):
+        example_sentence = None
     return Word(
         id=int(row["id"]),
         spanish=str(row["spanish"]),
         english=str(row["english"]),
         emoji=row["emoji"],
-        example_sentence=row["example_sentence"],
+        example_sentence=example_sentence,
         concept_id=row["concept_id"],
         topic_slug=row["topic_slug"] if "topic_slug" in row.keys() else None,
         status=str(row["status"]),

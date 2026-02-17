@@ -173,6 +173,7 @@ class FlowResponse:
 @dataclass(slots=True)
 class FlowCardContext:
     """Card + metadata for rendering in flow mode (MCQ-based)."""
+
     card_type: str  # 'mcq' | 'teach' | 'conversation' | 'story_comprehension' | 'word_intro' | 'word_practice'
     concept_id: str
     question: str
@@ -191,6 +192,7 @@ class FlowCardContext:
     word_pairs: list[dict[str, str]] = field(default_factory=list)
     scrambled_words: list[str] = field(default_factory=list)
     correct_sentence: str = ""
+    english_prompt: str = ""
     conversation_type: str = "general_chat"
     target_concept_id: str | None = None
 

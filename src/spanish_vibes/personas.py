@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Dict, List
 
@@ -24,6 +24,9 @@ class Persona:
     age: int | None = None
     location: str | None = None
     occupation: str | None = None
+    min_difficulty: int = 1
+    max_difficulty: int = 3
+    unlock_concepts: list[str] = field(default_factory=list)
 
 
 _PERSONA_CACHE: Dict[str, Persona] | None = None
@@ -49,6 +52,13 @@ def _load_yaml_personas() -> Dict[str, Persona]:
             age=data.get("age"),
             location=data.get("location"),
             occupation=data.get("occupation"),
+            min_difficulty=max(1, min(3, int(data.get("min_difficulty", 1) or 1))),
+            max_difficulty=max(1, min(3, int(data.get("max_difficulty", 3) or 3))),
+            unlock_concepts=[
+                str(cid).strip()
+                for cid in (data.get("unlock_concepts") or [])
+                if str(cid).strip()
+            ],
         )
     return personas
 
@@ -74,11 +84,37 @@ def load_persona(persona_id: str | None) -> Persona:
     )
 
 
-def select_persona(exclude_id: str | None = None) -> Persona:
+def select_persona(
+    exclude_id: str | None = None,
+    *,
+    difficulty: int | None = None,
+    seen_concepts: set[str] | None = None,
+    mastered_concepts: set[str] | None = None,
+) -> Persona:
     personas = load_all_personas()
     if not personas:
         return Persona(id="marta_fallback", name="Marta", system_prompt=MARTA_PERSONA)
     candidates = [p for p in personas if p.id != exclude_id] or personas
+
+    if difficulty is not None:
+        normalized_difficulty = max(1, min(3, int(difficulty)))
+        seen = seen_concepts or set()
+        mastered = mastered_concepts or set()
+        eligible = [
+            p
+            for p in candidates
+            if p.min_difficulty <= normalized_difficulty <= p.max_difficulty
+            and (
+                not p.unlock_concepts
+                or all((cid in seen) or (cid in mastered) for cid in p.unlock_concepts)
+            )
+        ]
+        if eligible:
+            candidates = eligible
+        else:
+            easiest = sorted(candidates, key=lambda p: (p.min_difficulty, p.name))
+            marta = next((p for p in easiest if p.id == "marta"), None)
+            return marta or easiest[0]
 
     forced_persona_id = consume_dev_override("force_next_persona")
     if forced_persona_id:

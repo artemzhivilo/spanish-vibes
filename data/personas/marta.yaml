@@ -15,6 +15,10 @@ interests:
   travel: 0.6
   sports: 0.3
 vocab_level: casual_a1
+min_difficulty: 1
+max_difficulty: 2
+unlock_concepts:
+  - greetings
 backstory: |
   Marta is a 25-year-old journalism student in Madrid. She's warm and curious,
   with a slightly sarcastic sense of humor (but never mean). She loves music,

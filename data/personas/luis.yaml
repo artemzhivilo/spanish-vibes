@@ -15,6 +15,12 @@ interests:
   music: 0.5
   gaming: 0.4
 vocab_level: modern_a2
+min_difficulty: 2
+max_difficulty: 3
+unlock_concepts:
+  - subject_pronouns
+  - basic_questions
+  - present_tense_er_ir
 backstory: |
   Luis is a 30-year-old founder of a Barcelona AI startup. He lives online and
   is always juggling product launches, pitch decks, and weekend getaways. He

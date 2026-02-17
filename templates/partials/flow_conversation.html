@@ -138,7 +138,15 @@
       </div>
       <p id="conv-mic-status" class="hidden text-xs text-violet-300 mt-1 text-center"></p>
     </form>
-    <div class="mt-2 flex justify-end">
+    <div class="mt-2 flex justify-end gap-2">
+      <form hx-post="/flow/conversation/skip" hx-target="#flow-card-slot" hx-swap="innerHTML">
+        <input type="hidden" name="session_id" value="{{ session_id }}" />
+        <input type="hidden" name="conversation_id" value="{{ conversation_id }}" />
+        <button type="submit"
+          class="rounded-lg bg-slate-700/50 px-3 py-1.5 text-xs font-medium text-slate-400 transition hover:bg-slate-700 hover:text-slate-300">
+          Skip
+        </button>
+      </form>
       <a href="/flow/conversation/summary?conversation_id={{ conversation_id }}&session_id={{ session_id }}"
         hx-get="/flow/conversation/summary?conversation_id={{ conversation_id }}&session_id={{ session_id }}"
         hx-target="#flow-card-slot"

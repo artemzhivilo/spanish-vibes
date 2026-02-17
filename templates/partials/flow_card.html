@@ -140,11 +140,18 @@
       </form>
     {% endfor %}
   </div>
+  <button type="button"
+    hx-get="/flow/card?session_id={{ session_id }}"
+    hx-target="#flow-card-slot"
+    hx-swap="innerHTML"
+    class="mt-4 w-full rounded-xl bg-slate-700/70 px-6 py-3 text-base font-bold text-slate-200 transition hover:bg-slate-600 active:scale-[0.98]">
+    Skip
+  </button>
 </div>
 
 {% elif card_context.card_type == 'word_match' %}
 {% set concept_toggle = concept_teach_html is defined and concept_teach_html %}
-<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-emerald-500/20" data-concept-wrapper>
+<div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-emerald-500/20" data-concept-wrapper id="wm-card">
   <header class="flex items-center justify-between mb-4">
     {% if concept_toggle %}
       <button type="button" class="flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-300 transition hover:bg-emerald-500/25" data-concept-toggle aria-expanded="false">
@@ -168,29 +175,151 @@
   {% endif %}
 
   <p class="text-sm font-bold uppercase tracking-[0.2em] text-emerald-300 mb-2">Match the pairs</p>
-  <form hx-post="/flow/word-match/submit" hx-target="#flow-card-slot" hx-swap="innerHTML" class="flex flex-col gap-4">
+  <p class="text-xs text-slate-400 mb-4">Click a Spanish word on the left, then click its English translation on the right.</p>
+  <form hx-post="/flow/word-match/submit" hx-target="#flow-card-slot" hx-swap="innerHTML" class="flex flex-col gap-4" id="wm-form">
     <input type="hidden" name="session_id" value="{{ session_id }}" />
+    <input type="hidden" name="concept_id" value="{{ card_context.concept_id }}" />
     <input type="hidden" name="pair_count" value="{{ card_context.word_pairs | length }}" />
-    {% for pair in card_context.word_pairs %}
-      <div class="rounded-xl bg-[#0f1a1f] px-4 py-3 flex flex-col gap-2">
-        <div class="flex items-center gap-2">
-          <span class="text-lg font-semibold text-slate-50">{{ pair.spanish }}</span>
-        </div>
-        <input type="hidden" name="word_id_{{ loop.index0 }}" value="{{ pair.word_id }}" />
-        <input type="hidden" name="answer_key_{{ loop.index0 }}" value="{{ pair.english }}" />
-        <select name="answer_{{ loop.index0 }}" class="rounded-lg bg-[#141f24] px-3 py-2 text-sm text-slate-200 border border-slate-700 focus:border-emerald-500 focus:outline-none">
-          <option value="">Select translation</option>
-          {% for opt in card_context.options %}
-            <option value="{{ opt }}">{{ opt }}</option>
-          {% endfor %}
-        </select>
+
+    <div class="grid gap-3 sm:grid-cols-2">
+      <div class="grid gap-2">
+        <p class="text-[11px] uppercase tracking-[0.18em] text-emerald-400 font-bold">Spanish</p>
+        {% for pair in card_context.word_pairs %}
+          <button
+            type="button"
+            class="wm-left-btn rounded-xl border border-slate-700 bg-[#0f1a1f] px-4 py-3 text-left text-base font-semibold text-slate-100 transition hover:border-emerald-500/50 hover:bg-[#15242c]"
+            data-left-index="{{ loop.index0 }}"
+          >
+            {{ pair.spanish }}
+          </button>
+        {% endfor %}
       </div>
+
+      <div class="grid gap-2">
+        <p class="text-[11px] uppercase tracking-[0.18em] text-emerald-400 font-bold">English</p>
+        {% for opt in card_context.options %}
+          <button
+            type="button"
+            class="wm-right-btn rounded-xl border border-slate-700 bg-[#0f1a1f] px-4 py-3 text-left text-base font-semibold text-slate-100 transition hover:border-emerald-500/50 hover:bg-[#15242c]"
+            data-right-value="{{ opt }}"
+          >
+            {{ opt }}
+          </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="rounded-xl border border-slate-700 bg-[#0f1a1f] px-4 py-3 text-sm text-slate-400" id="wm-status">
+      Pairs matched: <span class="font-bold text-slate-200">0 / {{ card_context.word_pairs | length }}</span>
+    </div>
+
+    {% for pair in card_context.word_pairs %}
+      <input type="hidden" name="word_id_{{ loop.index0 }}" value="{{ pair.word_id }}" />
+      <input type="hidden" name="answer_key_{{ loop.index0 }}" value="{{ pair.english }}" />
+      <input type="hidden" name="answer_{{ loop.index0 }}" value="" data-answer-input="{{ loop.index0 }}" />
     {% endfor %}
+
     <button type="submit" class="w-full rounded-xl bg-emerald-500 px-6 py-3.5 text-base font-black text-emerald-950 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 active:scale-[0.98]">
       Check matches
     </button>
+    <button type="button"
+      hx-get="/flow/card?session_id={{ session_id }}"
+      hx-target="#flow-card-slot"
+      hx-swap="innerHTML"
+      class="w-full rounded-xl bg-slate-700/70 px-6 py-3 text-base font-bold text-slate-200 transition hover:bg-slate-600 active:scale-[0.98]">
+      Skip
+    </button>
   </form>
 </div>
+
+<script>
+  (function () {
+    var card = document.getElementById("wm-card");
+    if (!card) return;
+
+    var leftButtons = Array.from(card.querySelectorAll(".wm-left-btn"));
+    var rightButtons = Array.from(card.querySelectorAll(".wm-right-btn"));
+    var answerInputs = Array.from(card.querySelectorAll("[data-answer-input]"));
+    var statusEl = card.querySelector("#wm-status span");
+
+    var activeLeftIndex = null;
+    var matchedLeft = new Set();
+    var matchedRight = new Set();
+
+    function updateStatus() {
+      if (statusEl) {
+        statusEl.textContent = matchedLeft.size + " / " + leftButtons.length;
+      }
+    }
+
+    function clearActiveLeft() {
+      leftButtons.forEach(function (btn) {
+        btn.classList.remove("ring-2", "ring-emerald-400", "border-emerald-400");
+      });
+      activeLeftIndex = null;
+    }
+
+    function setActiveLeft(index) {
+      clearActiveLeft();
+      activeLeftIndex = index;
+      var btn = leftButtons[index];
+      if (btn) {
+        btn.classList.add("ring-2", "ring-emerald-400", "border-emerald-400");
+      }
+    }
+
+    function markMatched(leftIndex, rightValue) {
+      var leftBtn = leftButtons[leftIndex];
+      var rightBtn = rightButtons.find(function (btn) {
+        return btn.getAttribute("data-right-value") === rightValue;
+      });
+      if (!leftBtn || !rightBtn) return;
+
+      matchedLeft.add(leftIndex);
+      matchedRight.add(rightValue);
+
+      leftBtn.classList.remove("ring-2", "ring-emerald-400");
+      leftBtn.classList.add("border-emerald-500", "bg-emerald-500/10");
+      leftBtn.disabled = true;
+
+      rightBtn.classList.add("border-emerald-500", "bg-emerald-500/10");
+      rightBtn.disabled = true;
+
+      var answerInput = answerInputs.find(function (el) {
+        return parseInt(el.getAttribute("data-answer-input"), 10) === leftIndex;
+      });
+      if (answerInput) {
+        answerInput.value = rightValue;
+      }
+
+      updateStatus();
+      clearActiveLeft();
+    }
+
+    leftButtons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var index = parseInt(btn.getAttribute("data-left-index"), 10);
+        if (matchedLeft.has(index)) return;
+        if (activeLeftIndex === index) {
+          clearActiveLeft();
+          return;
+        }
+        setActiveLeft(index);
+      });
+    });
+
+    rightButtons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (activeLeftIndex === null) return;
+        var rightValue = btn.getAttribute("data-right-value");
+        if (!rightValue || matchedRight.has(rightValue)) return;
+        markMatched(activeLeftIndex, rightValue);
+      });
+    });
+
+    updateStatus();
+  })();
+</script>
 
 {% elif card_context.card_type == 'sentence_builder' %}
 <div class="flow-card-enter rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 ring-1 ring-amber-500/20" id="sb-card">
@@ -201,6 +330,9 @@
   </header>
 
   <p class="text-sm font-bold uppercase tracking-[0.2em] text-amber-300 mb-3">Build the sentence</p>
+  {% if card_context.question %}
+    <p class="text-lg font-semibold text-slate-100 mb-4">{{ card_context.question }}</p>
+  {% endif %}
 
   <div id="sb-answer" class="min-h-[3.5rem] rounded-xl bg-[#0f1a1f] px-4 py-3 mb-4 flex flex-wrap gap-2 items-center">
     <span class="text-slate-500 text-sm" id="sb-placeholder">Tap words in order...</span>
@@ -230,6 +362,15 @@
       disabled
     >
       Check Answer
+    </button>
+    <button
+      type="button"
+      hx-get="/flow/card?session_id={{ session_id }}"
+      hx-target="#flow-card-slot"
+      hx-swap="innerHTML"
+      class="mt-3 w-full rounded-xl bg-slate-700/70 px-6 py-3 text-base font-bold text-slate-200 transition hover:bg-slate-600 active:scale-[0.98]"
+    >
+      Skip
     </button>
   </form>
 </div>
@@ -325,6 +466,13 @@
       </form>
     {% endfor %}
   </div>
+  <button type="button"
+    hx-get="/flow/card?session_id={{ session_id }}"
+    hx-target="#flow-card-slot"
+    hx-swap="innerHTML"
+    class="mt-4 w-full rounded-xl bg-slate-700/70 px-6 py-3 text-base font-bold text-slate-200 transition hover:bg-slate-600 active:scale-[0.98]">
+    Skip
+  </button>
 </div>
 
 {% elif card_context.card_type == 'fill_blank' %}
@@ -378,6 +526,13 @@
       </form>
     {% endfor %}
   </div>
+  <button type="button"
+    hx-get="/flow/card?session_id={{ session_id }}"
+    hx-target="#flow-card-slot"
+    hx-swap="innerHTML"
+    class="mt-4 w-full rounded-xl bg-slate-700/70 px-6 py-3 text-base font-bold text-slate-200 transition hover:bg-slate-600 active:scale-[0.98]">
+    Skip
+  </button>
 </div>
 
 {% else %}
@@ -429,6 +584,13 @@
       </form>
     {% endfor %}
   </div>
+  <button type="button"
+    hx-get="/flow/card?session_id={{ session_id }}"
+    hx-target="#flow-card-slot"
+    hx-swap="innerHTML"
+    class="mt-4 w-full rounded-xl bg-slate-700/70 px-6 py-3 text-base font-bold text-slate-200 transition hover:bg-slate-600 active:scale-[0.98]">
+    Skip
+  </button>
 </div>
 {% endif %}
 
@@ -436,6 +598,9 @@
 <script>
   (function() {
     var card = document.currentScript.previousElementSibling;
+    while (card && !card.hasAttribute('data-concept-wrapper')) {
+      card = card.previousElementSibling;
+    }
     if (!card) return;
     var toggle = card.querySelector('[data-concept-toggle]');
     var panel = card.querySelector('[data-concept-panel]');

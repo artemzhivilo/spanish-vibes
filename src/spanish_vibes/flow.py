@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import random
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Literal
@@ -47,8 +48,8 @@ CONVERSATION_EVERY_N_CARDS = 5
 
 # Bucket weights for card selection
 WEIGHT_SPOT_CHECK = 0.30  # mastered concepts
-WEIGHT_PRACTICE = 0.50    # learning concepts
-WEIGHT_NEW = 0.20         # new concepts
+WEIGHT_PRACTICE = 0.50  # learning concepts
+WEIGHT_NEW = 0.20  # new concepts
 _FORCEABLE_CARD_TYPES: tuple[str, ...] = (
     "mcq",
     "conversation",
@@ -157,6 +158,7 @@ class FlowAnswerResult:
 @dataclass
 class FlowSessionState:
     """In-memory session tracking (rebuilt from DB each request)."""
+
     session: FlowSession
     current_streak: int = 0
     recent_correct: list[bool] = field(default_factory=list)
@@ -239,8 +241,19 @@ def select_next_card(session_id: int) -> FlowCardContext | None:
         forced_conversation_type = _consume_forced_conversation_type()
         conversation_type = (
             forced_conversation_type
-            if forced_conversation_type in {"general_chat", "role_play", "concept_required", "tutor", "story_comprehension"}
-            else ("story_comprehension" if forced_card_type == "story_comprehension" else "general_chat")
+            if forced_conversation_type
+            in {
+                "general_chat",
+                "role_play",
+                "concept_required",
+                "tutor",
+                "story_comprehension",
+            }
+            else (
+                "story_comprehension"
+                if forced_card_type == "story_comprehension"
+                else "general_chat"
+            )
         )
         return _build_conversation_card_context(
             card_type=forced_card_type,
@@ -293,7 +306,12 @@ def select_next_card(session_id: int) -> FlowCardContext | None:
 
     # For new concepts: return teach card if teach_shown == 0
     ck = knowledge.get(concept_id)
-    if forced_card_type in (None, "teach") and ck is not None and ck.n_attempts == 0 and not ck.teach_shown:
+    if (
+        forced_card_type in (None, "teach")
+        and ck is not None
+        and ck.n_attempts == 0
+        and not ck.teach_shown
+    ):
         concept = concepts[concept_id]
         return FlowCardContext(
             card_type="teach",
@@ -309,7 +327,9 @@ def select_next_card(session_id: int) -> FlowCardContext | None:
     if forced_card_type == "word_intro" and intro_word is None:
         forced_card_type = None
     if intro_word:
-        if forced_card_type == "word_intro" or (forced_card_type is None and random.random() < 0.25):
+        if forced_card_type == "word_intro" or (
+            forced_card_type is None and random.random() < 0.25
+        ):
             return FlowCardContext(
                 card_type="word_intro",
                 concept_id=concept_id,
@@ -324,7 +344,10 @@ def select_next_card(session_id: int) -> FlowCardContext | None:
             )
 
     match_card = build_match_card(concept_id)
-    if match_card and (forced_card_type == "word_match" or (forced_card_type is None and random.random() < 0.4)):
+    if match_card and (
+        forced_card_type == "word_match"
+        or (forced_card_type is None and random.random() < 0.4)
+    ):
         return FlowCardContext(
             card_type="word_match",
             concept_id=concept_id,
@@ -343,10 +366,11 @@ def select_next_card(session_id: int) -> FlowCardContext | None:
         return FlowCardContext(
             card_type="sentence_builder",
             concept_id=concept_id,
-            question="Build the sentence",
+            question=sentence_builder["english_prompt"],
             correct_answer=sentence_builder["correct_sentence"],
             scrambled_words=sentence_builder["scrambled_words"],
             correct_sentence=sentence_builder["correct_sentence"],
+            english_prompt=sentence_builder["english_prompt"],
             interest_topics=interest_topic_names,
         )
 
@@ -469,10 +493,20 @@ def _pick_concept(
 
     # Within practice bucket, prefer lowest p_mastery
     if chosen_bucket is learning and len(chosen_bucket) > 1:
-        chosen_bucket.sort(key=lambda cid: knowledge.get(cid, ConceptKnowledge(
-            concept_id=cid, p_mastery=0.0, n_attempts=0, n_correct=0,
-            n_wrong=0, teach_shown=False, last_seen_at=None,
-        )).p_mastery)
+        chosen_bucket.sort(
+            key=lambda cid: knowledge.get(
+                cid,
+                ConceptKnowledge(
+                    concept_id=cid,
+                    p_mastery=0.0,
+                    n_attempts=0,
+                    n_correct=0,
+                    n_wrong=0,
+                    teach_shown=False,
+                    last_seen_at=None,
+                ),
+            ).p_mastery
+        )
         # Pick from bottom half with some randomness
         half = max(1, len(chosen_bucket) // 2)
         return random.choice(chosen_bucket[:half])
@@ -524,7 +558,14 @@ def _consume_forced_conversation_type() -> str | None:
     if value is None:
         return None
     normalized = value.strip().lower()
-    valid = {"general_chat", "role_play", "concept_required", "tutor", "story_comprehension", "placement"}
+    valid = {
+        "general_chat",
+        "role_play",
+        "concept_required",
+        "tutor",
+        "story_comprehension",
+        "placement",
+    }
     return normalized if normalized in valid else None
 
 
@@ -546,8 +587,10 @@ def _build_conversation_card_context(
 
     conv_concept_id = concept_id
     conv_candidates = [
-        c for c in learning_ids
-        if c != last_concept and knowledge.get(
+        c
+        for c in learning_ids
+        if c != last_concept
+        and knowledge.get(
             c,
             ConceptKnowledge(
                 concept_id=c,
@@ -558,7 +601,8 @@ def _build_conversation_card_context(
                 teach_shown=False,
                 last_seen_at=None,
             ),
-        ).n_attempts >= 3
+        ).n_attempts
+        >= 3
     ]
     if not conv_candidates:
         conv_candidates = [c for c in mastered_ids if c != last_concept]
@@ -567,12 +611,22 @@ def _build_conversation_card_context(
 
     if forced_conversation_type:
         conversation_type = forced_conversation_type
-        target_concept_id = conv_concept_id if forced_conversation_type in {"concept_required", "tutor"} else None
+        target_concept_id = (
+            conv_concept_id
+            if forced_conversation_type in {"concept_required", "tutor"}
+            else None
+        )
     else:
-        conversation_type, target_concept_id = select_conversation_type(conv_concept_id, session_id)
+        conversation_type, target_concept_id = select_conversation_type(
+            conv_concept_id, session_id
+        )
 
     effective_concept_id = target_concept_id or conv_concept_id
-    selected_card_type = "story_comprehension" if conversation_type == "story_comprehension" else card_type
+    selected_card_type = (
+        "story_comprehension"
+        if conversation_type == "story_comprehension"
+        else card_type
+    )
     if selected_card_type == "story_comprehension":
         card_kind = "story_comprehension"
     else:
@@ -615,7 +669,9 @@ def process_mcq_answer(
     if state is None:
         raise ValueError(f"Session {session_id} not found")
 
-    is_correct = chosen_option.strip().lower() == card_context.correct_answer.strip().lower()
+    is_correct = _normalize_answer_for_compare(
+        chosen_option
+    ) == _normalize_answer_for_compare(card_context.correct_answer)
     concept_id = card_context.concept_id
 
     # BKT update on target concept
@@ -648,6 +704,7 @@ def process_mcq_answer(
     if is_correct:
         xp_earned = calculate_xp_award(state.current_streak)
         from .db import add_xp, record_practice_today
+
         add_xp(xp_earned)
         record_practice_today(datetime.now(timezone.utc).strftime("%Y-%m-%d"))
 
@@ -660,7 +717,9 @@ def process_mcq_answer(
         session_id=session_id,
         card_id=None,
         response_type="mcq",
-        prompt_json=json.dumps({"question": card_context.question, "concept_id": concept_id}),
+        prompt_json=json.dumps(
+            {"question": card_context.question, "concept_id": concept_id}
+        ),
         user_answer=chosen_option,
         expected_answer=card_context.correct_answer,
         is_correct=is_correct,
@@ -688,7 +747,8 @@ def process_mcq_answer(
     concepts = load_concepts()
     all_knowledge = get_all_concept_knowledge()
     concepts_mastered = sum(
-        1 for cid, ck in all_knowledge.items()
+        1
+        for cid, ck in all_knowledge.items()
         if cid in concepts and is_mastered(ck.p_mastery, ck.n_attempts)
     )
 
@@ -705,6 +765,14 @@ def process_mcq_answer(
         concepts_mastered=concepts_mastered,
         total_concepts=len(concepts),
     )
+
+
+def _normalize_answer_for_compare(answer: str) -> str:
+    normalized = unicodedata.normalize("NFKC", answer or "").casefold().strip()
+    sanitized = "".join(
+        ch if (ch.isalnum() or ch.isspace()) else " " for ch in normalized
+    )
+    return " ".join(sanitized.split())
 
 
 def end_flow_session(session_id: int) -> FlowSession | None:

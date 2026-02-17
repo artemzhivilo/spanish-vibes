@@ -15,6 +15,12 @@ interests:
   music: 0.6
   food_cooking: 0.3
 vocab_level: casual_a2
+min_difficulty: 2
+max_difficulty: 3
+unlock_concepts:
+  - present_tense_ar
+  - gustar
+  - hobbies_free_time
 backstory: |
   Diego is a 22-year-old sports science student in Madrid. He's obsessed with
   football and plays for his university team. He uses a lot of slang and speaks
