@@ -673,6 +673,66 @@ Called every ~3-5 sessions, or when the planner detects the profile is
 stale (e.g., learner has progressed beyond what the profile describes).
 Full rewrite of `learner_profile.md`.
 
+### The Evaluation Split — Two Audiences, Two Outputs
+
+After any activity, there are two consumers of "how did it go?":
+
+1. **The planner** needs structured analysis: what grammar was used, what
+   errors occurred, what patterns are emerging, scores. This feeds its next
+   decision and the session journal. It's internal — the learner never sees it.
+
+2. **The learner** needs feedback that feels like a tutor talking, not a
+   report card. Not "concepts_demonstrated: preterite (3/4 correct),
+   engagement_quality: 0.7" but the tutor saying "Nice — you used tuve
+   correctly for the first time in conversation! That's been tricky for
+   you so that's real progress."
+
+**The split:**
+
+```
+Activity completes
+       │
+       ▼
+WORKER (fast): Generate structured evaluation
+  → JSON: {corrections, scores, grammar_used, error_patterns, ...}
+  → This is the RAW DATA. Goes to DB + planner.
+       │
+       ▼
+PLANNER (smart): Read evaluation + session context + memory
+  → Write the HUMAN feedback as a tutor message
+  → The planner knows this is a breakthrough, knows what to celebrate,
+    knows what not to belabor. It has the narrative.
+  → Also decides: what activity comes next?
+       │
+       ▼
+RENDER: Tutor message appears in chat
+  → "Nice work! You got tuve right for the first time in free
+     conversation — that's huge. You slipped back to 'teno' once
+     near the end, which is totally normal. Let's keep pushing."
+  → [Next activity card appears below]
+```
+
+**Why not have the worker write the feedback?** Because the worker doesn't
+have the narrative context. It doesn't know that "tuve" has been the main
+struggle for 3 sessions. It doesn't know that this learner appreciates
+visible progress stats. It doesn't know that the learner is getting tired
+and needs encouragement more than correction. The planner knows all of this
+from the memory files and session history.
+
+**Why not skip the worker evaluation and let the planner do everything?**
+Speed and cost. The worker evaluation runs immediately after the activity
+(fast, cheap). The planner processes the evaluation and makes its decision
+in one call (smart, but only runs once per transition). If the planner had
+to both evaluate grammar AND decide next steps AND write feedback, it would
+be slower and more error-prone.
+
+**The feedback template varies by context:**
+- After conversation: highlight specific grammar moments, quote their words
+- After drill: quick stats ("5/6, nice!"), mention specific misses
+- After circumlocution: celebrate communication success first, grammar second
+- After a frustrating activity: more encouragement, less analysis
+- Session wrap-up: comprehensive stats + what improved + next time plan
+
 ### Why Markdown Over Database
 
 1. **The planner reads prose, not SQL.** A language model understands
