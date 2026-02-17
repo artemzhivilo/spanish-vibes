@@ -33,11 +33,10 @@ MIN_CACHE_COUNT = 5
 
 def ensure_cache_populated(concept_id: str, topic: str | None = None) -> int:
     """Check cache count for concept, generate if < MIN_CACHE_COUNT. Returns count."""
-    count = count_cached_mcqs(concept_id)
-    if count >= MIN_CACHE_COUNT:
-        return count
-
     if ai_available():
+        count = count_cached_mcqs(concept_id, source="ai")
+        if count >= MIN_CACHE_COUNT:
+            return count
         generated = generate_mcq_batch(concept_id, topic=topic)
         if not generated and topic is not None:
             # Fallback: retry without topic
@@ -45,6 +44,9 @@ def ensure_cache_populated(concept_id: str, topic: str | None = None) -> int:
         return count + len(generated)
 
     # Offline fallback
+    count = count_cached_mcqs(concept_id, source="converted")
+    if count >= MIN_CACHE_COUNT:
+        return count
     converted = convert_existing_cards_to_mcq(concept_id)
     return count + len(converted)
 

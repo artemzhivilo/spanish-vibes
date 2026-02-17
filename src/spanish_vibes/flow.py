@@ -710,6 +710,7 @@ def _get_mcq_for_concept(concept_id: str) -> MCQCard | None:
         concept_id,
         limit=1,
         preferred_difficulty=preferred_difficulty,
+        preferred_source="ai" if ai_available() else None,
     )
     return mcqs[0] if mcqs else None
 

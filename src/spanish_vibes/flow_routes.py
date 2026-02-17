@@ -259,19 +259,33 @@ async def placement_results(
 async def flow_card(
     request: Request,
     session_id: int = Query(...),
+    retry: int = Query(0),
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> Response:
     """Return the next card partial for HTMX swap."""
     card_context = select_next_card(session_id)
 
     if card_context is None:
-        return templates.TemplateResponse(
-            request,
-            "partials/flow_complete.html",
-            {
-                "session": get_session(session_id),
-                "message": "No cards available. Import lessons or check back later!",
-            },
+        # Avoid interrupting mobile flow with a completion screen.
+        # Retry a few times so background cache generation can catch up.
+        if retry < 3:
+            next_retry = retry + 1
+            return HTMLResponse(
+                (
+                    f'<div hx-get="/flow/card?session_id={session_id}&retry={next_retry}" '
+                    'hx-trigger="load delay:400ms" '
+                    'hx-target="#flow-card-slot" '
+                    'hx-swap="innerHTML">'
+                    '<div class="rounded-2xl bg-[#1a2d35] p-6 text-center text-slate-400 '
+                    'ring-1 ring-slate-700/40">Loading next card...</div>'
+                    "</div>"
+                )
+            )
+        return HTMLResponse(
+            (
+                '<div class="rounded-2xl bg-[#1a2d35] p-6 text-center text-slate-400 '
+                'ring-1 ring-slate-700/40">Preparing more cards...</div>'
+            )
         )
 
     # Background prefetch for upcoming concepts
@@ -539,13 +553,16 @@ async def flow_teach_seen(
     # Return next card (will be an MCQ now)
     card_context = select_next_card(session_id)
     if card_context is None:
-        return templates.TemplateResponse(
-            request,
-            "partials/flow_complete.html",
-            {
-                "session": get_session(session_id),
-                "message": "Generating practice questions... Refresh to continue!",
-            },
+        return HTMLResponse(
+            (
+                f'<div hx-get="/flow/card?session_id={session_id}&retry=1" '
+                'hx-trigger="load delay:400ms" '
+                'hx-target="#flow-card-slot" '
+                'hx-swap="innerHTML">'
+                '<div class="rounded-2xl bg-[#1a2d35] p-6 text-center text-slate-400 '
+                'ring-1 ring-slate-700/40">Generating practice cards...</div>'
+                "</div>"
+            )
         )
 
     if card_context.card_type == "teach":
@@ -1904,12 +1921,15 @@ async def dev_prompt_reset(key: str = Form(...)) -> Response:
 async def clear_mcq_cache_endpoint(
     concept_id: str = Form(default=""),
 ) -> Response:
-    """Clear AI-generated MCQ cache so questions regenerate with improved prompts."""
+    """Clear cached MCQs so questions regenerate with improved prompts."""
     cid = concept_id.strip() or None
-    deleted = clear_mcq_cache(concept_id=cid, source="ai")
+    deleted_ai = clear_mcq_cache(concept_id=cid, source="ai")
+    deleted_converted = clear_mcq_cache(concept_id=cid, source="converted")
+    deleted = deleted_ai + deleted_converted
     label = f"concept '{cid}'" if cid else "all concepts"
     return HTMLResponse(
-        f"<p>Cleared {deleted} cached MCQs for {label}. Fresh questions will generate on next play.</p>"
+        f"<p>Cleared {deleted} cached MCQs for {label} "
+        f"(ai={deleted_ai}, converted={deleted_converted}). Fresh questions will generate on next play.</p>"
     )
 
 

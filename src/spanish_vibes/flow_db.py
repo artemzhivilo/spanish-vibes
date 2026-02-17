@@ -625,6 +625,7 @@ def get_cached_mcqs(
     limit: int = 10,
     exclude_ids: list[int] | None = None,
     preferred_difficulty: int | None = None,
+    preferred_source: str | None = None,
 ) -> list[MCQCard]:
     """Return cached MCQ cards for a concept.
 
@@ -639,16 +640,37 @@ def get_cached_mcqs(
         params.extend(exclude_ids)
     rows: list[Any] = []
     with _open_connection() as conn:
+        source_clause = ""
+        source_params: list[Any] = []
+        if preferred_source:
+            source_clause = "AND source = ?"
+            source_params.append(preferred_source)
         if preferred_difficulty is not None:
-            preferred_params = [*params, int(preferred_difficulty), limit]
+            preferred_params = [
+                *params,
+                *source_params,
+                int(preferred_difficulty),
+                limit,
+            ]
             rows = conn.execute(
                 f"""
                 SELECT * FROM flow_mcq_cache
-                WHERE concept_id = ? {exclude_clause} AND difficulty = ?
+                WHERE concept_id = ? {exclude_clause} {source_clause} AND difficulty = ?
                 ORDER BY times_used ASC, RANDOM()
                 LIMIT ?
                 """,
                 preferred_params,
+            ).fetchall()
+        if not rows and preferred_source:
+            preferred_source_params = [*params, *source_params, limit]
+            rows = conn.execute(
+                f"""
+                SELECT * FROM flow_mcq_cache
+                WHERE concept_id = ? {exclude_clause} {source_clause}
+                ORDER BY times_used ASC, RANDOM()
+                LIMIT ?
+                """,
+                preferred_source_params,
             ).fetchall()
         if not rows:
             fallback_params = [*params, limit]
@@ -711,13 +733,19 @@ def increment_mcq_usage(mcq_id: int) -> None:
         conn.commit()
 
 
-def count_cached_mcqs(concept_id: str) -> int:
+def count_cached_mcqs(concept_id: str, source: str | None = None) -> int:
     """Return the number of cached MCQ cards for a concept."""
     with _open_connection() as conn:
-        row = conn.execute(
-            "SELECT COUNT(*) FROM flow_mcq_cache WHERE concept_id = ?",
-            (concept_id,),
-        ).fetchone()
+        if source:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM flow_mcq_cache WHERE concept_id = ? AND source = ?",
+                (concept_id, source),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM flow_mcq_cache WHERE concept_id = ?",
+                (concept_id,),
+            ).fetchone()
     return int(row[0])
 
 
