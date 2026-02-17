@@ -370,7 +370,7 @@ async def signup_page(request: Request, next: str | None = Query(None)) -> Respo
 @app.post("/auth/signup", response_class=HTMLResponse)
 async def signup_submit(
     request: Request,
-    email: str = Form(""),
+    username: str = Form(""),
     password: str = Form(""),
     csrf_token: str = Form(""),
     next: str = Form("/"),
@@ -386,13 +386,13 @@ async def signup_submit(
             request, "signup.html", context, status_code=400
         )
 
-    user = create_user(email=email, password=password)
+    user = create_user(username=username, password=password)
     if user is None:
         context = {
             "page_title": "Spanish Vibes · Sign Up",
             "current_page": "auth",
             "next_path": _safe_next_path(next),
-            "error": "Unable to create account. Use a unique email and password with at least 8 characters.",
+            "error": "Unable to create account. Use a unique username (3-32 letters, numbers, ., _, -) and password with at least 8 characters.",
         }
         return templates.TemplateResponse(
             request, "signup.html", context, status_code=400
@@ -422,7 +422,7 @@ async def login_page(request: Request, next: str | None = Query(None)) -> Respon
 @app.post("/auth/login", response_class=HTMLResponse)
 async def login_submit(
     request: Request,
-    email: str = Form(""),
+    username: str = Form(""),
     password: str = Form(""),
     csrf_token: str = Form(""),
     next: str = Form("/"),
@@ -438,13 +438,13 @@ async def login_submit(
             request, "login.html", context, status_code=400
         )
 
-    user = authenticate_user(email=email, password=password)
+    user = authenticate_user(username=username, password=password)
     if user is None:
         context = {
             "page_title": "Spanish Vibes · Log In",
             "current_page": "auth",
             "next_path": _safe_next_path(next),
-            "error": "Invalid email or password.",
+            "error": "Invalid username or password.",
         }
         return templates.TemplateResponse(
             request, "login.html", context, status_code=401

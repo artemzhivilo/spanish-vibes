@@ -7,6 +7,7 @@ import secrets
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import re
 
 from fastapi import Request
 from starlette.responses import Response
@@ -23,7 +24,7 @@ _active_user_id: ContextVar[int] = ContextVar("active_user_id", default=0)
 @dataclass(frozen=True, slots=True)
 class AuthUser:
     id: int
-    email: str
+    username: str
 
 
 def set_active_user_id(user_id: int) -> None:
@@ -70,13 +71,24 @@ def _verify_password(password: str, stored_hash: str) -> bool:
     return hmac.compare_digest(actual, expected)
 
 
-def _normalize_email(email: str) -> str:
-    return email.strip().lower()
+_USERNAME_RE = re.compile(r"^[a-zA-Z0-9_.-]{3,32}$")
 
 
-def create_user(email: str, password: str) -> AuthUser | None:
-    normalized_email = _normalize_email(email)
-    if not normalized_email or len(password) < 8:
+def _normalize_username(username: str) -> str:
+    return username.strip().lower()
+
+
+def _is_valid_username(username: str) -> bool:
+    return bool(_USERNAME_RE.fullmatch(username))
+
+
+def create_user(username: str, password: str) -> AuthUser | None:
+    normalized_username = _normalize_username(username)
+    if (
+        not normalized_username
+        or not _is_valid_username(normalized_username)
+        or len(password) < 8
+    ):
         return None
 
     created_at = now_iso()
@@ -84,7 +96,7 @@ def create_user(email: str, password: str) -> AuthUser | None:
     with _open_connection() as connection:
         existing = connection.execute(
             "SELECT id FROM users WHERE email = ?",
-            (normalized_email,),
+            (normalized_username,),
         ).fetchone()
         if existing is not None:
             return None
@@ -93,18 +105,20 @@ def create_user(email: str, password: str) -> AuthUser | None:
             INSERT INTO users (email, password_hash, created_at)
             VALUES (?, ?, ?)
             """,
-            (normalized_email, password_hash, created_at),
+            (normalized_username, password_hash, created_at),
         )
         connection.commit()
-        return AuthUser(id=int(cursor.lastrowid), email=normalized_email)
+        return AuthUser(id=int(cursor.lastrowid), username=normalized_username)
 
 
-def authenticate_user(email: str, password: str) -> AuthUser | None:
-    normalized_email = _normalize_email(email)
+def authenticate_user(username: str, password: str) -> AuthUser | None:
+    normalized_username = _normalize_username(username)
+    if not _is_valid_username(normalized_username):
+        return None
     with _open_connection() as connection:
         row = connection.execute(
             "SELECT id, email, password_hash FROM users WHERE email = ?",
-            (normalized_email,),
+            (normalized_username,),
         ).fetchone()
         if row is None:
             return None
@@ -115,7 +129,7 @@ def authenticate_user(email: str, password: str) -> AuthUser | None:
             (now_iso(), int(row["id"])),
         )
         connection.commit()
-        return AuthUser(id=int(row["id"]), email=str(row["email"]))
+        return AuthUser(id=int(row["id"]), username=str(row["email"]))
 
 
 def create_user_session(user_id: int, *, ttl_days: int = SESSION_TTL_DAYS) -> str:
@@ -166,7 +180,7 @@ def get_user_by_session_token(token: str | None) -> AuthUser | None:
             (now_iso(now), int(row["session_id"])),
         )
         connection.commit()
-        return AuthUser(id=int(row["user_id"]), email=str(row["email"]))
+        return AuthUser(id=int(row["user_id"]), username=str(row["email"]))
 
 
 def revoke_session(token: str | None) -> None:

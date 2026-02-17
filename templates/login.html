@@ -16,12 +16,14 @@
     <input type="hidden" name="next" value="{{ next_path or '/' }}" />
 
     <label class="block text-sm font-bold text-slate-300">
-      Email
+      Username
       <input
-        name="email"
-        type="email"
+        name="username"
+        type="text"
         required
-        autocomplete="email"
+        minlength="3"
+        maxlength="32"
+        autocomplete="username"
         class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 outline-none transition focus:border-emerald-400"
       />
     </label>
