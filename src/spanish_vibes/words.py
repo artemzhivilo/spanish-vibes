@@ -578,8 +578,8 @@ def _build_sentence_builder_prompt(
         return f"Translate: {sentence}"
     word = fallback_english_word.strip()
     if word and _is_likely_english_prompt(word):
-        return f'Translate: "{word}"'
-    return "Translate to Spanish."
+        return f"Translate: {word}"
+    return "Translate: this sentence"
 
 
 def build_sentence_builder_card(concept_id: str) -> dict[str, Any] | None:
