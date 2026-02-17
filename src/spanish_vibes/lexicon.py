@@ -279,6 +279,23 @@ def _translate_with_ai(word: str, context: str, *, phrase: bool = False) -> str 
         return None
 
 
+def _is_plausible_translation(spanish_text: str, english_text: str, *, phrase: bool) -> bool:
+    """Basic quality gate to avoid bad one-word phrase translations."""
+    source = spanish_text.strip()
+    translated = english_text.strip()
+    if not translated:
+        return False
+    if not phrase:
+        return True
+    source_tokens = _WORD_RE.findall(source)
+    translated_tokens = re.findall(r"[A-Za-z']+", translated)
+    if len(source_tokens) >= 5 and len(translated_tokens) < 3:
+        return False
+    if len(source_tokens) >= 3 and len(translated_tokens) < 2:
+        return False
+    return True
+
+
 def translate_spanish_word(word: str, context: str = "") -> dict[str, str] | None:
     """Lookup a Spanish word or phrase with cache + AI fallback."""
     cleaned = _clean_word(word)
@@ -286,7 +303,7 @@ def translate_spanish_word(word: str, context: str = "") -> dict[str, str] | Non
         return None
     is_phrase = " " in cleaned.strip()
     cached = _get_cached_translation(cleaned)
-    if cached:
+    if cached and _is_plausible_translation(cleaned, cached, phrase=is_phrase):
         return {"word": cleaned, "translation": cached, "source": "cache"}
     translation: str | None = None
     if not is_phrase:
@@ -304,7 +321,7 @@ def translate_spanish_word(word: str, context: str = "") -> dict[str, str] | Non
             _store_translation(cleaned, translation, context, source="local_phrase")
             return {"word": cleaned, "translation": translation, "source": "local_phrase"}
     translation = _translate_with_ai(cleaned, context, phrase=is_phrase)
-    if translation:
+    if translation and _is_plausible_translation(cleaned, translation, phrase=is_phrase):
         _store_translation(cleaned, translation, context, source="ai")
         return {"word": cleaned, "translation": translation, "source": "ai"}
     return None

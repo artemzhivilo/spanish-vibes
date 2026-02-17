@@ -117,22 +117,25 @@
           class="flex flex-col gap-2">
       <input type="hidden" name="session_id" value="{{ session_id }}" />
       <input type="hidden" name="conversation_id" value="{{ conversation_id }}" />
-      <div class="flex items-center gap-2">
-        <input type="text" name="user_message"
+      <div class="w-full">
+        <textarea name="user_message"
                id="conv-user-input"
                placeholder="Escribe en español..."
                autocomplete="off"
                autofocus
-               class="flex-1 rounded-xl bg-[#0f1a1f] px-4 py-3 text-sm text-slate-200 placeholder-slate-600 ring-1 ring-slate-700 focus:ring-violet-500/50 focus:outline-none transition" />
+               rows="2"
+               class="w-full min-h-[5.25rem] resize-none rounded-xl bg-[#0f1a1f] px-4 py-3 text-base text-slate-200 placeholder-slate-600 ring-1 ring-slate-700 focus:ring-violet-500/50 focus:outline-none transition"></textarea>
+      </div>
+      <div class="flex items-center justify-end gap-2">
         <button type="button"
           id="conv-mic-btn"
           onclick="startSpanishListening('#conv-user-input', '#conv-mic-status', '#conv-mic-btn')"
-          class="shrink-0 rounded-xl bg-[#0f1a1f] p-3 text-xl text-slate-400 transition hover:text-violet-300 hover:bg-violet-500/10"
+          class="shrink-0 rounded-xl bg-[#0f1a1f] px-4 py-3 text-xl text-slate-400 transition hover:text-violet-300 hover:bg-violet-500/10"
           title="Speak in Spanish">
           🎤
         </button>
         <button type="submit"
-                class="rounded-xl bg-violet-500 px-4 py-3 text-sm font-bold text-violet-950 transition hover:bg-violet-400 active:scale-[0.98]">
+                class="rounded-xl bg-violet-500 px-5 py-3 text-sm font-bold text-violet-950 transition hover:bg-violet-400 active:scale-[0.98]">
           Send
         </button>
       </div>

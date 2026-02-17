@@ -569,17 +569,15 @@ def _is_likely_english_prompt(text: str) -> bool:
     return True
 
 
-def _build_sentence_builder_prompt(
-    translated_sentence: str,
-    fallback_english_word: str,
-) -> str:
+def _build_sentence_builder_prompt(translated_sentence: str) -> str:
     sentence = translated_sentence.strip()
-    if sentence and _is_likely_english_prompt(sentence):
+    if (
+        sentence
+        and _is_likely_english_prompt(sentence)
+        and len(sentence.split()) >= 3
+    ):
         return f"Translate: {sentence}"
-    word = fallback_english_word.strip()
-    if word and _is_likely_english_prompt(word):
-        return f"Translate: {word}"
-    return "Translate: this sentence"
+    return "Translate: this sentence."
 
 
 def build_sentence_builder_card(concept_id: str) -> dict[str, Any] | None:
@@ -616,8 +614,7 @@ def build_sentence_builder_card(concept_id: str) -> dict[str, Any] | None:
         translated = _translate_sentence_to_english(sentence, concept_id=concept_id)
         if _is_placeholder_example_sentence(translated):
             continue
-        english_word = str(row["english"] or "").strip()
-        english_prompt = _build_sentence_builder_prompt(translated, english_word)
+        english_prompt = _build_sentence_builder_prompt(translated)
 
         return {
             "correct_words": words,
