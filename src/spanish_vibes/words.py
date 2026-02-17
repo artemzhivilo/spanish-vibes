@@ -542,6 +542,46 @@ def _looks_like_sentence_or_example(text: str) -> bool:
     return False
 
 
+def _is_likely_english_prompt(text: str) -> bool:
+    normalized = text.strip()
+    if not normalized:
+        return False
+    if any(ch in normalized for ch in "¡¿"):
+        return False
+    if re.search(r"[áéíóúñüÁÉÍÓÚÑÜ]", normalized):
+        return False
+    spanish_markers = {
+        " el ",
+        " la ",
+        " los ",
+        " las ",
+        " de ",
+        " que ",
+        " en ",
+        " para ",
+        " con ",
+        " una ",
+        " un ",
+    }
+    padded = f" {normalized.lower()} "
+    if any(marker in padded for marker in spanish_markers):
+        return False
+    return True
+
+
+def _build_sentence_builder_prompt(
+    translated_sentence: str,
+    fallback_english_word: str,
+) -> str:
+    sentence = translated_sentence.strip()
+    if sentence and _is_likely_english_prompt(sentence):
+        return f"Translate: {sentence}"
+    word = fallback_english_word.strip()
+    if word and _is_likely_english_prompt(word):
+        return f'Translate: "{word}"'
+    return "Translate to Spanish."
+
+
 def build_sentence_builder_card(concept_id: str) -> dict[str, Any] | None:
     """Build a sentence builder card from example sentences in words table."""
     with _open_connection() as conn:
@@ -573,17 +613,11 @@ def build_sentence_builder_card(concept_id: str) -> dict[str, Any] | None:
                 break
         if scrambled == words:
             continue
-        english_prompt = _translate_sentence_to_english(sentence, concept_id=concept_id)
-        if _is_placeholder_example_sentence(english_prompt):
+        translated = _translate_sentence_to_english(sentence, concept_id=concept_id)
+        if _is_placeholder_example_sentence(translated):
             continue
-        if not english_prompt:
-            english_word = str(row["english"] or "").strip()
-            if english_word:
-                english_prompt = f'Use "{english_word}" in Spanish.'
-        if _is_placeholder_example_sentence(english_prompt):
-            continue
-        if not english_prompt:
-            english_prompt = "Build this idea in Spanish."
+        english_word = str(row["english"] or "").strip()
+        english_prompt = _build_sentence_builder_prompt(translated, english_word)
 
         return {
             "correct_words": words,
