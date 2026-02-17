@@ -1,137 +1,61 @@
 {% extends "base.html" %}
 
-{% block title %}Spanish Vibes · Home{% endblock %}
+{% block title %}Spanish Vibes{% endblock %}
 
 {% block content %}
-<section class="grid gap-8">
-  <!-- Continue Learning hero -->
-  <div class="rounded-2xl bg-gradient-to-br from-[#1a2d35] to-[#162028] p-6 shadow-lg shadow-black/20 border border-[#234]">
-    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-      <div class="flex-1">
-        <h2 class="text-xl font-black text-slate-50 mb-2">Continue Learning</h2>
-        <div class="flex items-center gap-3 mb-3">
-          <span class="text-sm font-bold text-emerald-300">{{ concepts_mastered }}/{{ total_concepts }} concepts mastered</span>
-        </div>
-        <div class="relative h-3 w-full overflow-hidden rounded-full bg-[#0f1a1f] mb-3">
-          <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
-               style="width: {{ (concepts_mastered / total_concepts * 100) | int if total_concepts > 0 else 0 }}%"></div>
-        </div>
-        <div class="flex gap-4 text-xs text-slate-500">
-          <a href="/flow/concepts" class="hover:text-sky-300 transition font-bold">View all concepts &rarr;</a>
-          <a href="/flow/stats" class="hover:text-violet-300 transition font-bold">Study stats &rarr;</a>
-        </div>
+<div class="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+
+  <!-- Big logo -->
+  <div class="mb-6">
+    <span class="inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-4xl font-black text-white shadow-lg shadow-emerald-500/30">S</span>
+  </div>
+
+  <h2 class="text-3xl sm:text-4xl font-black text-slate-50 mb-3">Spanish Vibes</h2>
+  <p class="text-lg text-slate-400 mb-8 max-w-md">Learn Spanish with AI conversations, flashcards, and spaced repetition.</p>
+
+  {% if progress and progress.xp > 0 %}
+  <!-- Returning user: show progress + continue -->
+  <div class="w-full max-w-sm mb-8 rounded-2xl bg-[#1a2d35] p-5 shadow-lg shadow-black/20">
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-lg font-black text-emerald-950 shadow-md">{{ progress.level }}</span>
+        <span class="text-xs uppercase tracking-widest text-slate-400 font-bold">Level</span>
       </div>
-      <a href="/flow"
-        class="inline-flex items-center justify-center rounded-xl bg-amber-500 px-8 py-4 text-lg font-black text-amber-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-400 hover:shadow-amber-400/30 hover:scale-[1.02] active:scale-[0.98] whitespace-nowrap">
-        Continue Flow
-      </a>
+      {% if progress.streak > 0 %}
+      <div class="flex items-center gap-1">
+        <span class="text-xl">🔥</span>
+        <span class="text-xl font-black text-amber-400">{{ progress.streak }}</span>
+      </div>
+      {% endif %}
+      <div class="text-right">
+        <p class="text-lg font-black text-amber-400">{{ progress.xp }} XP</p>
+      </div>
     </div>
+    <div class="relative h-3 w-full overflow-hidden rounded-full bg-[#0f1a1f]">
+      <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
+           style="width: {{ progress.level_pct }}%"></div>
+    </div>
+    <p class="mt-2 text-xs text-slate-500 text-center">{{ concepts_mastered }}/{{ total_concepts }} concepts mastered</p>
   </div>
 
-  <div class="flex flex-wrap items-center gap-4">
-    <div class="rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-black text-emerald-950 shadow-md shadow-emerald-500/25">
-      Due now: <span class="text-lg">{{ due_count }}</span>
-    </div>
-    <p class="text-sm text-slate-400">
-      Adjust settings below and hit Start Quiz to begin.
-    </p>
-  </div>
+  <a href="/flow"
+     class="inline-flex items-center justify-center w-full max-w-sm rounded-2xl bg-amber-500 px-8 py-5 text-xl font-black text-amber-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-400 hover:shadow-amber-400/30 hover:scale-[1.02] active:scale-[0.98]">
+    Continue Learning
+  </a>
 
-  <form id="quiz-settings" class="rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 grid gap-6 text-sm text-slate-100">
-    <h2 class="text-xl font-bold text-slate-50">Quiz Settings</h2>
+  {% else %}
+  <!-- New user -->
+  <a href="/flow"
+     class="inline-flex items-center justify-center w-full max-w-sm rounded-2xl bg-emerald-500 px-8 py-5 text-xl font-black text-emerald-950 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 hover:shadow-emerald-400/30 hover:scale-[1.02] active:scale-[0.98]">
+    Start Learning
+  </a>
+  {% endif %}
 
-    <label class="grid gap-2">
-      <span class="font-bold text-slate-200">Decks</span>
-      <select
-        name="deck"
-        multiple
-        size="6"
-        class="h-36 w-full rounded-xl border-2 border-[#2a3f4a] bg-[#0f1a1f] px-3 py-2 text-slate-100 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition"
-      >
-        <optgroup label="Vocabulary">
-          {% for deck in vocab_decks %}
-            <option value="{{ deck.id }}" {% if deck.id in state.deck_ids and state.mode == 'vocab' %}selected{% endif %}>
-              {{ lesson_labels.get(deck.lesson_id, '') }} {{ deck.name }} ({{ deck.due_count }} / {{ deck.card_count }})
-            </option>
-          {% endfor %}
-        </optgroup>
-        <optgroup label="Fill in the Blank">
-          {% for deck in fillblank_decks %}
-            <option value="{{ deck.id }}" {% if deck.id in state.deck_ids and state.mode == 'fillblank' %}selected{% endif %}>
-              {{ lesson_labels.get(deck.lesson_id, '') }} {{ deck.name }} ({{ deck.due_count }} / {{ deck.card_count }})
-            </option>
-          {% endfor %}
-        </optgroup>
-        <optgroup label="Verbs">
-          {% for deck in verb_decks %}
-            <option value="{{ deck.id }}" {% if deck.id in state.deck_ids and state.mode == 'verbs' %}selected{% endif %}>
-              {{ lesson_labels.get(deck.lesson_id, '') }} {{ deck.name }} ({{ deck.due_count }} / {{ deck.card_count }})
-            </option>
-          {% endfor %}
-        </optgroup>
-      </select>
-    </label>
-
-    <fieldset class="grid gap-3">
-      <legend class="font-bold text-slate-200">Mode</legend>
-      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-emerald-500 has-[:checked]:bg-emerald-500/10">
-        <input type="radio" name="mode" value="vocab" {% if state.mode == 'vocab' %}checked{% endif %} class="h-4 w-4 accent-emerald-500" />
-        <span class="font-medium">Vocabulary</span>
-      </label>
-      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-emerald-500 has-[:checked]:bg-emerald-500/10">
-        <input type="radio" name="mode" value="fillblank" {% if state.mode == 'fillblank' %}checked{% endif %} class="h-4 w-4 accent-emerald-500" />
-        <span class="font-medium">Fill in the Blank</span>
-      </label>
-      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-emerald-500 has-[:checked]:bg-emerald-500/10">
-        <input type="radio" name="mode" value="verbs" {% if state.mode == 'verbs' %}checked{% endif %} class="h-4 w-4 accent-emerald-500" />
-        <span class="font-medium">Verbs</span>
-      </label>
-    </fieldset>
-
-    <fieldset class="grid gap-3">
-      <legend class="font-bold text-slate-200">Direction (vocab)</legend>
-      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-sky-500 has-[:checked]:bg-sky-500/10">
-        <input type="radio" name="direction" value="es_to_en" {% if state.direction == 'es_to_en' %}checked{% endif %} class="h-4 w-4 accent-sky-500" />
-        <span class="font-medium">Spanish → English</span>
-      </label>
-      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-sky-500 has-[:checked]:bg-sky-500/10">
-        <input type="radio" name="direction" value="en_to_es" {% if state.direction == 'en_to_es' %}checked{% endif %} class="h-4 w-4 accent-sky-500" />
-        <span class="font-medium">English → Spanish</span>
-      </label>
-    </fieldset>
-
-    <fieldset class="grid gap-3">
-      <legend class="font-bold text-slate-200">Grading</legend>
-      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-amber-500 has-[:checked]:bg-amber-500/10">
-        <input type="radio" name="grading" value="strict" {% if state.grading == 'strict' %}checked{% endif %} class="h-4 w-4 accent-amber-500" />
-        <span class="font-medium">Strict</span>
-      </label>
-      <label class="flex items-center gap-3 rounded-xl bg-[#0f1a1f] px-4 py-3 cursor-pointer transition hover:bg-[#162028] has-[:checked]:ring-2 has-[:checked]:ring-amber-500 has-[:checked]:bg-amber-500/10">
-        <input type="radio" name="grading" value="lenient" {% if state.grading == 'lenient' %}checked{% endif %} class="h-4 w-4 accent-amber-500" />
-        <span class="font-medium">Lenient (accept close matches)</span>
-      </label>
-    </fieldset>
-
-    <input type="hidden" name="points" value="0" />
-    <input type="hidden" name="streak" value="0" />
-
-    <button
-      type="button"
-      class="w-full rounded-xl bg-emerald-500 px-6 py-3.5 text-base font-black text-emerald-950 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 hover:shadow-emerald-400/30 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
-      hx-get="/quiz"
-      hx-target="#quiz-panel"
-      hx-include="#quiz-settings"
-      hx-swap="outerHTML"
-    >
-      Start Quiz
-    </button>
-  </form>
-</section>
-
-<div id="quiz-panel" class="mt-8">
-  <div class="rounded-2xl border-2 border-dashed border-[#2a3f4a] bg-[#1a2d35]/50 p-8 text-center">
-    <p class="text-lg text-slate-500 font-medium">Choose settings and start the quiz to begin.</p>
-    <p class="mt-2 text-sm text-slate-600">Your progress will be tracked automatically.</p>
+  <!-- Secondary links -->
+  <div class="mt-6 flex flex-wrap justify-center gap-3 text-sm">
+    <a href="/flow/concepts" class="rounded-full bg-violet-500/15 px-4 py-2 font-bold text-violet-300 transition hover:bg-violet-500/25">Concepts</a>
+    <a href="/flow/stats" class="rounded-full bg-sky-500/15 px-4 py-2 font-bold text-sky-300 transition hover:bg-sky-500/25">Stats</a>
+    <a href="/flow/words" class="rounded-full bg-indigo-500/15 px-4 py-2 font-bold text-indigo-300 transition hover:bg-indigo-500/25">Words</a>
   </div>
 </div>
 {% endblock %}

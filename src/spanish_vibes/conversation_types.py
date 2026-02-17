@@ -7,6 +7,7 @@ from typing import Literal
 
 from .concepts import load_concepts
 from .flow_db import get_all_concept_knowledge
+from . import prompts as prompt_config
 
 ConversationType = Literal[
     "general_chat",
@@ -124,7 +125,10 @@ def get_type_instruction(
     persona_id: str | None = None,
     starting_level: int | None = None,
 ) -> str | None:
-    template = CONVERSATION_TYPE_INSTRUCTIONS.get(conversation_type)
+    # Try YAML config first, fall back to hardcoded dict
+    template = prompt_config.get_conversation_type_instruction(conversation_type)
+    if not template:
+        template = CONVERSATION_TYPE_INSTRUCTIONS.get(conversation_type)
     if not template:
         return None
 
@@ -134,7 +138,7 @@ def get_type_instruction(
     if conversation_type == "role_play":
         scenario = select_role_play_scenario(topic=topic, persona_id=persona_id)
         if not scenario:
-            return CONVERSATION_TYPE_INSTRUCTIONS["general_chat"]
+            return prompt_config.get_conversation_type_instruction("general_chat") or CONVERSATION_TYPE_INSTRUCTIONS["general_chat"]
         return template.format(scenario=scenario)
 
     if conversation_type in {"concept_required", "tutor"}:

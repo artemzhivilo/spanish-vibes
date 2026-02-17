@@ -1,0 +1,39 @@
+{% for item in items %}
+<details class="mb-2 border border-slate-700 rounded">
+  <summary class="cursor-pointer px-2 py-1 bg-slate-900 hover:bg-slate-800 text-[10px] font-semibold text-slate-300 select-none">
+    {{ item.label }}
+  </summary>
+  <div class="p-2">
+    <form hx-post="/flow/dev/prompt-save"
+          hx-target="#prompt-feedback-{{ loop.index }}"
+          hx-swap="innerHTML">
+      <input type="hidden" name="key" value="{{ item.key }}">
+      <textarea name="value"
+                rows="8"
+                class="w-full bg-slate-950 text-slate-200 text-[10px] font-mono p-1.5 rounded border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 resize-y leading-tight"
+                spellcheck="false">{{ item.value }}</textarea>
+      <div class="flex items-center gap-1 mt-1">
+        <button type="submit" name="persist" value="0"
+                class="rounded bg-slate-700 hover:bg-slate-600 px-2 py-0.5 text-[10px]"
+                title="Apply as runtime override (resets on restart)">
+          Try it
+        </button>
+        <button type="submit" name="persist" value="1"
+                class="rounded bg-emerald-800 hover:bg-emerald-700 px-2 py-0.5 text-[10px]"
+                title="Save to prompts.yaml (persists across restarts)">
+          Save to file
+        </button>
+        <button type="button"
+                hx-post="/flow/dev/prompt-reset"
+                hx-vals='{"key": "{{ item.key }}"}'
+                hx-target="#prompt-feedback-{{ loop.index }}"
+                class="rounded bg-slate-700 hover:bg-slate-600 px-2 py-0.5 text-[10px]"
+                title="Clear runtime override, revert to file">
+          Reset
+        </button>
+        <span id="prompt-feedback-{{ loop.index }}" class="text-[10px] ml-1"></span>
+      </div>
+    </form>
+  </div>
+</details>
+{% endfor %}

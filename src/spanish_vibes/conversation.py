@@ -17,11 +17,17 @@ from typing import Any, Literal
 
 from .flow_ai import ai_available, _get_client
 from .concepts import load_concepts
+from . import prompts as prompt_config
 
 
 # ── Default Marta persona ───────────────────────────────────────────────────
+# Loaded from data/prompts.yaml — edit there to change.
 
-MARTA_PERSONA = """
+def _get_default_persona() -> str:
+    return prompt_config.get("default_persona", _MARTA_PERSONA_FALLBACK)
+
+# Hard-coded fallback in case YAML is missing/broken
+_MARTA_PERSONA_FALLBACK = """
 You are Marta, a 25-year-old university student from Madrid studying
 journalism. You're warm, curious, and a little bit sarcastic (but never
 mean). You love music, cooking, and debating about movies. You're
@@ -36,9 +42,17 @@ PERSONALITY RULES:
 - You're a friend first, language helper second
 """.strip()
 
+# Keep MARTA_PERSONA as a property for backward compat with personas.py
+MARTA_PERSONA = _MARTA_PERSONA_FALLBACK
+
 
 # ── Scaffolding rules by difficulty ──────────────────────────────────────────
+# Loaded from data/prompts.yaml — edit there to change.
 
+def _get_scaffolding(difficulty: int) -> str:
+    return prompt_config.get_scaffolding(difficulty) or SCAFFOLDING_RULES.get(difficulty, SCAFFOLDING_RULES[1])
+
+# Hard-coded fallback
 SCAFFOLDING_RULES: dict[int, str] = {
     1: """
 SCAFFOLDING (A1 - Maximum support):
@@ -402,28 +416,42 @@ class ConversationEngine:
         cefr = _DIFFICULTY_TO_CEFR.get(difficulty, "A1")
         concept_name = self._resolve_concept_name(concept)
         steering = get_concept_steering(concept)
-        persona_block = persona_prompt or MARTA_PERSONA
+        persona_block = persona_prompt or _get_default_persona()
+
+        opener_template = prompt_config.get("opener_system", "")
+        if opener_template:
+            system_content = opener_template.format(
+                persona_block=persona_block,
+                persona_name=persona_name,
+                concept_name=concept_name,
+                steering=steering,
+                topic=topic,
+                cefr=cefr,
+            )
+        else:
+            # Fallback if YAML is missing
+            system_content = (
+                f"{persona_block}\n\n"
+                f"Generate a conversation opener as {persona_name}. 1-2 sentences in Spanish.\n"
+                f"The opener MUST ask a question that REQUIRES the learner to respond "
+                f"using {concept_name}.\n\n"
+                f"STEERING: {steering}\n\n"
+                f"Topic: {topic}\n"
+                f"Difficulty: {cefr}\n\n"
+                "RULES:\n"
+                "- Write ONLY in Spanish\n"
+                f"- Keep it {cefr}-appropriate\n"
+                "- Ask a question that requires the target grammar in the answer\n"
+                "- Return ONLY the Spanish text, nothing else"
+            )
 
         try:
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=prompt_config.get_model("opener"),
                 messages=[
                     {
                         "role": "system",
-                        "content": (
-                            f"{persona_block}\n\n"
-                            f"Generate a conversation opener as {persona_name}. 1-2 sentences in Spanish.\n"
-                            f"The opener MUST ask a question that REQUIRES the learner to respond "
-                            f"using {concept_name}.\n\n"
-                            f"STEERING: {steering}\n\n"
-                            f"Topic: {topic}\n"
-                            f"Difficulty: {cefr}\n\n"
-                            "RULES:\n"
-                            "- Write ONLY in Spanish\n"
-                            f"- Keep it {cefr}-appropriate\n"
-                            "- Ask a question that requires the target grammar in the answer\n"
-                            "- Return ONLY the Spanish text, nothing else"
-                        ),
+                        "content": system_content,
                     },
                     {
                         "role": "user",
@@ -434,7 +462,7 @@ class ConversationEngine:
                         ),
                     },
                 ],
-                temperature=0.9,
+                temperature=prompt_config.get_temperature("opener"),
                 max_tokens=150,
             )
             content = (response.choices[0].message.content or "").strip()
@@ -463,32 +491,40 @@ class ConversationEngine:
         cefr = _DIFFICULTY_TO_CEFR.get(difficulty, "A1")
         concept_name = self._resolve_concept_name(concept)
 
-        system_prompt = (
-            "You help beginner Spanish learners stay in Spanish conversations.\n"
-            "The learner replied in ENGLISH or mixed language.\n"
-            "You must translate their intent to natural Spanish and identify vocabulary gaps.\n"
-            "Return STRICT JSON with keys: spanish_translation, vocabulary_gaps, encouragement.\n"
-            "Each vocabulary gap is an object with 'english' and 'spanish'.\n"
-            "Level: " + cefr + ", Target concept: " + concept_name + "."
-        )
+        sys_template = prompt_config.get("english_fallback_system", "")
+        if sys_template:
+            system_prompt = sys_template.format(cefr=cefr, concept_name=concept_name)
+        else:
+            system_prompt = (
+                "You help beginner Spanish learners stay in Spanish conversations.\n"
+                "The learner replied in ENGLISH or mixed language.\n"
+                "You must translate their intent to natural Spanish and identify vocabulary gaps.\n"
+                "Return STRICT JSON with keys: spanish_translation, vocabulary_gaps, encouragement.\n"
+                "Each vocabulary gap is an object with 'english' and 'spanish'.\n"
+                "Level: " + cefr + ", Target concept: " + concept_name + "."
+            )
 
-        user_instruction = (
-            "The learner typed this in English during a Spanish conversation:\n"
-            f"{user_text.strip()}\n\n"
-            "1. Translate their message to natural Spanish at the target level.\n"
-            "2. List specific English words/phrases they didn't know in Spanish.\n"
-            "3. Provide a friendly encouragement message.\n"
-            "Return JSON: {\"spanish_translation\": str, \"vocabulary_gaps\": [{\"english\": str, \"spanish\": str}], \"encouragement\": str}"
-        )
+        usr_template = prompt_config.get("english_fallback_user", "")
+        if usr_template:
+            user_instruction = usr_template.format(user_text=user_text.strip())
+        else:
+            user_instruction = (
+                "The learner typed this in English during a Spanish conversation:\n"
+                f"{user_text.strip()}\n\n"
+                "1. Translate their message to natural Spanish at the target level.\n"
+                "2. List specific English words/phrases they didn't know in Spanish.\n"
+                "3. Provide a friendly encouragement message.\n"
+                "Return JSON: {\"spanish_translation\": str, \"vocabulary_gaps\": [{\"english\": str, \"spanish\": str}], \"encouragement\": str}"
+            )
 
         try:
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=prompt_config.get_model("english_fallback"),
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_instruction},
                 ],
-                temperature=0.4,
+                temperature=prompt_config.get_temperature("english_fallback"),
                 max_tokens=400,
             )
         except Exception:
@@ -564,60 +600,44 @@ class ConversationEngine:
         cefr = _DIFFICULTY_TO_CEFR.get(difficulty, "A1")
         concept_name = self._resolve_concept_name(concept)
         steering = get_concept_steering(concept)
-        scaffolding = SCAFFOLDING_RULES.get(difficulty, SCAFFOLDING_RULES[1])
+        scaffolding = _get_scaffolding(difficulty)
         user_turns = sum(1 for m in messages if m.role == "user")
         turn_number = user_turns + 1  # counting the current user_text
 
-        persona_block = persona_prompt or MARTA_PERSONA
+        persona_block = persona_prompt or _get_default_persona()
 
-        system_prompt = (
-            f"{persona_block}\n\n"
-            f"CURRENT CONVERSATION CONTEXT:\n"
-            f"- Learner level: {cefr}\n"
-            f"- Grammar target: {concept_name}\n"
-            f"- Topic: {topic}\n"
-            f"- Conversation turn: {turn_number} of ~4\n\n"
-            "YOUR TASK:\n"
-            "Read the learner's last message and do THREE things simultaneously:\n\n"
-            f"1. EVALUATE: Check their Spanish for grammar errors, focusing on "
-            f"{concept_name}. Only flag errors in the TARGET grammar — if they "
-            "make a different kind of mistake that doesn't affect comprehension, "
-            "let it go. This is focused practice, not a red-pen review.\n\n"
-            f"2. REPLY: Write your conversational response as {persona_name}. 1-2 sentences "
-            "in Spanish. If they made errors in the target grammar, naturally "
-            "RECAST the correct form in your reply WITHOUT pointing it out.\n\n"
-            "   RECAST EXAMPLE:\n"
-            "   Target: preterite tense\n"
-            '   User says: "Ayer yo como pizza"\n'
-            '   BAD reply: "Se dice \'comí\', no \'como\'. ¿Qué tipo de pizza?"\n'
-            '   GOOD reply: "¡Ah, comiste pizza! Yo también comí pizza ayer, de '
-            'champiñones. ¿Qué tipo pediste?"\n'
-            "   (Notice: the correct 'comiste/comí' appears naturally, plus a "
-            "follow-up question that requires preterite again)\n\n"
-            "3. STEER: Your reply should include a follow-up question that "
-            f"requires the learner to use {concept_name} again. Keep practicing "
-            "the same grammar structure through natural conversation.\n\n"
-            f"CONCEPT STEERING: {steering}\n\n"
-            f"{scaffolding}\n\n"
-            "RESPONSE FORMAT:\n"
-            "Return a JSON object with:\n"
-            f'- "reply": your response as {persona_name} (1-2 sentences, Spanish only)\n'
-            '- "corrections": array of objects with "original", "corrected", '
-            '"explanation" (1 sentence), "concept_id" — ONLY for target grammar '
-            "errors. Each correction MUST be a single word or tiny phrase (max 3 words). "
-            "Break longer sentences into multiple corrections so each chip feels bite-sized.\n"
-            "If the learner uses ANY English word inside their Spanish reply, add a correction for each one with the Spanish equivalent (even if grammar is otherwise correct).\n"
-            '- "is_correct": boolean — was the target grammar used correctly?\n'
-            '- "should_continue": boolean — true unless the conversation has reached '
-            "a natural goodbye, the topic is exhausted, or you sense the learner "
-            "wants to stop. Always true for turns 1-2.\n"
-            '- "hint": string or null — ONLY at difficulty 1, if the learner seems '
-            "stuck (very short response, question marks, English words). Provide "
-            "a partial sentence they can complete. Example:\n"
-            '  "Intenta: Ayer yo _____ (ir = to go) al..."\n'
-            "  At difficulty 2-3, always null.\n\n"
-            "Return ONLY valid JSON."
-        )
+        respond_template = prompt_config.get("respond_system", "")
+        if respond_template:
+            system_prompt = respond_template.format(
+                persona_block=persona_block,
+                cefr=cefr,
+                concept_name=concept_name,
+                topic=topic,
+                turn_number=turn_number,
+                persona_name=persona_name,
+                steering=steering,
+                scaffolding=scaffolding,
+            )
+        else:
+            # Hard-coded fallback (should never hit if YAML exists)
+            system_prompt = (
+                f"{persona_block}\n\n"
+                f"CURRENT CONVERSATION CONTEXT:\n"
+                f"- Learner level: {cefr}\n"
+                f"- Grammar target: {concept_name}\n"
+                f"- Topic: {topic}\n"
+                f"- Conversation turn: {turn_number} of ~4\n\n"
+                "YOUR TASK:\n"
+                "Read the learner's last message and do THREE things simultaneously:\n\n"
+                f"1. EVALUATE: Check their Spanish for grammar errors, focusing on "
+                f"{concept_name}.\n\n"
+                f"2. REPLY: Write your conversational response as {persona_name}. 1-2 sentences "
+                "in Spanish.\n\n"
+                "3. STEER: Include a follow-up question.\n\n"
+                f"CONCEPT STEERING: {steering}\n\n"
+                f"{scaffolding}\n\n"
+                "Return ONLY valid JSON with keys: reply, corrections, is_correct, should_continue, hint."
+            )
 
         # Build chat history
         chat_messages: list[dict[str, str]] = [
@@ -631,9 +651,9 @@ class ConversationEngine:
 
         try:
             response = client.chat.completions.create(
-                model="gpt-4o",
+                model=prompt_config.get_model("respond"),
                 messages=chat_messages,
-                temperature=0.7,
+                temperature=prompt_config.get_temperature("respond"),
                 max_tokens=500,
                 response_format={"type": "json_object"},
             )

@@ -236,22 +236,22 @@
   </head>
   <body class="bg-[#131F24] text-slate-50 min-h-screen">
     <main class="mx-auto flex min-h-screen max-w-4xl flex-col px-4 py-8 sm:px-6">
+      {% if current_page is not defined or current_page != 'flow' %}
       <header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex items-center gap-3">
+        <a href="/" class="flex items-center gap-3 no-underline">
           <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500 text-lg font-black text-emerald-950">S</span>
           <div>
-            <h1 class="text-2xl font-bold tracking-tight">Spanish Vibes</h1>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-50">Spanish Vibes</h1>
             <p class="text-xs text-slate-400">A2 spaced-repetition trainer</p>
           </div>
-        </div>
+        </a>
         <nav class="flex flex-wrap gap-2 text-sm font-bold">
-          <a href="/" class="rounded-full px-4 py-2 transition {% if current_page is defined and current_page == 'home' %}bg-emerald-500 text-emerald-950 shadow-md shadow-emerald-500/30{% else %}bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 hover:text-emerald-200{% endif %}">Quiz</a>
+          <a href="/" class="rounded-full px-4 py-2 transition {% if current_page is defined and current_page == 'home' %}bg-emerald-500 text-emerald-950 shadow-md shadow-emerald-500/30{% else %}bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 hover:text-emerald-200{% endif %}">Home</a>
           <a href="/flow" class="rounded-full px-4 py-2 transition {% if current_page is defined and current_page == 'flow' %}bg-amber-500 text-amber-950 shadow-md shadow-amber-500/30{% else %}bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 hover:text-amber-200{% endif %}">Flow</a>
-          <a href="/decks" class="rounded-full px-4 py-2 transition {% if current_page is defined and current_page == 'decks' %}bg-sky-500 text-sky-950 shadow-md shadow-sky-500/30{% else %}bg-sky-500/15 text-sky-300 hover:bg-sky-500/25 hover:text-sky-200{% endif %}">Decks</a>
-          <a href="/lessons" class="rounded-full px-4 py-2 transition {% if current_page is defined and current_page == 'lessons' %}bg-fuchsia-500 text-fuchsia-950 shadow-md shadow-fuchsia-500/30{% else %}bg-fuchsia-500/15 text-fuchsia-300 hover:bg-fuchsia-500/25 hover:text-fuchsia-200{% endif %}">Lessons</a>
         </nav>
       </header>
-      {% if progress is defined and progress %}
+      {% endif %}
+      {% if progress is defined and progress and current_page is defined and current_page != 'flow' and current_page != 'home' %}
       <div class="mb-8 flex flex-wrap items-center gap-6 rounded-2xl bg-[#1a2d35] px-6 py-5 shadow-lg shadow-black/20">
         <!-- Level badge -->
         <div class="flex flex-col items-center gap-1">

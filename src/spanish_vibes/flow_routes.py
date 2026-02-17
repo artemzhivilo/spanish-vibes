@@ -74,6 +74,7 @@ from .memory import (
     store_persona_memories,
     store_user_facts,
 )
+from . import prompts as prompt_config
 
 router = APIRouter()
 
@@ -97,21 +98,21 @@ def _count_mastered() -> tuple[int, int]:
 
 
 @router.get("/flow", response_class=HTMLResponse)
-async def flow_page(request: Request) -> Response:
-    """Full-screen Flow Mode page."""
+async def flow_page(request: Request, dev: str | None = Query(None)) -> Response:
+    """Full-screen Flow Mode page.  Add ?dev=1 to show dev tools."""
     if not is_user_onboarded():
         return RedirectResponse(url="/flow/onboarding", status_code=303)
+
+    show_dev = dev == "1"
 
     from .app import _get_player_progress
     session = start_or_resume_session()
     state = build_session_state(session.id)
     progress = _get_player_progress()
     mastered, total = _count_mastered()
-    personas = load_all_personas()
     concepts = load_concepts()
     knowledge = get_all_concept_knowledge()
     user_level_info = get_user_level(knowledge, concepts)
-    overrides = get_all_dev_overrides()
     context = {
         "page_title": "Spanish Vibes · Flow",
         "session": session,
@@ -125,10 +126,16 @@ async def flow_page(request: Request) -> Response:
         "user_cefr": user_level_info["cefr"],
         "user_level": user_level_info["level"],
         "tier_mastery": user_level_info["tier_mastery"],
-        "dev_personas": personas,
-        "dev_concepts": sorted(concepts.values(), key=lambda c: (c.difficulty_level, c.name)),
-        "dev_overrides": overrides,
+        "show_dev": show_dev,
     }
+    if show_dev:
+        personas = load_all_personas()
+        overrides = get_all_dev_overrides()
+        context.update({
+            "dev_personas": personas,
+            "dev_concepts": sorted(concepts.values(), key=lambda c: (c.difficulty_level, c.name)),
+            "dev_overrides": overrides,
+        })
     return templates.TemplateResponse(request, "flow.html", context)
 
 
@@ -189,16 +196,62 @@ async def start_placement(
     concept_id = _pick_placement_concept(starting_level)
     topic = _pick_placement_topic(interest_topic_ids)
 
-    return _start_chat_conversation_card(
-        request=request,
-        session_id=session.id,
+    # Build the placement conversation (creates DB record, generates opener)
+    from .conversation import ConversationCard, ConversationEngine, ConversationMessage
+    from .db import _open_connection, now_iso
+
+    persona_id = _pick_placement_persona_id()
+    persona = load_persona(persona_id)
+    engine = ConversationEngine()
+    type_instruction = get_type_instruction(
+        "placement",
         concept_id=concept_id,
         topic=topic,
-        difficulty=min(3, max(1, starting_level)),
-        conversation_type="placement",
-        forced_persona_id=_pick_placement_persona_id(),
-        placement_starting_level=starting_level,
+        persona_id=persona.id,
+        starting_level=starting_level,
     )
+    persona_prompt = _compose_persona_prompt(persona, type_instruction=type_instruction)
+    effective_difficulty = min(3, max(1, starting_level))
+
+    opener = engine.generate_opener(
+        topic, concept_id, effective_difficulty,
+        persona_prompt=persona_prompt, persona_name=persona.name,
+    )
+
+    timestamp = now_iso()
+    opener_msg = ConversationMessage(role="ai", content=opener, timestamp=timestamp)
+    messages_json = json.dumps([opener_msg.to_dict()])
+
+    with _open_connection() as conn:
+        cursor = conn.execute(
+            """INSERT INTO flow_conversations
+                (session_id, topic, messages_json, turn_count, completed, created_at, concept_id, difficulty, persona_id, conversation_type)
+            VALUES (?, ?, ?, 1, 0, ?, ?, ?, ?, ?)""",
+            (session.id, topic, messages_json, timestamp, concept_id, effective_difficulty, persona.id, "placement"),
+        )
+        conn.commit()
+        conversation_id = int(cursor.lastrowid)
+
+    _increment_session_cards_answered(session.id)
+
+    card = ConversationCard(
+        topic=topic, concept=concept_id, difficulty=effective_difficulty,
+        opener=opener, messages=[opener_msg], max_turns=8, persona_name=persona.name,
+    )
+
+    # Render inside the full-page placement wrapper (not the bare partial)
+    context = {
+        "session_id": session.id,
+        "conversation_id": conversation_id,
+        "card": card,
+        "concept_name": _get_concept_name(concept_id),
+        "is_ended": False,
+        "persona_name": persona.name,
+        "persona_id": persona.id,
+        "conversation_type": "placement",
+        "current_page": "flow",
+    }
+    return templates.TemplateResponse(request, "flow_placement.html", context)
 
 
 @router.get("/flow/onboarding/results", response_class=HTMLResponse)
@@ -1416,6 +1469,11 @@ async def conversation_summary(
         if placement_summary is not None:
             context["placement"] = placement_summary
             context["starting_concept_name"] = _pick_next_learning_concept_name()
+            # If arrived via HTMX, redirect so the full page renders properly
+            if request.headers.get("HX-Request"):
+                resp = Response(status_code=200)
+                resp.headers["HX-Redirect"] = f"/flow/conversation/summary?conversation_id={conversation_id}&session_id={session_id}"
+                return resp
             return templates.TemplateResponse(request, "flow_placement_results.html", context)
         return templates.TemplateResponse(request, "partials/flow_conversation_summary.html", context)
     except Exception as exc:
@@ -1603,6 +1661,56 @@ async def dev_reset_all() -> Response:
     from .concepts import seed_concepts_to_db
     seed_concepts_to_db()
     return HTMLResponse("<span>Reset all progress</span>")
+
+
+# ── Prompt editing endpoints ────────────────────────────────────────────────
+
+
+@router.get("/flow/dev/prompts", response_class=HTMLResponse)
+async def dev_prompts_list(request: Request) -> Response:
+    """Return the list of editable prompts for the dev panel."""
+    items = prompt_config.get_all_editable_keys()
+    return templates.TemplateResponse(
+        request,
+        "partials/dev_prompts.html",
+        {"items": items},
+    )
+
+
+@router.post("/flow/dev/prompt-save", response_class=HTMLResponse)
+async def dev_prompt_save(
+    key: str = Form(...),
+    value: str = Form(default=""),
+    persist: str = Form(default=""),
+) -> Response:
+    """Save a prompt edit — either as a runtime override or persisted to YAML."""
+    k = key.strip()
+    v = value.strip()
+    if not k:
+        return HTMLResponse("<span class='text-red-400'>Missing key</span>", status_code=400)
+    if persist == "1":
+        # Write directly to prompts.yaml
+        prompt_config.save_to_yaml(k, v)
+        prompt_config.invalidate_cache()
+        return HTMLResponse(f"<span class='text-emerald-300'>Saved to YAML: {escape(k)}</span>")
+    else:
+        # Runtime override via dev_overrides table
+        if v:
+            set_dev_override(f"prompt:{k}", v)
+        else:
+            delete_dev_override(f"prompt:{k}")
+        prompt_config.invalidate_cache()
+        return HTMLResponse(f"<span class='text-emerald-300'>Override set: {escape(k)}</span>")
+
+
+@router.post("/flow/dev/prompt-reset", response_class=HTMLResponse)
+async def dev_prompt_reset(key: str = Form(...)) -> Response:
+    """Clear a runtime prompt override, reverting to YAML value."""
+    k = key.strip()
+    if k:
+        delete_dev_override(f"prompt:{k}")
+        prompt_config.invalidate_cache()
+    return HTMLResponse(f"<span class='text-emerald-300'>Reset: {escape(k)}</span>")
 
 
 @router.post("/flow/clear-mcq-cache", response_class=HTMLResponse)

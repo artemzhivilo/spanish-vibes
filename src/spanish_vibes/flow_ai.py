@@ -9,6 +9,7 @@ from typing import Any
 
 from .concepts import load_concepts
 from .flow_db import count_cached_mcqs, get_all_concept_knowledge, save_mcq_batch
+from . import prompts as prompt_config
 
 
 def ai_available() -> bool:
@@ -75,33 +76,22 @@ def generate_mcq_batch(concept_id: str, count: int = 15, topic: str | None = Non
         )
 
     try:
+        mcq_sys = prompt_config.get("mcq_system", "")
+        if mcq_sys:
+            mcq_system_content = mcq_sys.format(topic_instruction=topic_instruction)
+        else:
+            mcq_system_content = (
+                "You are a Spanish language education expert creating A1-level MCQ questions. "
+                f"{topic_instruction}"
+                "Return ONLY a JSON array, no extra text."
+            )
+
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=prompt_config.get_model("mcq"),
             messages=[
                 {
                     "role": "system",
-                    "content": (
-                        "You are a Spanish language education expert creating A1-level MCQ questions. "
-                        "Generate multiple-choice questions with EXACTLY 1 unambiguous correct answer and 3 wrong distractors. "
-                        "Each distractor should map to a specific misconception concept from the provided list. "
-                        "CRITICAL RULES:\n"
-                        "- Every question MUST have exactly ONE correct answer. Never create questions where multiple options could be valid.\n"
-                        "- NEVER use open-ended fill-in-the-blank like 'Quiero _____' where any noun fits.\n"
-                        "- NEVER ask vague 'Which is correct?' questions where multiple options are grammatically valid sentences. "
-                        "Instead, provide SPECIFIC CONTEXT that constrains the answer to exactly one option. Examples:\n"
-                        "  BAD: 'Which is correct?' with options like 'Él es alto' / 'Él está feliz' (both are correct!)\n"
-                        "  GOOD: 'He is tired right now. How do you say this?' (only 'Él está cansado' works)\n"
-                        "  GOOD: 'Which correctly uses ser for a permanent trait?' (constrains to ser)\n"
-                        "  GOOD: 'Translate: She is tall.' (only 'Ella es alta' works)\n"
-                        "- For ser/estar concepts: always specify whether you're testing ser or estar, OR give an English sentence to translate. "
-                        "Never present unrelated correct ser and estar sentences as options.\n"
-                        "- All distractors must target the SAME translation/scenario as the correct answer but with a specific error.\n"
-                        "- Good question types: translation ('Translate: X'), targeted grammar ('Which correctly uses [concept]?'), "
-                        "error spotting ('Which sentence has an error?'), vocabulary matching ('How do you say X in Spanish?').\n"
-                        "- Distractors should be plausible but clearly wrong (e.g. wrong gender, wrong conjugation, wrong ser/estar choice).\n"
-                        f"{topic_instruction}"
-                        "Return ONLY a JSON array, no extra text."
-                    ),
+                    "content": mcq_system_content,
                 },
                 {
                     "role": "user",
@@ -124,7 +114,7 @@ def generate_mcq_batch(concept_id: str, count: int = 15, topic: str | None = Non
                     ),
                 },
             ],
-            temperature=0.8,
+            temperature=prompt_config.get_temperature("mcq"),
             max_tokens=4000,
         )
 
@@ -317,17 +307,21 @@ def generate_teach_card(concept_id: str, topic: str | None = None) -> str:
         return static_content
 
     try:
+        teach_sys = prompt_config.get("teach_system", "")
+        if not teach_sys:
+            teach_sys = (
+                "You are a friendly Spanish language teacher. "
+                "Create a brief, engaging teach card (2-4 paragraphs in markdown) "
+                "that explains the grammar concept using examples themed around the given topic. "
+                "Keep it A1-level appropriate."
+            )
+
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=prompt_config.get_model("teach"),
             messages=[
                 {
                     "role": "system",
-                    "content": (
-                        "You are a friendly Spanish language teacher. "
-                        "Create a brief, engaging teach card (2-4 paragraphs in markdown) "
-                        "that explains the grammar concept using examples themed around the given topic. "
-                        "Keep it A1-level appropriate."
-                    ),
+                    "content": teach_sys,
                 },
                 {
                     "role": "user",
@@ -340,7 +334,7 @@ def generate_teach_card(concept_id: str, topic: str | None = None) -> str:
                     ),
                 },
             ],
-            temperature=0.7,
+            temperature=prompt_config.get_temperature("teach"),
             max_tokens=1000,
         )
         content = response.choices[0].message.content or ""
@@ -438,15 +432,19 @@ def generate_story_card(
         return {"story": fallback_story, "questions": fallback_questions}
 
     try:
+        story_sys = prompt_config.get("story_system", "")
+        if not story_sys:
+            story_sys = (
+                "You create Spanish reading-comprehension micro stories for beginners. "
+                "Return STRICT JSON only."
+            )
+
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=prompt_config.get_model("story"),
             messages=[
                 {
                     "role": "system",
-                    "content": (
-                        "You create Spanish reading-comprehension micro stories for beginners. "
-                        "Return STRICT JSON only."
-                    ),
+                    "content": story_sys,
                 },
                 {
                     "role": "user",
@@ -462,7 +460,7 @@ def generate_story_card(
                     ),
                 },
             ],
-            temperature=0.7,
+            temperature=prompt_config.get_temperature("story"),
             max_tokens=1000,
             response_format={"type": "json_object"},
         )

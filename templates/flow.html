@@ -1,48 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Spanish Vibes · Flow{% endblock %}
 {% block content %}
-<div id="flow-container" class="flex flex-col items-center gap-6">
-  <!-- Flow header -->
-  <div class="w-full flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-    <div class="flex flex-wrap items-center gap-4">
-      <!-- Concept progress -->
-      <div class="flex items-center gap-2">
-        <span class="text-sm font-bold text-emerald-300" id="concepts-progress">{{ concepts_mastered }}/{{ total_concepts }}</span>
-        <span class="text-xs text-slate-500 font-bold">mastered</span>
+<div id="flow-container" class="flex flex-col items-center gap-3">
+  <!-- Compact flow header -->
+  <div class="w-full flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1" title="Streak">
+        <span id="streak-fire" class="text-lg {% if streak > 0 %}{% else %}opacity-30{% endif %}">🔥</span>
+        <span id="streak-count" class="text-base font-black text-amber-400">{{ streak }}</span>
       </div>
-      <!-- Streak -->
-      <div class="flex items-center gap-1">
-        <span id="streak-fire" class="text-xl {% if streak > 0 %}{% else %}opacity-30{% endif %}">🔥</span>
-        <span id="streak-count" class="text-lg font-black text-amber-400">{{ streak }}</span>
-      </div>
-      <!-- Cards count -->
-      <div class="text-center">
-        <span class="text-sm font-bold text-slate-400" id="cards-count">{{ cards_answered }} cards</span>
-      </div>
-      <!-- Adaptive CEFR level -->
-      <span class="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-300">
-        {{ user_cefr }}
-      </span>
+      <span class="text-xs text-slate-500 font-bold" id="concepts-progress">{{ concepts_mastered }}/{{ total_concepts }}</span>
+      <span class="hidden sm:inline rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">{{ user_cefr }}</span>
     </div>
-    <div class="flex flex-wrap gap-2 md:justify-end">
-      <!-- Concepts -->
-      <a href="/flow/concepts" class="rounded-full bg-violet-500/15 px-4 py-2 text-sm font-bold text-violet-300 transition hover:bg-violet-500/25">Concepts</a>
-      <!-- Stats -->
-      <a href="/flow/stats" class="rounded-full bg-sky-500/15 px-3 py-2 text-sm font-bold text-sky-300 transition hover:bg-sky-500/25">Stats</a>
-      <!-- Words dashboard -->
-      <a href="/flow/words" class="rounded-full bg-indigo-500/15 px-3 py-2 text-sm font-bold text-indigo-300 transition hover:bg-indigo-500/25">Words</a>
-      <!-- Skip to level -->
+    <div class="flex items-center gap-2">
+      <span class="text-xs text-slate-500" id="cards-count">{{ cards_answered }} cards</span>
+      {% if show_dev %}
       <button onclick="document.getElementById('skip-modal').classList.toggle('hidden')"
-        class="rounded-full bg-slate-500/15 px-4 py-2 text-sm font-bold text-slate-300 transition hover:bg-slate-500/25">
-        Skip Level
-      </button>
-      <!-- Exit button -->
-      <form hx-post="/flow/end" hx-target="#flow-container" hx-swap="innerHTML">
-        <input type="hidden" name="session_id" value="{{ session.id }}" />
-        <button type="submit" class="rounded-full bg-red-500/15 px-4 py-2 text-sm font-bold text-red-300 transition hover:bg-red-500/25">
-          End Session
-        </button>
-      </form>
+        class="rounded-full bg-slate-500/15 px-2.5 py-1 text-xs font-bold text-slate-400 transition hover:bg-slate-500/25">Skip</button>
+      {% endif %}
+      <a href="/" class="rounded-full bg-slate-500/15 w-7 h-7 flex items-center justify-center text-xs font-bold text-slate-400 transition hover:bg-slate-500/25 hover:text-slate-200" title="Exit">&times;</a>
     </div>
   </div>
 
@@ -62,7 +38,8 @@
     </div>
   </div>
 
-  <!-- Skip level modal -->
+  {% if show_dev %}
+  <!-- Skip level modal (dev only) -->
   <div id="skip-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
     <div class="rounded-2xl bg-[#1a2d35] p-6 shadow-xl ring-1 ring-sky-500/20 w-80">
       <h3 class="text-lg font-black text-slate-50 mb-2">Skip to Level</h3>
@@ -87,6 +64,7 @@
       </form>
     </div>
   </div>
+  {% endif %}
 
   <!-- Celebration overlay (hidden by default) -->
   <div id="celebration-overlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -96,42 +74,79 @@
     </div>
   </div>
 
+  {% if show_dev %}
   {% include "partials/dev_panel.html" %}
+  {% endif %}
 </div>
 
 <style>
   @media (min-width: 1280px) {
-    /* Break out of base.html's max-w-4xl so the flow page can use full width */
     #flow-container {
       max-width: 42rem;
       margin-left: auto;
       margin-right: auto;
     }
-    /* Override the parent <main> max-width so side panels have room */
+    {% if show_dev %}
     main:has(#flow-container) {
       max-width: none;
       padding-left: 19rem;
       padding-right: 19rem;
     }
+    {% endif %}
   }
 
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
+  /* ── Card transitions ── */
+  #flow-card-slot {
+    transition: opacity 0.15s ease-out;
+  }
+  #flow-card-slot.htmx-swapping {
+    opacity: 0;
+    transform: scale(0.98);
+    transition: opacity 0.1s ease-in, transform 0.1s ease-in;
+  }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .flow-card-enter { animation: cardIn 0.25s ease-out; }
+
+  @keyframes correctPop {
+    0% { transform: scale(0.97); opacity: 0.8; }
+    50% { transform: scale(1.01); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .correct-flash { animation: correctPop 0.35s ease-out; }
+
+  @keyframes wrongShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(2px); }
+  }
+  .wrong-flash { animation: wrongShake 0.35s ease-out; }
+
+  /* ── Streak pop ── */
+  @keyframes streakPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+  .streak-pop { animation: streakPop 0.3s ease-out; }
+
+  /* ── XP badge slide ── */
+  @keyframes xpSlide {
+    from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  .flow-card-enter { animation: slideUp 0.3s ease-out; }
+  .xp-badge { animation: xpSlide 0.3s ease-out 0.1s both; }
 
-  @keyframes correctFlash {
-    0% { background-color: rgba(52, 211, 153, 0.2); }
-    100% { background-color: transparent; }
+  /* ── Mobile: less padding, tighter spacing ── */
+  @media (max-width: 640px) {
+    main { padding-left: 0.75rem !important; padding-right: 0.75rem !important; padding-top: 1rem !important; }
+    #flow-container { gap: 0.5rem; }
   }
-  .correct-flash { animation: correctFlash 0.5s ease-out; }
-
-  @keyframes wrongFlash {
-    0% { background-color: rgba(248, 113, 113, 0.15); }
-    100% { background-color: transparent; }
-  }
-  .wrong-flash { animation: wrongFlash 0.5s ease-out; }
 </style>
 
 <script>

@@ -158,6 +158,20 @@
       <button type="submit" class="rounded bg-slate-800 px-2 py-1">Force</button>
     </form>
   </div>
+
+  <div class="border-t border-slate-700 pt-2">
+    <details>
+      <summary class="cursor-pointer font-semibold text-slate-100 select-none mb-2">
+        AI Prompts
+      </summary>
+      <div id="dev-prompts-container"
+           hx-get="/flow/dev/prompts"
+           hx-trigger="toggle from:closest details"
+           hx-swap="innerHTML">
+        <span class="text-slate-500">Click to load prompts...</span>
+      </div>
+    </details>
+  </div>
 </div>
 
 <script>

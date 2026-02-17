@@ -1,44 +1,269 @@
 {% extends "base.html" %}
 {% block title %}Spanish Vibes · Onboarding{% endblock %}
 {% block content %}
-<div class="mx-auto max-w-3xl rounded-2xl bg-[#14222a] p-6 ring-1 ring-slate-700">
-  <h1 class="text-2xl font-black text-slate-100">Quick Placement Setup</h1>
-  <p class="mt-2 text-sm text-slate-400">A few quick questions, then a short conversation to place you at the right level.</p>
+<div class="onboarding-shell mx-auto max-w-4xl">
+  <div class="onboarding-hero">
+    <p class="onboarding-kicker">Flow Placement</p>
+    <h1>Quick Placement Setup</h1>
+    <p class="onboarding-subtitle">Answer 3 short questions and we will start a placement conversation at the right level.</p>
+  </div>
 
-  <form method="post" action="/flow/onboarding/start-placement" class="mt-6 space-y-6">
-    <section>
-      <h2 class="text-sm font-bold uppercase tracking-wide text-slate-300">1. Have you studied Spanish before?</h2>
-      <div class="mt-2 grid gap-2">
-        <label class="rounded-lg bg-slate-900 p-3"><input type="radio" name="experience_level" value="never" required> Never</label>
-        <label class="rounded-lg bg-slate-900 p-3"><input type="radio" name="experience_level" value="a_little"> A little (apps/classes)</label>
-        <label class="rounded-lg bg-slate-900 p-3"><input type="radio" name="experience_level" value="intermediate"> Intermediate (basic conversations)</label>
-        <label class="rounded-lg bg-slate-900 p-3"><input type="radio" name="experience_level" value="advanced"> Advanced / Heritage speaker</label>
+  <form method="post" action="/flow/onboarding/start-placement" class="onboarding-form mt-6">
+    <section class="onboarding-section">
+      <h2>1. Have you studied Spanish before?</h2>
+      <div class="option-grid">
+        <label class="option-card">
+          <input type="radio" name="experience_level" value="never" required />
+          <span class="option-title">Never</span>
+          <span class="option-note">Starting from zero</span>
+        </label>
+        <label class="option-card">
+          <input type="radio" name="experience_level" value="a_little" />
+          <span class="option-title">A little</span>
+          <span class="option-note">Apps or classes</span>
+        </label>
+        <label class="option-card">
+          <input type="radio" name="experience_level" value="intermediate" />
+          <span class="option-title">Intermediate</span>
+          <span class="option-note">Basic conversations</span>
+        </label>
+        <label class="option-card">
+          <input type="radio" name="experience_level" value="advanced" />
+          <span class="option-title">Advanced / Heritage</span>
+          <span class="option-note">Comfortable speaking Spanish</span>
+        </label>
       </div>
     </section>
 
-    <section>
-      <h2 class="text-sm font-bold uppercase tracking-wide text-slate-300">2. Which sentences can you understand?</h2>
-      <div class="mt-2 grid gap-2">
-        <label class="rounded-lg bg-slate-900 p-3"><input type="checkbox" name="comprehension_levels" value="a1"> El gato está en la mesa.</label>
-        <label class="rounded-lg bg-slate-900 p-3"><input type="checkbox" name="comprehension_levels" value="a2"> Ayer fui al mercado y compré frutas.</label>
-        <label class="rounded-lg bg-slate-900 p-3"><input type="checkbox" name="comprehension_levels" value="b1"> Me gustaría que vinieras a la fiesta este fin de semana.</label>
+    <section class="onboarding-section">
+      <h2>2. Which sentences can you understand?</h2>
+      <p class="section-help">Choose all that apply.</p>
+      <div class="option-grid">
+        <label class="option-card">
+          <input type="checkbox" name="comprehension_levels" value="a1" />
+          <span class="option-title">A1</span>
+          <span class="option-note">El gato está en la mesa.</span>
+        </label>
+        <label class="option-card">
+          <input type="checkbox" name="comprehension_levels" value="a2" />
+          <span class="option-title">A2</span>
+          <span class="option-note">Ayer fui al mercado y compré frutas.</span>
+        </label>
+        <label class="option-card">
+          <input type="checkbox" name="comprehension_levels" value="b1" />
+          <span class="option-title">B1</span>
+          <span class="option-note">Me gustaría que vinieras a la fiesta este fin de semana.</span>
+        </label>
       </div>
     </section>
 
-    <section>
-      <h2 class="text-sm font-bold uppercase tracking-wide text-slate-300">3. What interests you? (optional)</h2>
-      <div class="mt-2 grid grid-cols-2 gap-2">
+    <section class="onboarding-section">
+      <h2>3. What interests you?</h2>
+      <p class="section-help">Optional, but this helps personalize your first cards.</p>
+      <div class="topic-grid">
         {% for topic in topics %}
-          <label class="rounded-lg bg-slate-900 p-3 text-sm">
-            <input type="checkbox" name="interest_topic_ids" value="{{ topic.id }}"> {{ topic.name }}
+          <label class="topic-chip">
+            <input type="checkbox" name="interest_topic_ids" value="{{ topic.id }}" />
+            <span>{{ topic.name }}</span>
           </label>
         {% endfor %}
       </div>
     </section>
 
-    <button type="submit" class="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-emerald-950 hover:bg-emerald-400">
-      Start Placement Conversation
-    </button>
+    <button type="submit" class="start-btn">Start Placement Conversation</button>
   </form>
 </div>
+
+<style>
+  .onboarding-shell {
+    color: #d6e4ea;
+  }
+
+  .onboarding-hero {
+    border: 1px solid #35505f;
+    border-radius: 1rem;
+    padding: 1.25rem 1.25rem 1.4rem;
+    background:
+      radial-gradient(120% 120% at 85% 5%, #1f4252 0%, #14222a 55%),
+      linear-gradient(180deg, #15262f 0%, #122028 100%);
+    box-shadow: 0 12px 30px #00000033;
+  }
+
+  .onboarding-kicker {
+    margin: 0;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8dd8ff;
+    font-weight: 800;
+  }
+
+  .onboarding-hero h1 {
+    margin: 0.45rem 0 0;
+    font-size: 1.85rem;
+    line-height: 1.2;
+    font-weight: 900;
+    color: #f5fbff;
+  }
+
+  .onboarding-subtitle {
+    margin: 0.6rem 0 0;
+    max-width: 40rem;
+    font-size: 0.95rem;
+    color: #9eb4c1;
+  }
+
+  .onboarding-form {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .onboarding-section {
+    border: 1px solid #2c424f;
+    border-radius: 1rem;
+    padding: 1rem;
+    background: linear-gradient(180deg, #15242d 0%, #111e25 100%);
+  }
+
+  .onboarding-section h2 {
+    margin: 0;
+    color: #dff0f8;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .section-help {
+    margin: 0.3rem 0 0.8rem;
+    color: #89a1af;
+    font-size: 0.82rem;
+  }
+
+  .option-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .option-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    border: 1px solid #2f4755;
+    border-radius: 0.85rem;
+    background: #0f1a20;
+    padding: 0.7rem 0.75rem;
+    transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .option-card:hover {
+    border-color: #4a6676;
+    background: #12202a;
+    transform: translateY(-1px);
+  }
+
+  .option-card input {
+    accent-color: #34d399;
+    margin: 0 0 0.35rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .option-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #e8f3f8;
+  }
+
+  .option-note {
+    font-size: 0.78rem;
+    color: #8ea5b2;
+  }
+
+  .topic-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+
+  .topic-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid #304856;
+    border-radius: 999px;
+    background: #0f1a20;
+    color: #c8d8e1;
+    font-size: 0.84rem;
+    padding: 0.5rem 0.7rem;
+    min-height: 2.1rem;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .topic-chip:hover {
+    border-color: #4f6f80;
+    background: #12222b;
+  }
+
+  .topic-chip input {
+    accent-color: #34d399;
+    margin: 0;
+    width: 0.95rem;
+    height: 0.95rem;
+    flex-shrink: 0;
+  }
+
+  .start-btn {
+    margin-top: 0.35rem;
+    border: none;
+    border-radius: 0.85rem;
+    padding: 0.9rem 1rem;
+    width: 100%;
+    background: linear-gradient(180deg, #4ade80 0%, #34d399 100%);
+    color: #053221;
+    font-size: 0.92rem;
+    font-weight: 900;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 10px 24px #22c55e44;
+    transition: transform 0.15s ease, filter 0.15s ease;
+  }
+
+  .start-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.03);
+  }
+
+  .start-btn:active {
+    transform: translateY(0);
+  }
+
+  @media (max-width: 900px) {
+    .topic-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 640px) {
+    .onboarding-hero h1 {
+      font-size: 1.45rem;
+    }
+
+    .onboarding-subtitle {
+      font-size: 0.88rem;
+    }
+
+    .onboarding-section {
+      padding: 0.85rem;
+    }
+
+    .option-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .topic-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
 {% endblock %}
