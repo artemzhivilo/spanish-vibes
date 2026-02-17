@@ -162,9 +162,24 @@ async def onboarding_page(request: Request) -> Response:
     if is_user_onboarded():
         return RedirectResponse(url="/flow", status_code=303)
     topics = get_all_interest_topics()
+    concepts = load_concepts()
+    tiers: dict[int, list[dict[str, str]]] = {}
+    for concept_id, concept in sorted(
+        concepts.items(), key=lambda item: (item[1].difficulty_level, item[1].name)
+    ):
+        tiers.setdefault(concept.difficulty_level, []).append(
+            {
+                "id": concept_id,
+                "name": concept.name,
+            }
+        )
     context = {
         "page_title": "Spanish Vibes · Onboarding",
         "topics": topics,
+        "tier_catalog": [
+            {"tier": tier, "concepts": entries}
+            for tier, entries in sorted(tiers.items())
+        ],
     }
     return templates.TemplateResponse(request, "flow_onboarding.html", context)
 
@@ -172,36 +187,13 @@ async def onboarding_page(request: Request) -> Response:
 @router.post("/flow/onboarding/start-placement", response_class=HTMLResponse)
 async def start_placement(
     request: Request,
-    experience_level: str = Form(...),
-    comprehension_levels: list[str] = Form(default=[]),
+    start_tier: int = Form(1),
+    start_concept_id: str = Form(""),
     interest_topic_ids: list[int] = Form(default=[]),
 ) -> Response:
-    """Start placement conversation after lightweight onboarding questions."""
+    """Apply onboarding start selection and jump into flow directly."""
     if is_user_onboarded():
         return RedirectResponse(url="/flow", status_code=303)
-    normalized_experience = experience_level.strip().lower()
-
-    base_level_map = {
-        "never": 1,
-        "a_little": 2,
-        "intermediate": 3,
-        "advanced": 4,
-        "heritage": 4,
-    }
-    starting_level = base_level_map.get(normalized_experience, 1)
-
-    comp_level = 0
-    for value in comprehension_levels:
-        normalized = value.strip().lower()
-        if normalized == "a1":
-            comp_level = max(comp_level, 1)
-        elif normalized in {"a2", "a1_a2"}:
-            comp_level = max(comp_level, 2)
-        elif normalized in {"b1", "a2_plus"}:
-            comp_level = max(comp_level, 3)
-    if comp_level > 0:
-        starting_level = max(starting_level, comp_level)
-    starting_level = max(1, min(4, starting_level))
 
     if interest_topic_ids:
         try:
@@ -209,97 +201,47 @@ async def start_placement(
         except Exception:
             pass
 
-    # Absolute beginners should go straight into the first learning cards.
-    # Skip placement conversation entirely for the "never studied" path.
-    if normalized_experience == "never":
+    concepts = load_concepts()
+    if not concepts:
         set_user_onboarded(True)
         return RedirectResponse(url="/flow", status_code=303)
 
-    session = start_or_resume_session()
+    max_tier = max(c.difficulty_level for c in concepts.values())
+    tier = max(1, min(max_tier, int(start_tier)))
 
-    concept_id = _pick_placement_concept(starting_level)
-    topic = _pick_placement_topic(interest_topic_ids, starting_level=starting_level)
+    for concept_id, concept in concepts.items():
+        if concept.difficulty_level < tier:
+            mark_teach_shown(concept_id)
+            update_concept_knowledge(concept_id, 0.95, True)
+            with _open_connection() as conn:
+                conn.execute(
+                    "UPDATE concept_knowledge SET n_attempts = 10, n_correct = 10 WHERE user_id = ? AND concept_id = ?",
+                    (_uid(), concept_id),
+                )
 
-    # Build the placement conversation (creates DB record, generates opener)
-    from .conversation import ConversationCard, ConversationEngine, ConversationMessage
-    from .db import _open_connection, now_iso
-
-    persona_id = _pick_placement_persona_id()
-    persona = load_persona(persona_id)
-    engine = ConversationEngine()
-    type_instruction = get_type_instruction(
-        "placement",
-        concept_id=concept_id,
-        topic=topic,
-        persona_id=persona.id,
-        starting_level=starting_level,
-    )
-    persona_prompt = _compose_persona_prompt(persona, type_instruction=type_instruction)
-    effective_difficulty = min(3, max(1, starting_level))
-    placement_guardrails = _build_conversation_guardrails(
-        concept_id=concept_id,
-        difficulty=effective_difficulty,
-    )
-
-    opener = engine.generate_opener(
-        topic,
-        concept_id,
-        effective_difficulty,
-        persona_prompt=persona_prompt,
-        persona_name=persona.name,
-        conversation_guardrails=placement_guardrails,
-    )
-
-    timestamp = now_iso()
-    opener_msg = ConversationMessage(role="ai", content=opener, timestamp=timestamp)
-    messages_json = json.dumps([opener_msg.to_dict()])
-
-    with _open_connection() as conn:
-        user_id = _uid()
-        cursor = conn.execute(
-            """INSERT INTO flow_conversations
-                (user_id, session_id, topic, messages_json, turn_count, completed, created_at, concept_id, difficulty, persona_id, conversation_type)
-            VALUES (?, ?, ?, ?, 1, 0, ?, ?, ?, ?, ?)""",
-            (
-                user_id,
-                session.id,
-                topic,
-                messages_json,
-                timestamp,
-                concept_id,
-                effective_difficulty,
-                persona.id,
-                "placement",
-            ),
+    selected_concept_id = start_concept_id.strip()
+    if selected_concept_id in concepts and concepts[selected_concept_id].difficulty_level == tier:
+        set_dev_override("force_next_concept", selected_concept_id)
+    else:
+        tier_concepts = sorted(
+            [
+                cid
+                for cid, concept in concepts.items()
+                if concept.difficulty_level == tier
+            ],
+            key=lambda cid: concepts[cid].name,
         )
-        conn.commit()
-        conversation_id = int(cursor.lastrowid)
+        if tier_concepts:
+            set_dev_override("force_next_concept", tier_concepts[0])
 
-    _increment_session_cards_answered(session.id)
+    from .flow_db import get_active_session, end_session
 
-    card = ConversationCard(
-        topic=topic,
-        concept=concept_id,
-        difficulty=effective_difficulty,
-        opener=opener,
-        messages=[opener_msg],
-        max_turns=8,
-        persona_name=persona.name,
-    )
+    active = get_active_session()
+    if active:
+        end_session(active.id)
 
-    # Render inside the full-page placement wrapper (not the bare partial)
-    context = {
-        "session_id": session.id,
-        "conversation_id": conversation_id,
-        "card": card,
-        "concept_name": _get_concept_name(concept_id),
-        "is_ended": False,
-        "persona_name": persona.name,
-        "persona_id": persona.id,
-        "conversation_type": "placement",
-        "current_page": "flow",
-    }
-    return templates.TemplateResponse(request, "flow_placement.html", context)
+    set_user_onboarded(True)
+    return RedirectResponse(url="/flow", status_code=303)
 
 
 @router.get("/flow/onboarding/results", response_class=HTMLResponse)
@@ -1090,17 +1032,23 @@ async def translate_word_endpoint(
     Also records the tap so the system knows which words the user is looking up.
     """
 
-    result = translate_spanish_word(word, context)
+    try:
+        result = translate_spanish_word(word, context)
+    except Exception:
+        result = None
     english = result["translation"] if result else None
     spanish_clean = result["word"] if result else word
 
     # Record that the user tapped this word
-    record_word_tap(
-        spanish=spanish_clean,
-        english=english,
-        conversation_id=conversation_id,
-        source="conversation" if conversation_id else "general",
-    )
+    try:
+        record_word_tap(
+            spanish=spanish_clean,
+            english=english,
+            conversation_id=conversation_id,
+            source="conversation" if conversation_id else "general",
+        )
+    except Exception:
+        pass
 
     if result is None:
         body = '<div class="text-slate-400">(translation unavailable)</div>'
@@ -2794,10 +2742,15 @@ def _render_story_comprehension_card(
 
 
 def _render_teach(content: str | None) -> str:
-    """Convert markdown teach_content to HTML."""
+    """Convert markdown teach_content to HTML.
+
+    Uses the nl2br extension so single newlines in the YAML become <br> tags,
+    keeping vocab lists and conjugation tables readable without requiring blank
+    lines between every entry.
+    """
     if not content:
         return ""
-    return markdown.markdown(content.strip())
+    return markdown.markdown(content.strip(), extensions=["nl2br"])
 
 
 def _get_concept_name(concept_id: str) -> str:

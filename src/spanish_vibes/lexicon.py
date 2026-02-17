@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
-from pathlib import Path
-from typing import Any
 
 from .db import DATA_DIR, _open_connection, now_iso
 from .flow_ai import ai_available, _get_client
@@ -124,19 +122,22 @@ def lookup_local_translation(word: str) -> str | None:
 def _get_cached_translation(word: str) -> str | None:
     lower = word.lower()
     normalized = _normalize_key(lower)
-    with _open_connection() as conn:
-        row = conn.execute(
-            "SELECT english_translation FROM word_translations WHERE spanish_word = ?",
-            (lower,),
-        ).fetchone()
-        if row:
-            return str(row["english_translation"])
-        row = conn.execute(
-            "SELECT english_translation FROM word_translations WHERE normalized_word = ?",
-            (normalized,),
-        ).fetchone()
-        if row:
-            return str(row["english_translation"])
+    try:
+        with _open_connection() as conn:
+            row = conn.execute(
+                "SELECT english_translation FROM word_translations WHERE spanish_word = ?",
+                (lower,),
+            ).fetchone()
+            if row:
+                return str(row["english_translation"])
+            row = conn.execute(
+                "SELECT english_translation FROM word_translations WHERE normalized_word = ?",
+                (normalized,),
+            ).fetchone()
+            if row:
+                return str(row["english_translation"])
+    except Exception:
+        return None
     return None
 
 
@@ -145,19 +146,23 @@ def _store_translation(word: str, translation: str, context: str, source: str) -
     normalized = _normalize_key(lower)
     clipped_context = context.strip()[:200]
     timestamp = now_iso()
-    with _open_connection() as conn:
-        conn.execute(
-            """
-            INSERT INTO word_translations (spanish_word, normalized_word, english_translation, context, source, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(spanish_word) DO UPDATE SET english_translation = excluded.english_translation,
-                context = excluded.context,
-                source = excluded.source,
-                created_at = excluded.created_at
-            """,
-            (lower, normalized, translation, clipped_context, source, timestamp),
-        )
-        conn.commit()
+    try:
+        with _open_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO word_translations (spanish_word, normalized_word, english_translation, context, source, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(spanish_word) DO UPDATE SET english_translation = excluded.english_translation,
+                    context = excluded.context,
+                    source = excluded.source,
+                    created_at = excluded.created_at
+                """,
+                (lower, normalized, translation, clipped_context, source, timestamp),
+            )
+            conn.commit()
+    except Exception:
+        # Translation lookup should still work even if cache write fails.
+        return
 
 
 def _translate_with_ai(word: str, context: str, *, phrase: bool = False) -> str | None:

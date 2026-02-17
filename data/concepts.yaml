@@ -31,10 +31,17 @@
   difficulty_level: 1
   prerequisites: []
   teach_content: |
-    **rojo** — red, **azul** — blue, **verde** — green
-    **amarillo** — yellow, **blanco** — white, **negro** — black
-    **naranja** — orange, **rosa** — pink, **morado** — purple
-    **marrón** — brown, **gris** — gray
+    **rojo** — red
+    **azul** — blue
+    **verde** — green
+    **amarillo** — yellow
+    **blanco** — white
+    **negro** — black
+    **naranja** — orange
+    **rosa** — pink
+    **morado** — purple
+    **marrón** — brown
+    **gris** — gray
 
 # Tier 2 — Basic vocabulary + grammar foundations
 - id: subject_pronouns
@@ -76,20 +83,34 @@
   difficulty_level: 2
   prerequisites: [greetings]
   teach_content: |
-    **el pan** — bread, **la leche** — milk, **el agua** — water
-    **la fruta** — fruit, **la manzana** — apple, **el pollo** — chicken
-    **el arroz** — rice, **la ensalada** — salad, **el café** — coffee
-    **el jugo** — juice, **la carne** — meat, **el pescado** — fish
+    **el pan** — bread
+    **la leche** — milk
+    **el agua** — water
+    **la fruta** — fruit
+    **la manzana** — apple
+    **el pollo** — chicken
+    **el arroz** — rice
+    **la ensalada** — salad
+    **el café** — coffee
+    **el jugo** — juice
+    **la carne** — meat
+    **el pescado** — fish
 
 - id: animals_vocab
   name: Animal Vocabulary
   difficulty_level: 2
   prerequisites: [greetings]
   teach_content: |
-    **el perro** — dog, **el gato** — cat, **el pájaro** — bird
-    **el pez** — fish, **el caballo** — horse, **la vaca** — cow
-    **el ratón** — mouse, **la mariposa** — butterfly
-    **el conejo** — rabbit, **la tortuga** — turtle
+    **el perro** — dog
+    **el gato** — cat
+    **el pájaro** — bird
+    **el pez** — fish
+    **el caballo** — horse
+    **la vaca** — cow
+    **el ratón** — mouse
+    **la mariposa** — butterfly
+    **el conejo** — rabbit
+    **la tortuga** — turtle
 
 - id: numbers_21_100
   name: Numbers 21–100
@@ -107,23 +128,38 @@
   difficulty_level: 2
   prerequisites: [greetings]
   teach_content: |
-    **la camisa** — shirt, **la camiseta** — t-shirt
-    **los pantalones** — pants, **la falda** — skirt
-    **el vestido** — dress, **los zapatos** — shoes
-    **la chaqueta** — jacket, **el abrigo** — coat
-    **el sombrero** — hat, **las gafas** — glasses
-    **los calcetines** — socks, **la ropa** — clothes
+    **la camisa** — shirt
+    **la camiseta** — t-shirt
+    **los pantalones** — pants
+    **la falda** — skirt
+    **el vestido** — dress
+    **los zapatos** — shoes
+    **la chaqueta** — jacket
+    **el abrigo** — coat
+    **el sombrero** — hat
+    **las gafas** — glasses
+    **los calcetines** — socks
+    **la ropa** — clothes
 
 - id: body_parts
   name: Body Parts
   difficulty_level: 2
   prerequisites: [greetings]
   teach_content: |
-    **la cabeza** — head, **el pelo** — hair, **la cara** — face
-    **los ojos** — eyes, **la nariz** — nose, **la boca** — mouth
-    **las orejas** — ears, **el brazo** — arm, **la mano** — hand
-    **la pierna** — leg, **el pie** — foot, **el dedo** — finger/toe
-    **el estómago** — stomach, **la espalda** — back
+    **la cabeza** — head
+    **el pelo** — hair
+    **la cara** — face
+    **los ojos** — eyes
+    **la nariz** — nose
+    **la boca** — mouth
+    **las orejas** — ears
+    **el brazo** — arm
+    **la mano** — hand
+    **la pierna** — leg
+    **el pie** — foot
+    **el dedo** — finger/toe
+    **el estómago** — stomach
+    **la espalda** — back
 
 # Tier 3 — Core grammar
 - id: articles_definite
@@ -230,12 +266,18 @@
   difficulty_level: 3
   prerequisites: [articles_definite]
   teach_content: |
-    **el banco** — bank, **la tienda** — shop/store
-    **el hospital** — hospital, **la escuela** — school
-    **el supermercado** — supermarket, **la farmacia** — pharmacy
-    **el restaurante** — restaurant, **la iglesia** — church
-    **el parque** — park, **la biblioteca** — library
-    **la estación** — station, **el cine** — cinema
+    **el banco** — bank
+    **la tienda** — shop/store
+    **el hospital** — hospital
+    **la escuela** — school
+    **el supermercado** — supermarket
+    **la farmacia** — pharmacy
+    **el restaurante** — restaurant
+    **la iglesia** — church
+    **el parque** — park
+    **la biblioteca** — library
+    **la estación** — station
+    **el cine** — cinema
 
 - id: professions
   name: Professions & Occupations
@@ -243,10 +285,14 @@
   prerequisites: [ser_present]
   teach_content: |
     Use **ser** + profession (no article): *Soy profesor.*
-    **el/la profesor(a)** — teacher, **el/la médico/a** — doctor
-    **el/la estudiante** — student, **el/la abogado/a** — lawyer
-    **el/la enfermero/a** — nurse, **el/la cocinero/a** — cook
-    **el/la ingeniero/a** — engineer, **el/la policía** — police officer
+    **el/la profesor(a)** — teacher
+    **el/la médico/a** — doctor
+    **el/la estudiante** — student
+    **el/la abogado/a** — lawyer
+    **el/la enfermero/a** — nurse
+    **el/la cocinero/a** — cook
+    **el/la ingeniero/a** — engineer
+    **el/la policía** — police officer
     *¿A qué te dedicas?* — What do you do for work?
 
 - id: weather_seasons
@@ -256,7 +302,8 @@
   teach_content: |
     **Hace** + noun: *hace frío* (it's cold), *hace calor* (it's hot)
     *hace sol* (it's sunny), *hace viento* (it's windy)
-    **Llueve** — it's raining, **Nieva** — it's snowing
+    **Llueve** — it's raining
+    **Nieva** — it's snowing
     **Está nublado** — it's cloudy
     **Seasons**: la primavera, el verano, el otoño, el invierno
     *¿Qué tiempo hace?* — What's the weather like?
@@ -381,7 +428,8 @@
     **¿Qué hora es?** — What time is it?
     **Es la una.** — It's one o'clock. (singular)
     **Son las dos / tres / cuatro...** — It's 2/3/4... (plural)
-    **y media** — half past, **y cuarto** — quarter past
+    **y media** — half past
+    **y cuarto** — quarter past
     **menos cuarto** — quarter to
     *Son las tres y media.* — It's 3:30.
 
@@ -400,11 +448,16 @@
   difficulty_level: 5
   prerequisites: [articles_definite, basic_prepositions]
   teach_content: |
-    **la casa** — house, **el apartamento** — apartment
-    **la cocina** — kitchen, **el baño** — bathroom
-    **el dormitorio** — bedroom, **el salón** — living room
-    **el comedor** — dining room, **el jardín** — garden
-    **la puerta** — door, **la ventana** — window
+    **la casa** — house
+    **el apartamento** — apartment
+    **la cocina** — kitchen
+    **el baño** — bathroom
+    **el dormitorio** — bedroom
+    **el salón** — living room
+    **el comedor** — dining room
+    **el jardín** — garden
+    **la puerta** — door
+    **la ventana** — window
     *Mi dormitorio está al lado del baño.* — My bedroom is next to the bathroom.
 
 - id: frequency_adverbs
@@ -418,7 +471,8 @@
     **a veces** — sometimes: *A veces como pizza.*
     **casi nunca** — hardly ever
     **nunca** — never: *Nunca bebo café.*
-    **todos los días** — every day, **cada semana** — every week
+    **todos los días** — every day
+    **cada semana** — every week
 
 # Tier 6 — Communicative tasks + A2 grammar foundations
 - id: describing_people
@@ -436,7 +490,8 @@
   difficulty_level: 6
   prerequisites: [querer, food_vocab, numbers_1_20]
   teach_content: |
-    **Quiero...** — I want... / **Quisiera...** — I would like...
+    **Quiero...** — I want...
+    **Quisiera...** — I would like...
     **¿Me puede traer...?** — Can you bring me...?
     **La cuenta, por favor.** — The check, please.
     **¿Qué recomienda?** — What do you recommend?
@@ -452,7 +507,8 @@
     **a la derecha** — to the right
     **a la izquierda** — to the left
     **todo recto / derecho** — straight ahead
-    **cerca de** — near, **lejos de** — far from
+    **cerca de** — near
+    **lejos de** — far from
     **al lado de** — next to
     **¿Cómo llego a...?** — How do I get to...?
 
@@ -537,9 +593,14 @@
   prerequisites: [gustar]
   teach_content: |
     **jugar** (al fútbol, al tenis) — to play (a sport)
-    **leer** — to read, **nadar** — to swim, **correr** — to run
-    **cocinar** — to cook, **bailar** — to dance, **cantar** — to sing
-    **ver la televisión** — to watch TV, **escuchar música** — to listen to music
+    **leer** — to read
+    **nadar** — to swim
+    **correr** — to run
+    **cocinar** — to cook
+    **bailar** — to dance
+    **cantar** — to sing
+    **ver la televisión** — to watch TV
+    **escuchar música** — to listen to music
     **ir de compras** — to go shopping
     *Me gusta nadar y leer.* — I like swimming and reading.
     *¿Qué haces en tu tiempo libre?* — What do you do in your free time?
@@ -551,8 +612,14 @@
   prerequisites: [present_tense_ar, present_tense_er_ir]
   teach_content: |
     Replace the direct object (the thing receiving the action):
-    **me** — me, **te** — you, **lo** — him/it(m), **la** — her/it(f)
-    **nos** — us, **os** — you all, **los** — them(m), **las** — them(f)
+    **me** — me
+    **te** — you
+    **lo** — him/it(m)
+    **la** — her/it(f)
+    **nos** — us
+    **os** — you all
+    **los** — them(m)
+    **las** — them(f)
     Place BEFORE the conjugated verb:
     *¿El libro? Lo tengo.* — The book? I have it.
     *¿La pizza? La quiero.* — The pizza? I want it.
@@ -563,8 +630,12 @@
   prerequisites: [gustar]
   teach_content: |
     The person who receives or is affected by the action:
-    **me** — to me, **te** — to you, **le** — to him/her/you(formal)
-    **nos** — to us, **os** — to you all, **les** — to them/you all
+    **me** — to me
+    **te** — to you
+    **le** — to him/her/you(formal)
+    **nos** — to us
+    **os** — to you all
+    **les** — to them/you all
     Place BEFORE the conjugated verb:
     *Le doy el libro.* — I give him the book.
     *Me gusta* = it pleases **to me** (gustar uses these!)
@@ -627,9 +698,13 @@
   teach_content: |
     **¿Cuánto cuesta?** — How much does it cost?
     **¿Cuánto cuestan?** — How much do they cost? (plural)
-    **comprar** — to buy, **pagar** — to pay, **vender** — to sell
-    **caro** — expensive, **barato** — cheap
-    **la talla** — size (clothes), **el precio** — price
+    **comprar** — to buy
+    **pagar** — to pay
+    **vender** — to sell
+    **caro** — expensive
+    **barato** — cheap
+    **la talla** — size (clothes)
+    **el precio** — price
     *Quiero comprar esta camisa. ¿Cuánto cuesta?*
     *Cuesta veinte euros.* — It costs twenty euros.
 
@@ -643,7 +718,8 @@
     **Tengo fiebre** — I have a fever
     **Tengo tos** — I have a cough
     **Estoy enfermo/a** — I am sick
-    **el/la médico/a** — doctor, **la medicina** — medicine
+    **el/la médico/a** — doctor
+    **la medicina** — medicine
     *¿Qué le pasa?* — What's wrong (with you)?
     *Necesito ir al médico.* — I need to go to the doctor.
 
@@ -652,11 +728,18 @@
   difficulty_level: 7
   prerequisites: [ir_a, basic_prepositions]
   teach_content: |
-    **el tren** — train, **el autobús** — bus, **el avión** — plane
-    **el coche** — car, **el taxi** — taxi, **la bicicleta** — bicycle
+    **el tren** — train
+    **el autobús** — bus
+    **el avión** — plane
+    **el coche** — car
+    **el taxi** — taxi
+    **la bicicleta** — bicycle
     **el billete / el boleto** — ticket
-    **la estación** — station, **el aeropuerto** — airport
-    **viajar** — to travel, **llegar** — to arrive, **salir** — to leave
+    **la estación** — station
+    **el aeropuerto** — airport
+    **viajar** — to travel
+    **llegar** — to arrive
+    **salir** — to leave
     *Voy en tren a Barcelona.* — I go by train to Barcelona.
     *¿A qué hora sale el autobús?* — What time does the bus leave?
 
@@ -670,7 +753,8 @@
     *Mi ciudad está en el norte.* — My city is in the north.
     *Es una ciudad muy bonita.* — It's a very beautiful city.
     **norte/sur/este/oeste** — north/south/east/west
-    **grande/pequeño** — big/small, **tranquilo/ruidoso** — quiet/noisy
+    **grande/pequeño** — big/small
+    **tranquilo/ruidoso** — quiet/noisy
     *¿Cómo es tu ciudad?* — What's your city like?
 
 # Tier 8 — A2 advanced grammar
@@ -680,11 +764,17 @@
   prerequisites: [preterite_regular]
   teach_content: |
     Common irregular preterite stems (no accents on yo/él forms):
+
     **ir/ser**: fui, fuiste, fue, fuimos, fuisteis, fueron
     **hacer**: hice, hiciste, hizo, hicimos, hicisteis, hicieron
     **tener**: tuve, tuviste, tuvo, tuvimos, tuvisteis, tuvieron
-    **estar**: estuve, **poder**: pude, **poner**: puse
-    **decir**: dije, **traer**: traje, **venir**: vine
+    **estar**: estuve
+    **poder**: pude
+    **poner**: puse
+    **decir**: dije
+    **traer**: traje
+    **venir**: vine
+
     *Ayer fui al cine.* — Yesterday I went to the cinema.
 
 - id: imperfect_intro
@@ -717,8 +807,19 @@
   prerequisites: [present_tense_ar]
   teach_content: |
     Affirmative **tú** commands = él/ella present tense form:
-    hablar → **¡Habla!** (Speak!), comer → **¡Come!** (Eat!)
-    escribir → **¡Escribe!** (Write!), mirar → **¡Mira!** (Look!)
-    Irregulars: **ven** (come), **di** (say), **haz** (do/make)
-    **pon** (put), **sal** (leave), **ten** (have), **ve** (go)
-    *¡Escucha!* — Listen! *¡Ven aquí!* — Come here!
+    hablar → **¡Habla!** (Speak!)
+    comer → **¡Come!** (Eat!)
+    escribir → **¡Escribe!** (Write!)
+    mirar → **¡Mira!** (Look!)
+
+    Irregulars:
+    **ven** (come)
+    **di** (say)
+    **haz** (do/make)
+    **pon** (put)
+    **sal** (leave)
+    **ten** (have)
+    **ve** (go)
+
+    *¡Escucha!* — Listen!
+    *¡Ven aquí!* — Come here!

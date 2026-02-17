@@ -4,56 +4,49 @@
 <div class="onboarding-shell mx-auto max-w-4xl">
   <div class="onboarding-hero">
     <p class="onboarding-kicker">Flow Placement</p>
-    <h1>Quick Placement Setup</h1>
-    <p class="onboarding-subtitle">Answer 3 short questions and we will start a placement conversation at the right level.</p>
+    <h1>Choose Your Starting Point</h1>
+    <p class="onboarding-subtitle">Pick a tier and concept to jump in directly. No placement conversation for now.</p>
   </div>
 
   <form method="post" action="/flow/onboarding/start-placement" class="onboarding-form mt-6">
     <section class="onboarding-section">
-      <h2>1. Have you studied Spanish before?</h2>
+      <h2>1. Pick your starting tier</h2>
       <div class="option-grid">
-        <label class="option-card">
-          <input type="radio" name="experience_level" value="never" required />
-          <span class="option-title">Never</span>
-          <span class="option-note">Starting from zero</span>
-        </label>
-        <label class="option-card">
-          <input type="radio" name="experience_level" value="a_little" />
-          <span class="option-title">A little</span>
-          <span class="option-note">Apps or classes</span>
-        </label>
-        <label class="option-card">
-          <input type="radio" name="experience_level" value="intermediate" />
-          <span class="option-title">Intermediate</span>
-          <span class="option-note">Basic conversations</span>
-        </label>
-        <label class="option-card">
-          <input type="radio" name="experience_level" value="advanced" />
-          <span class="option-title">Advanced / Heritage</span>
-          <span class="option-note">Comfortable speaking Spanish</span>
-        </label>
+        {% for tier in tier_catalog %}
+          <label class="option-card">
+            <input
+              type="radio"
+              name="start_tier"
+              value="{{ tier.tier }}"
+              {% if loop.first %}checked{% endif %}
+              required
+            />
+            <span class="option-title">Tier {{ tier.tier }}</span>
+            <span class="option-note">{{ tier.concepts | length }} concepts</span>
+          </label>
+        {% endfor %}
       </div>
     </section>
 
     <section class="onboarding-section">
-      <h2>2. Which sentences can you understand?</h2>
-      <p class="section-help">Choose all that apply.</p>
-      <div class="option-grid">
-        <label class="option-card">
-          <input type="checkbox" name="comprehension_levels" value="a1" />
-          <span class="option-title">A1</span>
-          <span class="option-note">El gato está en la mesa.</span>
-        </label>
-        <label class="option-card">
-          <input type="checkbox" name="comprehension_levels" value="a2" />
-          <span class="option-title">A2</span>
-          <span class="option-note">Ayer fui al mercado y compré frutas.</span>
-        </label>
-        <label class="option-card">
-          <input type="checkbox" name="comprehension_levels" value="b1" />
-          <span class="option-title">B1</span>
-          <span class="option-note">Me gustaría que vinieras a la fiesta este fin de semana.</span>
-        </label>
+      <h2>2. Pick a concept in that tier</h2>
+      <p class="section-help">Optional. If you leave this blank, we will start at the first concept in the tier.</p>
+      <div class="rounded-xl border border-[#2f4755] bg-[#0f1a20] p-3">
+        <label for="start_concept_id" class="block text-sm font-semibold text-slate-200 mb-2">Start concept</label>
+        <select
+          id="start_concept_id"
+          name="start_concept_id"
+          class="w-full rounded-lg bg-[#13222b] border border-[#36505f] px-3 py-2 text-slate-100"
+        >
+          <option value="">Auto-pick first concept in selected tier</option>
+          {% for tier in tier_catalog %}
+            <optgroup label="Tier {{ tier.tier }}">
+              {% for concept in tier.concepts %}
+                <option value="{{ concept.id }}" data-tier="{{ tier.tier }}">{{ concept.name }}</option>
+              {% endfor %}
+            </optgroup>
+          {% endfor %}
+        </select>
       </div>
     </section>
 
@@ -70,9 +63,38 @@
       </div>
     </section>
 
-    <button type="submit" class="start-btn">Start Placement Conversation</button>
+    <button type="submit" class="start-btn">Start Learning</button>
   </form>
 </div>
+
+<script>
+  (function () {
+    var tierRadios = Array.from(document.querySelectorAll('input[name="start_tier"]'));
+    var conceptSelect = document.getElementById('start_concept_id');
+    if (!tierRadios.length || !conceptSelect) return;
+
+    function syncConceptOptions() {
+      var selectedTier = tierRadios.find(function (r) { return r.checked; });
+      var tierValue = selectedTier ? selectedTier.value : '';
+      Array.from(conceptSelect.options).forEach(function (opt, index) {
+        if (index === 0) {
+          opt.hidden = false;
+          return;
+        }
+        var optTier = opt.getAttribute('data-tier');
+        opt.hidden = !!(optTier && tierValue && optTier !== tierValue);
+      });
+      if (conceptSelect.selectedOptions[0] && conceptSelect.selectedOptions[0].hidden) {
+        conceptSelect.value = '';
+      }
+    }
+
+    tierRadios.forEach(function (radio) {
+      radio.addEventListener('change', syncConceptOptions);
+    });
+    syncConceptOptions();
+  })();
+</script>
 
 <style>
   .onboarding-shell {
