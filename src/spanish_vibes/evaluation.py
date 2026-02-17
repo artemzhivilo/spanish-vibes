@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .conversation import ConversationMessage
-from .db import _open_connection, now_iso
+from .db import _open_connection, get_current_user_id, now_iso
 
 from .flow_ai import ai_available, _get_client
 from .personas import load_persona, get_persona_prompt
@@ -60,7 +60,11 @@ def evaluate_conversation(
 
     transcript_lines: list[str] = []
     for msg in messages:
-        prefix = "Persona" if msg.role == "ai" else ("System" if msg.role == "system" else "Learner")
+        prefix = (
+            "Persona"
+            if msg.role == "ai"
+            else ("System" if msg.role == "system" else "Learner")
+        )
         content = msg.content if hasattr(msg, "content") else str(msg)
         transcript_lines.append(f"{prefix}: {content}")
     transcript = "\n".join(transcript_lines)
@@ -108,14 +112,20 @@ def evaluate_conversation(
 
     eval_obj = ConversationEvaluation()
     eval_obj.summary_for_user = str(data.get("summary_for_user") or "").strip()
-    eval_obj.vocabulary_used = [w.strip() for w in data.get("vocabulary_used", []) if isinstance(w, str)]
-    eval_obj.user_facts = [f.strip() for f in data.get("user_facts", []) if isinstance(f, str)]
+    eval_obj.vocabulary_used = [
+        w.strip() for w in data.get("vocabulary_used", []) if isinstance(w, str)
+    ]
+    eval_obj.user_facts = [
+        f.strip() for f in data.get("user_facts", []) if isinstance(f, str)
+    ]
     eval_obj.persona_observations = [
         f.strip() for f in data.get("persona_observations", []) if isinstance(f, str)
     ]
     eval_obj.engagement_quality = float(data.get("engagement_quality") or 0.0)
     if isinstance(data.get("estimated_cefr"), dict):
-        eval_obj.estimated_cefr = {str(k): str(v) for k, v in data["estimated_cefr"].items()}
+        eval_obj.estimated_cefr = {
+            str(k): str(v) for k, v in data["estimated_cefr"].items()
+        }
     if isinstance(data.get("concept_required_result"), dict):
         eval_obj.concept_required_result = {
             str(k): v for k, v in data["concept_required_result"].items()
@@ -185,11 +195,13 @@ def update_persona_engagement(
 ) -> None:
     """Update running engagement metrics for persona+topic and persona-level rows."""
     timestamp = now_iso()
+    user_id = get_current_user_id()
     early_exit_value = 1.0 if was_early_exit else 0.0
 
     with _open_connection() as conn:
         _upsert_engagement_row(
             conn,
+            user_id=user_id,
             persona_id=persona_id,
             topic_id=topic_id,
             enjoyment_score=enjoyment_score,
@@ -200,6 +212,7 @@ def update_persona_engagement(
         )
         _upsert_engagement_row(
             conn,
+            user_id=user_id,
             persona_id=persona_id,
             topic_id=None,
             enjoyment_score=enjoyment_score,
@@ -214,6 +227,7 @@ def update_persona_engagement(
 def _upsert_engagement_row(
     conn: Any,
     *,
+    user_id: int,
     persona_id: str,
     topic_id: int | None,
     enjoyment_score: float,
@@ -223,48 +237,70 @@ def _upsert_engagement_row(
     timestamp: str,
 ) -> None:
     if topic_id is None:
-        conn.execute(
+        row = conn.execute(
             """
-            INSERT INTO persona_engagement (
-                persona_id, topic_id, conversation_count, avg_enjoyment_score,
-                avg_message_length, avg_turns, early_exit_rate, last_conversation_at
-            )
-            VALUES (?, NULL, 1, ?, ?, ?, ?, ?)
-            ON CONFLICT(persona_id) WHERE topic_id IS NULL DO UPDATE SET
-                conversation_count = persona_engagement.conversation_count + 1,
-                avg_enjoyment_score = persona_engagement.avg_enjoyment_score
-                    + (? - persona_engagement.avg_enjoyment_score) / (persona_engagement.conversation_count + 1),
-                avg_message_length = persona_engagement.avg_message_length
-                    + (? - persona_engagement.avg_message_length) / (persona_engagement.conversation_count + 1),
-                avg_turns = persona_engagement.avg_turns
-                    + (? - persona_engagement.avg_turns) / (persona_engagement.conversation_count + 1),
-                early_exit_rate = persona_engagement.early_exit_rate
-                    + (? - persona_engagement.early_exit_rate) / (persona_engagement.conversation_count + 1),
-                last_conversation_at = excluded.last_conversation_at
+            SELECT id, conversation_count, avg_enjoyment_score, avg_message_length, avg_turns, early_exit_rate
+            FROM persona_engagement
+            WHERE user_id = ? AND persona_id = ? AND topic_id IS NULL
             """,
-            (
-                persona_id,
-                enjoyment_score,
-                avg_message_length,
-                turn_count,
-                early_exit_value,
-                timestamp,
-                enjoyment_score,
-                avg_message_length,
-                turn_count,
-                early_exit_value,
-            ),
-        )
+            (user_id, persona_id),
+        ).fetchone()
+        if row is None:
+            conn.execute(
+                """
+                INSERT INTO persona_engagement (
+                    user_id, persona_id, topic_id, conversation_count, avg_enjoyment_score,
+                    avg_message_length, avg_turns, early_exit_rate, last_conversation_at
+                )
+                VALUES (?, ?, NULL, 1, ?, ?, ?, ?, ?)
+                """,
+                (
+                    user_id,
+                    persona_id,
+                    enjoyment_score,
+                    avg_message_length,
+                    turn_count,
+                    early_exit_value,
+                    timestamp,
+                ),
+            )
+        else:
+            n = int(row["conversation_count"]) + 1
+            conn.execute(
+                """
+                UPDATE persona_engagement
+                SET conversation_count = ?,
+                    avg_enjoyment_score = avg_enjoyment_score + (? - avg_enjoyment_score) / ?,
+                    avg_message_length = avg_message_length + (? - avg_message_length) / ?,
+                    avg_turns = avg_turns + (? - avg_turns) / ?,
+                    early_exit_rate = early_exit_rate + (? - early_exit_rate) / ?,
+                    last_conversation_at = ?
+                WHERE id = ?
+                """,
+                (
+                    n,
+                    enjoyment_score,
+                    n,
+                    avg_message_length,
+                    n,
+                    turn_count,
+                    n,
+                    early_exit_value,
+                    n,
+                    timestamp,
+                    int(row["id"]),
+                ),
+            )
         return
 
     conn.execute(
         """
         INSERT INTO persona_engagement (
-            persona_id, topic_id, conversation_count, avg_enjoyment_score,
+            user_id, persona_id, topic_id, conversation_count, avg_enjoyment_score,
             avg_message_length, avg_turns, early_exit_rate, last_conversation_at
         )
-        VALUES (?, ?, 1, ?, ?, ?, ?, ?)
-        ON CONFLICT(persona_id, topic_id) DO UPDATE SET
+        VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id, persona_id, topic_id) DO UPDATE SET
             conversation_count = persona_engagement.conversation_count + 1,
             avg_enjoyment_score = persona_engagement.avg_enjoyment_score
                 + (? - persona_engagement.avg_enjoyment_score) / (persona_engagement.conversation_count + 1),
@@ -277,6 +313,7 @@ def _upsert_engagement_row(
             last_conversation_at = excluded.last_conversation_at
         """,
         (
+            user_id,
             persona_id,
             topic_id,
             enjoyment_score,
@@ -302,13 +339,14 @@ def apply_placement_results(evaluation: ConversationEvaluation) -> dict[str, Any
 
     unlocked_count = 0
     timestamp = now_iso()
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         for concept_id, concept in concepts.items():
             if concept.difficulty_level >= safe_tier:
                 continue
             row = conn.execute(
-                "SELECT p_mastery, n_attempts, n_correct, n_wrong FROM concept_knowledge WHERE concept_id = ?",
-                (concept_id,),
+                "SELECT p_mastery, n_attempts, n_correct, n_wrong FROM concept_knowledge WHERE user_id = ? AND concept_id = ?",
+                (user_id, concept_id),
             ).fetchone()
             if row is None:
                 continue
@@ -320,9 +358,17 @@ def apply_placement_results(evaluation: ConversationEvaluation) -> dict[str, Any
                 """
                 UPDATE concept_knowledge
                 SET p_mastery = ?, n_attempts = ?, n_correct = ?, n_wrong = ?, teach_shown = 1, updated_at = ?
-                WHERE concept_id = ?
+                WHERE user_id = ? AND concept_id = ?
                 """,
-                (p_mastery, n_attempts, n_correct, n_wrong, timestamp, concept_id),
+                (
+                    p_mastery,
+                    n_attempts,
+                    n_correct,
+                    n_wrong,
+                    timestamp,
+                    user_id,
+                    concept_id,
+                ),
             )
             unlocked_count += 1
 
@@ -332,12 +378,14 @@ def apply_placement_results(evaluation: ConversationEvaluation) -> dict[str, Any
                 continue
             concept_id = evidence.concept_id
             row = conn.execute(
-                "SELECT p_mastery, n_attempts, n_correct FROM concept_knowledge WHERE concept_id = ?",
-                (concept_id,),
+                "SELECT p_mastery, n_attempts, n_correct FROM concept_knowledge WHERE user_id = ? AND concept_id = ?",
+                (user_id, concept_id),
             ).fetchone()
             if row is None:
                 continue
-            accuracy = max(0.0, min(1.0, evidence.correct_count / max(1, evidence.usage_count)))
+            accuracy = max(
+                0.0, min(1.0, evidence.correct_count / max(1, evidence.usage_count))
+            )
             initial_mastery = accuracy * 0.7
             p_mastery = max(float(row["p_mastery"] or 0.0), initial_mastery)
             n_attempts = max(int(row["n_attempts"] or 0), evidence.usage_count)
@@ -346,9 +394,9 @@ def apply_placement_results(evaluation: ConversationEvaluation) -> dict[str, Any
                 """
                 UPDATE concept_knowledge
                 SET p_mastery = ?, n_attempts = ?, n_correct = ?, teach_shown = 1, updated_at = ?
-                WHERE concept_id = ?
+                WHERE user_id = ? AND concept_id = ?
                 """,
-                (p_mastery, n_attempts, n_correct, timestamp, concept_id),
+                (p_mastery, n_attempts, n_correct, timestamp, user_id, concept_id),
             )
             demonstrated.append(concept_id)
 

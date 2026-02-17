@@ -7,7 +7,7 @@ from typing import Any
 
 import yaml
 
-from .db import _open_connection, now_iso
+from .db import _open_connection, get_current_user_id, now_iso
 from .models import Concept, ConceptKnowledge
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
@@ -154,6 +154,7 @@ def seed_concepts_to_db(path: Path | None = None) -> int:
     concepts = load_concepts(path)
     validate_dag(concepts)
     timestamp = now_iso()
+    user_id = get_current_user_id() or 1
 
     with _open_connection() as conn:
         for concept in concepts.values():
@@ -162,8 +163,14 @@ def seed_concepts_to_db(path: Path | None = None) -> int:
                 INSERT OR REPLACE INTO concepts (id, name, description, difficulty_level, teach_content, created_at)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (concept.id, concept.name, concept.description,
-                 concept.difficulty_level, concept.teach_content, timestamp),
+                (
+                    concept.id,
+                    concept.name,
+                    concept.description,
+                    concept.difficulty_level,
+                    concept.teach_content,
+                    timestamp,
+                ),
             )
 
         # Clear and re-insert prerequisites
@@ -178,16 +185,16 @@ def seed_concepts_to_db(path: Path | None = None) -> int:
         # Init knowledge rows (don't overwrite existing)
         for concept_id in concepts:
             existing = conn.execute(
-                "SELECT concept_id FROM concept_knowledge WHERE concept_id = ?",
-                (concept_id,),
+                "SELECT concept_id FROM concept_knowledge WHERE user_id = ? AND concept_id = ?",
+                (user_id, concept_id),
             ).fetchone()
             if existing is None:
                 conn.execute(
                     """
-                    INSERT INTO concept_knowledge (concept_id, p_mastery, n_attempts, n_correct, n_wrong, teach_shown, updated_at)
-                    VALUES (?, 0.0, 0, 0, 0, 0, ?)
+                    INSERT INTO concept_knowledge (user_id, concept_id, p_mastery, n_attempts, n_correct, n_wrong, teach_shown, updated_at)
+                    VALUES (?, ?, 0.0, 0, 0, 0, 0, ?)
                     """,
-                    (concept_id, timestamp),
+                    (user_id, concept_id, timestamp),
                 )
         conn.commit()
 

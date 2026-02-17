@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from .db import _open_connection, get_all_interest_topics, now_iso
+from .db import _open_connection, get_all_interest_topics, get_current_user_id, now_iso
 
 # ── Signal weights ────────────────────────────────────────────────────────────
 
@@ -46,7 +46,9 @@ CONCEPT_TOPIC_MAP: dict[str, str] = {
 }
 
 
-def get_topic_id_for_conversation(topic: str, concept_id: str | None = None) -> int | None:
+def get_topic_id_for_conversation(
+    topic: str, concept_id: str | None = None
+) -> int | None:
     """Match conversation topic/concept to an interest topic id."""
     topics = get_all_interest_topics()
     if not topics:
@@ -89,21 +91,22 @@ def seed_interest_scores(topic_ids: list[int], initial_score: float = 0.35) -> i
     valid_ids = sorted({int(topic_id) for topic_id in topic_ids if int(topic_id) > 0})
     if not valid_ids:
         return 0
+    user_id = get_current_user_id()
     timestamp = now_iso()
     seeded = 0
     with _open_connection() as conn:
         for topic_id in valid_ids:
             row = conn.execute(
-                "SELECT score, interaction_count FROM user_interest_scores WHERE topic_id = ?",
-                (topic_id,),
+                "SELECT score, interaction_count FROM user_interest_scores WHERE user_id = ? AND topic_id = ?",
+                (user_id, topic_id),
             ).fetchone()
             if row is None:
                 conn.execute(
                     """
-                    INSERT INTO user_interest_scores (topic_id, score, last_updated, interaction_count)
+                    INSERT INTO user_interest_scores (user_id, topic_id, score, last_updated, interaction_count)
                     VALUES (?, ?, ?, 1)
                     """,
-                    (topic_id, max(0.0, min(1.0, initial_score)), timestamp),
+                    (user_id, topic_id, max(0.0, min(1.0, initial_score)), timestamp),
                 )
             else:
                 current_score = float(row["score"] or 0.0)
@@ -112,9 +115,15 @@ def seed_interest_scores(topic_ids: list[int], initial_score: float = 0.35) -> i
                     """
                     UPDATE user_interest_scores
                     SET score = ?, interaction_count = ?, last_updated = ?
-                    WHERE topic_id = ?
+                    WHERE user_id = ? AND topic_id = ?
                     """,
-                    (max(current_score, initial_score), max(current_count, 1), timestamp, topic_id),
+                    (
+                        max(current_score, initial_score),
+                        max(current_count, 1),
+                        timestamp,
+                        user_id,
+                        topic_id,
+                    ),
                 )
             seeded += 1
         conn.commit()
@@ -194,6 +203,7 @@ class InterestTracker:
         """Return the top N topics by decayed interest score."""
         now = datetime.now(timezone.utc)
 
+        user_id = get_current_user_id()
         with _open_connection() as conn:
             rows = conn.execute(
                 """
@@ -202,9 +212,10 @@ class InterestTracker:
                        t.name, t.slug
                 FROM user_interest_scores s
                 JOIN interest_topics t ON t.id = s.topic_id
-                WHERE s.interaction_count > 0
+                WHERE s.user_id = ? AND s.interaction_count > 0
                 ORDER BY s.score DESC
                 """,
+                (user_id,),
             ).fetchall()
 
         scored: list[TopicScore] = []
@@ -216,13 +227,15 @@ class InterestTracker:
                 now=now,
             )
             if decayed > 0.001:
-                scored.append(TopicScore(
-                    topic_id=int(row["topic_id"]),
-                    name=str(row["name"]),
-                    slug=str(row["slug"]),
-                    score=decayed,
-                    interaction_count=int(row["interaction_count"]),
-                ))
+                scored.append(
+                    TopicScore(
+                        topic_id=int(row["topic_id"]),
+                        name=str(row["name"]),
+                        slug=str(row["slug"]),
+                        score=decayed,
+                        interaction_count=int(row["interaction_count"]),
+                    )
+                )
 
         scored.sort(key=lambda t: t.score, reverse=True)
         return scored[:n]
@@ -230,10 +243,11 @@ class InterestTracker:
     def get_decayed_score(self, topic_id: int) -> float:
         """Return the current decayed score for a topic."""
         now = datetime.now(timezone.utc)
+        user_id = get_current_user_id()
         with _open_connection() as conn:
             row = conn.execute(
-                "SELECT score, last_updated, decay_half_life_days FROM user_interest_scores WHERE topic_id = ?",
-                (topic_id,),
+                "SELECT score, last_updated, decay_half_life_days FROM user_interest_scores WHERE user_id = ? AND topic_id = ?",
+                (user_id, topic_id),
             ).fetchone()
         if row is None:
             return 0.0
@@ -302,71 +316,77 @@ class InterestTracker:
 
     @staticmethod
     def _get_score(topic_id: int) -> float:
+        user_id = get_current_user_id()
         with _open_connection() as conn:
             row = conn.execute(
-                "SELECT score FROM user_interest_scores WHERE topic_id = ?",
-                (topic_id,),
+                "SELECT score FROM user_interest_scores WHERE user_id = ? AND topic_id = ?",
+                (user_id, topic_id),
             ).fetchone()
         return float(row["score"]) if row else 0.0
 
     @staticmethod
     def _get_current_record(topic_id: int) -> dict[str, Any] | None:
+        user_id = get_current_user_id()
         with _open_connection() as conn:
             row = conn.execute(
-                "SELECT * FROM user_interest_scores WHERE topic_id = ?",
-                (topic_id,),
+                "SELECT * FROM user_interest_scores WHERE user_id = ? AND topic_id = ?",
+                (user_id, topic_id),
             ).fetchone()
         return dict(row) if row else None
 
     @staticmethod
     def _upsert_score(topic_id: int, score: float, interaction_count: int) -> None:
+        user_id = get_current_user_id()
         timestamp = now_iso()
         with _open_connection() as conn:
             conn.execute(
                 """
-                INSERT INTO user_interest_scores (topic_id, score, last_updated, interaction_count)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(topic_id) DO UPDATE SET
+                INSERT INTO user_interest_scores (user_id, topic_id, score, last_updated, interaction_count)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(user_id, topic_id) DO UPDATE SET
                     score = excluded.score,
                     last_updated = excluded.last_updated,
                     interaction_count = excluded.interaction_count
                 """,
-                (topic_id, score, timestamp, interaction_count),
+                (user_id, topic_id, score, timestamp, interaction_count),
             )
             conn.commit()
 
     @staticmethod
     def _increment_interaction(topic_id: int) -> None:
+        user_id = get_current_user_id()
         timestamp = now_iso()
         with _open_connection() as conn:
             existing = conn.execute(
-                "SELECT topic_id FROM user_interest_scores WHERE topic_id = ?",
-                (topic_id,),
+                "SELECT topic_id FROM user_interest_scores WHERE user_id = ? AND topic_id = ?",
+                (user_id, topic_id),
             ).fetchone()
             if existing:
                 conn.execute(
-                    "UPDATE user_interest_scores SET interaction_count = interaction_count + 1, last_updated = ? WHERE topic_id = ?",
-                    (timestamp, topic_id),
+                    "UPDATE user_interest_scores SET interaction_count = interaction_count + 1, last_updated = ? WHERE user_id = ? AND topic_id = ?",
+                    (timestamp, user_id, topic_id),
                 )
             else:
                 conn.execute(
-                    "INSERT INTO user_interest_scores (topic_id, score, last_updated, interaction_count) VALUES (?, 0.0, ?, 1)",
-                    (topic_id, timestamp),
+                    "INSERT INTO user_interest_scores (user_id, topic_id, score, last_updated, interaction_count) VALUES (?, ?, 0.0, ?, 1)",
+                    (user_id, topic_id, timestamp),
                 )
             conn.commit()
 
     @staticmethod
     def _record_signal(signal: CardSignal) -> None:
+        user_id = get_current_user_id()
         timestamp = now_iso()
         with _open_connection() as conn:
             conn.execute(
                 """
                 INSERT INTO card_signals
-                    (card_id, session_id, dwell_time_ms, was_correct, response_time_ms,
+                    (user_id, card_id, session_id, dwell_time_ms, was_correct, response_time_ms,
                      was_skipped, topic_id, concept_id, card_type, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    user_id,
                     signal.card_id,
                     signal.session_id,
                     signal.dwell_time_ms,

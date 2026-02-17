@@ -44,6 +44,7 @@ from .db import (
     consume_dev_override,
     delete_dev_override,
     get_all_dev_overrides,
+    get_current_user_id,
     get_all_interest_topics,
     is_user_onboarded,
     now_iso,
@@ -54,7 +55,12 @@ from .db import (
 from .concepts import load_concepts, prerequisites_met
 from .bkt import is_mastered, bkt_update
 from .lexicon import translate_spanish_word
-from .personas import get_persona_prompt, load_all_personas, load_persona, select_persona
+from .personas import (
+    get_persona_prompt,
+    load_all_personas,
+    load_persona,
+    select_persona,
+)
 from .conversation_types import get_type_instruction, select_conversation_type
 from .evaluation import (
     apply_placement_results,
@@ -91,10 +97,15 @@ def _count_mastered() -> tuple[int, int]:
     concepts = load_concepts()
     knowledge = get_all_concept_knowledge()
     mastered = sum(
-        1 for cid, ck in knowledge.items()
+        1
+        for cid, ck in knowledge.items()
         if cid in concepts and is_mastered(ck.p_mastery, ck.n_attempts)
     )
     return mastered, len(concepts)
+
+
+def _uid() -> int:
+    return get_current_user_id()
 
 
 @router.get("/flow", response_class=HTMLResponse)
@@ -106,6 +117,7 @@ async def flow_page(request: Request, dev: str | None = Query(None)) -> Response
     show_dev = dev == "1"
 
     from .app import _get_player_progress
+
     session = start_or_resume_session()
     state = build_session_state(session.id)
     progress = _get_player_progress()
@@ -131,11 +143,15 @@ async def flow_page(request: Request, dev: str | None = Query(None)) -> Response
     if show_dev:
         personas = load_all_personas()
         overrides = get_all_dev_overrides()
-        context.update({
-            "dev_personas": personas,
-            "dev_concepts": sorted(concepts.values(), key=lambda c: (c.difficulty_level, c.name)),
-            "dev_overrides": overrides,
-        })
+        context.update(
+            {
+                "dev_personas": personas,
+                "dev_concepts": sorted(
+                    concepts.values(), key=lambda c: (c.difficulty_level, c.name)
+                ),
+                "dev_overrides": overrides,
+            }
+        )
     return templates.TemplateResponse(request, "flow.html", context)
 
 
@@ -194,7 +210,7 @@ async def start_placement(
             pass
 
     concept_id = _pick_placement_concept(starting_level)
-    topic = _pick_placement_topic(interest_topic_ids)
+    topic = _pick_placement_topic(interest_topic_ids, starting_level=starting_level)
 
     # Build the placement conversation (creates DB record, generates opener)
     from .conversation import ConversationCard, ConversationEngine, ConversationMessage
@@ -214,8 +230,11 @@ async def start_placement(
     effective_difficulty = min(3, max(1, starting_level))
 
     opener = engine.generate_opener(
-        topic, concept_id, effective_difficulty,
-        persona_prompt=persona_prompt, persona_name=persona.name,
+        topic,
+        concept_id,
+        effective_difficulty,
+        persona_prompt=persona_prompt,
+        persona_name=persona.name,
     )
 
     timestamp = now_iso()
@@ -223,11 +242,22 @@ async def start_placement(
     messages_json = json.dumps([opener_msg.to_dict()])
 
     with _open_connection() as conn:
+        user_id = _uid()
         cursor = conn.execute(
             """INSERT INTO flow_conversations
-                (session_id, topic, messages_json, turn_count, completed, created_at, concept_id, difficulty, persona_id, conversation_type)
-            VALUES (?, ?, ?, 1, 0, ?, ?, ?, ?, ?)""",
-            (session.id, topic, messages_json, timestamp, concept_id, effective_difficulty, persona.id, "placement"),
+                (user_id, session_id, topic, messages_json, turn_count, completed, created_at, concept_id, difficulty, persona_id, conversation_type)
+            VALUES (?, ?, ?, ?, 1, 0, ?, ?, ?, ?, ?)""",
+            (
+                user_id,
+                session.id,
+                topic,
+                messages_json,
+                timestamp,
+                concept_id,
+                effective_difficulty,
+                persona.id,
+                "placement",
+            ),
         )
         conn.commit()
         conversation_id = int(cursor.lastrowid)
@@ -235,8 +265,13 @@ async def start_placement(
     _increment_session_cards_answered(session.id)
 
     card = ConversationCard(
-        topic=topic, concept=concept_id, difficulty=effective_difficulty,
-        opener=opener, messages=[opener_msg], max_turns=8, persona_name=persona.name,
+        topic=topic,
+        concept=concept_id,
+        difficulty=effective_difficulty,
+        opener=opener,
+        messages=[opener_msg],
+        max_turns=8,
+        persona_name=persona.name,
     )
 
     # Render inside the full-page placement wrapper (not the bare partial)
@@ -277,10 +312,14 @@ async def flow_card(
     card_context = select_next_card(session_id)
 
     if card_context is None:
-        return templates.TemplateResponse(request, "partials/flow_complete.html", {
-            "session": get_session(session_id),
-            "message": "No cards available. Import lessons or check back later!",
-        })
+        return templates.TemplateResponse(
+            request,
+            "partials/flow_complete.html",
+            {
+                "session": get_session(session_id),
+                "message": "No cards available. Import lessons or check back later!",
+            },
+        )
 
     # Background prefetch for upcoming concepts
     background_tasks.add_task(prefetch_next_concepts)
@@ -299,9 +338,15 @@ async def flow_card(
     if card_context.card_type in {"conversation", "story_comprehension"}:
         from .conversation import get_random_topic
 
-        topic = card_context.interest_topics[0] if card_context.interest_topics else get_random_topic()
+        topic = (
+            card_context.interest_topics[0]
+            if card_context.interest_topics
+            else get_random_topic()
+        )
         conversation_type = card_context.conversation_type or (
-            "story_comprehension" if card_context.card_type == "story_comprehension" else "general_chat"
+            "story_comprehension"
+            if card_context.card_type == "story_comprehension"
+            else "general_chat"
         )
         target_concept_id = card_context.target_concept_id or card_context.concept_id
 
@@ -343,22 +388,28 @@ async def flow_card(
             "concept_teach_html": concept_teach_html,
             "persona_id": "",
             "conversation_type": card_context.conversation_type,
-            "card_json": json.dumps({
-                "card_type": card_context.card_type,
-                "concept_id": card_context.concept_id,
-                "question": card_context.question,
-                "correct_answer": card_context.correct_answer,
-                "options": card_context.options,
-                "option_misconceptions": card_context.option_misconceptions,
-                "difficulty": card_context.difficulty,
-                "mcq_card_id": card_context.mcq_card_id,
-                "word_id": card_context.word_id,
-                "word_spanish": card_context.word_spanish,
-            }),
+            "card_json": json.dumps(
+                {
+                    "card_type": card_context.card_type,
+                    "concept_id": card_context.concept_id,
+                    "question": card_context.question,
+                    "correct_answer": card_context.correct_answer,
+                    "options": card_context.options,
+                    "option_misconceptions": card_context.option_misconceptions,
+                    "difficulty": card_context.difficulty,
+                    "mcq_card_id": card_context.mcq_card_id,
+                    "word_id": card_context.word_id,
+                    "word_spanish": card_context.word_spanish,
+                }
+            ),
         }
         return templates.TemplateResponse(request, "partials/flow_card.html", context)
 
-    if card_context.card_type in {"sentence_builder", "emoji_association", "fill_blank"}:
+    if card_context.card_type in {
+        "sentence_builder",
+        "emoji_association",
+        "fill_blank",
+    }:
         concept_teach_html = _get_concept_teach_html(card_context.concept_id)
         context = {
             "session_id": session_id,
@@ -367,23 +418,25 @@ async def flow_card(
             "concept_teach_html": concept_teach_html,
             "persona_id": "",
             "conversation_type": card_context.conversation_type,
-            "card_json": json.dumps({
-                "card_type": card_context.card_type,
-                "concept_id": card_context.concept_id,
-                "question": card_context.question,
-                "correct_answer": card_context.correct_answer,
-                "options": card_context.options,
-                "option_misconceptions": card_context.option_misconceptions,
-                "difficulty": card_context.difficulty,
-                "mcq_card_id": card_context.mcq_card_id,
-                "word_id": card_context.word_id,
-                "word_spanish": card_context.word_spanish,
-                "word_emoji": card_context.word_emoji,
-                "word_english": card_context.word_english,
-                "word_sentence": card_context.word_sentence,
-                "scrambled_words": card_context.scrambled_words,
-                "correct_sentence": card_context.correct_sentence,
-            }),
+            "card_json": json.dumps(
+                {
+                    "card_type": card_context.card_type,
+                    "concept_id": card_context.concept_id,
+                    "question": card_context.question,
+                    "correct_answer": card_context.correct_answer,
+                    "options": card_context.options,
+                    "option_misconceptions": card_context.option_misconceptions,
+                    "difficulty": card_context.difficulty,
+                    "mcq_card_id": card_context.mcq_card_id,
+                    "word_id": card_context.word_id,
+                    "word_spanish": card_context.word_spanish,
+                    "word_emoji": card_context.word_emoji,
+                    "word_english": card_context.word_english,
+                    "word_sentence": card_context.word_sentence,
+                    "scrambled_words": card_context.scrambled_words,
+                    "correct_sentence": card_context.correct_sentence,
+                }
+            ),
         }
         return templates.TemplateResponse(request, "partials/flow_card.html", context)
 
@@ -408,16 +461,18 @@ async def flow_card(
         "concept_teach_html": concept_teach_html,
         "persona_id": "",
         "conversation_type": card_context.conversation_type,
-        "card_json": json.dumps({
-            "card_type": card_context.card_type,
-            "concept_id": card_context.concept_id,
-            "question": card_context.question,
-            "correct_answer": card_context.correct_answer,
-            "options": card_context.options,
-            "option_misconceptions": card_context.option_misconceptions,
-            "difficulty": card_context.difficulty,
-            "mcq_card_id": card_context.mcq_card_id,
-        }),
+        "card_json": json.dumps(
+            {
+                "card_type": card_context.card_type,
+                "concept_id": card_context.concept_id,
+                "question": card_context.question,
+                "correct_answer": card_context.correct_answer,
+                "options": card_context.options,
+                "option_misconceptions": card_context.option_misconceptions,
+                "difficulty": card_context.difficulty,
+                "mcq_card_id": card_context.mcq_card_id,
+            }
+        ),
     }
     return templates.TemplateResponse(request, "partials/flow_card.html", context)
 
@@ -463,7 +518,10 @@ async def flow_answer(
         response_time_ms=response_time_ms,
     )
 
-    if card_context.card_type in {"word_practice", "emoji_association"} and card_context.word_id:
+    if (
+        card_context.card_type in {"word_practice", "emoji_association"}
+        and card_context.word_id
+    ):
         mark_word_practice_result(card_context.word_id, result.is_correct)
 
     # Record interest signal (topic_id=None until cards are topic-tagged)
@@ -515,10 +573,14 @@ async def flow_teach_seen(
     # Return next card (will be an MCQ now)
     card_context = select_next_card(session_id)
     if card_context is None:
-        return templates.TemplateResponse(request, "partials/flow_complete.html", {
-            "session": get_session(session_id),
-            "message": "Generating practice questions... Refresh to continue!",
-        })
+        return templates.TemplateResponse(
+            request,
+            "partials/flow_complete.html",
+            {
+                "session": get_session(session_id),
+                "message": "Generating practice questions... Refresh to continue!",
+            },
+        )
 
     if card_context.card_type == "teach":
         context = {
@@ -537,16 +599,18 @@ async def flow_teach_seen(
         "concept_name": _get_concept_name(card_context.concept_id),
         "persona_id": "",
         "conversation_type": card_context.conversation_type,
-        "card_json": json.dumps({
-            "card_type": card_context.card_type,
-            "concept_id": card_context.concept_id,
-            "question": card_context.question,
-            "correct_answer": card_context.correct_answer,
-            "options": card_context.options,
-            "option_misconceptions": card_context.option_misconceptions,
-            "difficulty": card_context.difficulty,
-            "mcq_card_id": card_context.mcq_card_id,
-        }),
+        "card_json": json.dumps(
+            {
+                "card_type": card_context.card_type,
+                "concept_id": card_context.concept_id,
+                "question": card_context.question,
+                "correct_answer": card_context.correct_answer,
+                "options": card_context.options,
+                "option_misconceptions": card_context.option_misconceptions,
+                "difficulty": card_context.difficulty,
+                "mcq_card_id": card_context.mcq_card_id,
+            }
+        ),
     }
     return templates.TemplateResponse(request, "partials/flow_card.html", context)
 
@@ -623,10 +687,11 @@ async def flow_skip_to_tier(
             update_concept_knowledge(concept_id, 0.95, True)
             # Set enough attempts to pass the is_mastered threshold
             from .db import _open_connection
+
             with _open_connection() as conn:
                 conn.execute(
-                    "UPDATE concept_knowledge SET n_attempts = 10, n_correct = 10 WHERE concept_id = ?",
-                    (concept_id,),
+                    "UPDATE concept_knowledge SET n_attempts = 10, n_correct = 10 WHERE user_id = ? AND concept_id = ?",
+                    (_uid(), concept_id),
                 )
 
     # Populate MCQ cache for new tier concepts
@@ -636,6 +701,7 @@ async def flow_skip_to_tier(
 
     # End current session so a fresh one starts
     from .flow_db import get_active_session, end_session
+
     active = get_active_session()
     if active:
         end_session(active.id)
@@ -643,6 +709,7 @@ async def flow_skip_to_tier(
 
     # Redirect to flow page
     from starlette.responses import RedirectResponse
+
     return RedirectResponse(url="/flow", status_code=303)
 
 
@@ -666,6 +733,7 @@ async def concepts_page(request: Request) -> Response:
         accuracy = int(n_correct / n_attempts * 100) if n_attempts > 0 else 0
 
         from .concepts import prerequisites_met
+
         prereqs_met = prerequisites_met(concept_id, knowledge, concepts)
 
         if is_mastered(p_mastery, n_attempts):
@@ -677,18 +745,20 @@ async def concepts_page(request: Request) -> Response:
         else:
             status = "locked"
 
-        concept_list.append({
-            "id": concept_id,
-            "name": concept.name,
-            "description": concept.description,
-            "tier": concept.difficulty_level,
-            "status": status,
-            "mastery_pct": mastery_pct,
-            "n_attempts": n_attempts,
-            "n_correct": n_correct,
-            "accuracy": accuracy,
-            "teach_preview": (concept.teach_content or "")[:120],
-        })
+        concept_list.append(
+            {
+                "id": concept_id,
+                "name": concept.name,
+                "description": concept.description,
+                "tier": concept.difficulty_level,
+                "status": status,
+                "mastery_pct": mastery_pct,
+                "n_attempts": n_attempts,
+                "n_correct": n_correct,
+                "accuracy": accuracy,
+                "teach_preview": (concept.teach_content or "")[:120],
+            }
+        )
 
     # Group by tier
     tiers: dict[int, list] = {}
@@ -739,29 +809,37 @@ async def stats_page(request: Request) -> Response:
         if mastered:
             mastered_count += 1
 
-        concept_stats.append({
-            "name": concept.name,
-            "tier": concept.difficulty_level,
-            "n_attempts": n_attempts,
-            "accuracy": accuracy,
-            "mastery_pct": mastery_pct,
-            "status": "mastered" if mastered else ("learning" if n_attempts > 0 else "new"),
-        })
+        concept_stats.append(
+            {
+                "name": concept.name,
+                "tier": concept.difficulty_level,
+                "n_attempts": n_attempts,
+                "accuracy": accuracy,
+                "mastery_pct": mastery_pct,
+                "status": "mastered"
+                if mastered
+                else ("learning" if n_attempts > 0 else "new"),
+            }
+        )
 
     concept_stats.sort(key=lambda c: (c["tier"], c["name"]))
 
     # Session history with accuracy
     session_rows = []
     for s in sessions:
-        acc = int(s.correct_count / s.cards_answered * 100) if s.cards_answered > 0 else 0
-        session_rows.append({
-            "date": s.started_at[:16].replace("T", " "),
-            "cards": s.cards_answered,
-            "accuracy": acc,
-            "xp": s.xp_earned,
-            "streak": s.longest_streak,
-            "status": s.status,
-        })
+        acc = (
+            int(s.correct_count / s.cards_answered * 100) if s.cards_answered > 0 else 0
+        )
+        session_rows.append(
+            {
+                "date": s.started_at[:16].replace("T", " "),
+                "cards": s.cards_answered,
+                "accuracy": acc,
+                "xp": s.xp_earned,
+                "streak": s.longest_streak,
+                "status": s.status,
+            }
+        )
 
     context = {
         "page_title": "Spanish Vibes · Stats",
@@ -789,16 +867,20 @@ async def interests_dashboard(request: Request) -> Response:
     now = datetime.now(timezone.utc)
 
     with _open_connection() as conn:
+        user_id = _uid()
         topic_rows = conn.execute(
             """
             SELECT t.id, t.name, t.slug, t.parent_id,
                    s.score, s.interaction_count, s.last_updated, s.decay_half_life_days
             FROM interest_topics t
-            LEFT JOIN user_interest_scores s ON s.topic_id = t.id
+            LEFT JOIN user_interest_scores s ON s.topic_id = t.id AND s.user_id = ?
             ORDER BY COALESCE(s.score, 0) DESC, t.name
             """,
+            (user_id,),
         ).fetchall()
-        total_signals_row = conn.execute("SELECT COUNT(*) AS c FROM card_signals").fetchone()
+        total_signals_row = conn.execute(
+            "SELECT COUNT(*) AS c FROM card_signals WHERE user_id = ?", (user_id,)
+        ).fetchone()
         signal_rows = conn.execute(
             """
             SELECT cs.id, cs.topic_id, cs.was_correct, cs.dwell_time_ms,
@@ -806,9 +888,11 @@ async def interests_dashboard(request: Request) -> Response:
                    cs.created_at, t.name AS topic_name
             FROM card_signals cs
             LEFT JOIN interest_topics t ON t.id = cs.topic_id
+            WHERE cs.user_id = ?
             ORDER BY cs.id DESC
             LIMIT 25
             """,
+            (user_id,),
         ).fetchall()
 
     topics: list[dict[str, Any]] = []
@@ -826,16 +910,18 @@ async def interests_dashboard(request: Request) -> Response:
                 now=now,
             )
             decayed_values.append(decayed)
-        topics.append({
-            "id": int(row["id"]),
-            "name": row["name"],
-            "slug": row["slug"],
-            "parent_id": row["parent_id"],
-            "score": raw_score,
-            "decayed": decayed,
-            "interaction_count": row["interaction_count"] or 0,
-            "last_updated": last_updated,
-        })
+        topics.append(
+            {
+                "id": int(row["id"]),
+                "name": row["name"],
+                "slug": row["slug"],
+                "parent_id": row["parent_id"],
+                "score": raw_score,
+                "decayed": decayed,
+                "interaction_count": row["interaction_count"] or 0,
+                "last_updated": last_updated,
+            }
+        )
 
     total_signals = int(total_signals_row["c"] if total_signals_row else 0)
     recent_signals = [
@@ -944,9 +1030,7 @@ async def translate_word_endpoint(
     )
 
     if result is None:
-        body = (
-            '<div class="text-slate-400">(translation unavailable)</div>'
-        )
+        body = '<div class="text-slate-400">(translation unavailable)</div>'
     else:
         word_html = escape(result["word"])
         translation_html = escape(result["translation"])
@@ -955,7 +1039,7 @@ async def translate_word_endpoint(
             f'<div><span class="font-bold text-emerald-300">{word_html}</span>'
             '<span class="text-slate-500 mx-1">→</span>'
             f'<span class="text-slate-100">{translation_html}</span></div>'
-            '</div>'
+            "</div>"
         )
     return HTMLResponse(body)
 
@@ -982,13 +1066,16 @@ async def conversation_start(
                 concept_id=concept_id,
                 topic=topic or "",
                 difficulty=card_context.difficulty,
-                conversation_type=card_context.conversation_type or "story_comprehension",
+                conversation_type=card_context.conversation_type
+                or "story_comprehension",
             )
         if card_context and card_context.interest_topics:
             import random
+
             topic = topic or random.choice(card_context.interest_topics)
     if not topic:
         from .conversation import get_random_topic
+
         topic = get_random_topic()
     forced_type = consume_dev_override("force_next_conversation_type")
     selected_type, target_concept_id = (
@@ -1037,6 +1124,7 @@ async def story_card_start(
         concept_id = card_context.concept_id if card_context else "greetings"
         if card_context and card_context.interest_topics:
             import random
+
             topic = topic or random.choice(card_context.interest_topics)
     if not topic:
         topic = get_random_topic()
@@ -1099,6 +1187,7 @@ async def story_card_submit(
 
     try:
         from .words import harvest_conversation_words
+
         if story_text:
             harvest_conversation_words([story_text], concept_id=concept_id or None)
     except Exception:
@@ -1141,8 +1230,10 @@ async def conversation_respond(
 
     # Load conversation from DB
     with _open_connection() as conn:
+        user_id = _uid()
         row = conn.execute(
-            "SELECT * FROM flow_conversations WHERE id = ?", (conversation_id,)
+            "SELECT * FROM flow_conversations WHERE user_id = ? AND id = ?",
+            (user_id, conversation_id),
         ).fetchone()
 
     if row is None:
@@ -1171,7 +1262,9 @@ async def conversation_respond(
         difficulty,
     )
 
-    user_text_for_engine = english_result.spanish_translation if english_result else clean_message
+    user_text_for_engine = (
+        english_result.spanish_translation if english_result else clean_message
+    )
 
     # Single LLM call: evaluate + reply + steer
     result = engine.respond_to_user(
@@ -1185,7 +1278,9 @@ async def conversation_respond(
     )
 
     # Add user message with corrections from the evaluation
-    corrections = None if english_result else (result.corrections if result.corrections else None)
+    corrections = (
+        None if english_result else (result.corrections if result.corrections else None)
+    )
     user_msg = ConversationMessage(
         role="user",
         content=clean_message,
@@ -1234,30 +1329,43 @@ async def conversation_respond(
 
     if not is_ended:
         # Add Marta's reply
-        ai_msg = ConversationMessage(role="ai", content=result.ai_reply, timestamp=now_iso())
+        ai_msg = ConversationMessage(
+            role="ai", content=result.ai_reply, timestamp=now_iso()
+        )
         messages.append(ai_msg)
 
     # Update DB
     messages_json = json.dumps([m.to_dict() for m in messages])
-    corrections_json = json.dumps([
-        {
-            "original": c.original,
-            "corrected": c.corrected,
-            "explanation": c.explanation,
-            "concept_id": c.concept_id,
-        }
-        for m in messages if m.corrections
-        for c in m.corrections
-    ])
+    corrections_json = json.dumps(
+        [
+            {
+                "original": c.original,
+                "corrected": c.corrected,
+                "explanation": c.explanation,
+                "concept_id": c.concept_id,
+            }
+            for m in messages
+            if m.corrections
+            for c in m.corrections
+        ]
+    )
 
     with _open_connection() as conn:
+        user_id = _uid()
         conn.execute(
             """
             UPDATE flow_conversations
             SET messages_json = ?, turn_count = ?, completed = ?, corrections_json = ?
-            WHERE id = ?
+            WHERE user_id = ? AND id = ?
             """,
-            (messages_json, len(messages), int(is_ended), corrections_json, conversation_id),
+            (
+                messages_json,
+                len(messages),
+                int(is_ended),
+                corrections_json,
+                user_id,
+                conversation_id,
+            ),
         )
         conn.commit()
 
@@ -1272,7 +1380,9 @@ async def conversation_respond(
         "persona_id": persona.id,
         "conversation_type": conversation_type,
     }
-    return templates.TemplateResponse(request, "partials/flow_conversation.html", context)
+    return templates.TemplateResponse(
+        request, "partials/flow_conversation.html", context
+    )
 
 
 @router.get("/flow/conversation/summary", response_class=HTMLResponse)
@@ -1292,8 +1402,10 @@ async def conversation_summary(
     engine = ConversationEngine()
 
     with _open_connection() as conn:
+        user_id = _uid()
         row = conn.execute(
-            "SELECT * FROM flow_conversations WHERE id = ?", (conversation_id,)
+            "SELECT * FROM flow_conversations WHERE user_id = ? AND id = ?",
+            (user_id, conversation_id),
         ).fetchone()
 
     if row is None:
@@ -1312,7 +1424,9 @@ async def conversation_summary(
             persona_id=persona.id,
             starting_level=difficulty if conversation_type == "placement" else None,
         )
-        persona_prompt = _compose_persona_prompt(persona, type_instruction=type_instruction)
+        persona_prompt = _compose_persona_prompt(
+            persona, type_instruction=type_instruction
+        )
         existing_messages = json.loads(row["messages_json"])
         messages = [ConversationMessage.from_dict(m) for m in existing_messages]
 
@@ -1326,7 +1440,9 @@ async def conversation_summary(
             persona_name=persona.name,
         )
 
-        summary = engine.generate_summary(card, persona_prompt=persona_prompt, persona_name=persona.name)
+        summary = engine.generate_summary(
+            card, persona_prompt=persona_prompt, persona_name=persona.name
+        )
 
         evaluation = evaluate_conversation(
             messages=messages,
@@ -1341,11 +1457,14 @@ async def conversation_summary(
         enjoyment = compute_enjoyment_score(
             messages=messages,
             max_turns=card.max_turns,
-            engagement_quality_from_llm=evaluation.engagement_quality if evaluation else 0.5,
+            engagement_quality_from_llm=evaluation.engagement_quality
+            if evaluation
+            else 0.5,
         )
         user_message_objects = [m for m in messages if m.role == "user"]
         avg_msg_len = (
-            sum(len((m.content or "").split()) for m in user_message_objects) / len(user_message_objects)
+            sum(len((m.content or "").split()) for m in user_message_objects)
+            / len(user_message_objects)
             if user_message_objects
             else 0.0
         )
@@ -1445,9 +1564,10 @@ async def conversation_summary(
         # Save score to DB
         evaluation_json = json.dumps(asdict(evaluation), ensure_ascii=False)
         with _open_connection() as conn:
+            user_id = _uid()
             conn.execute(
-                "UPDATE flow_conversations SET score = ?, completed = 1, evaluation_json = ? WHERE id = ?",
-                (summary.score, evaluation_json, conversation_id),
+                "UPDATE flow_conversations SET score = ?, completed = 1, evaluation_json = ? WHERE user_id = ? AND id = ?",
+                (summary.score, evaluation_json, user_id, conversation_id),
             )
             conn.commit()
 
@@ -1472,19 +1592,26 @@ async def conversation_summary(
             # If arrived via HTMX, redirect so the full page renders properly
             if request.headers.get("HX-Request"):
                 resp = Response(status_code=200)
-                resp.headers["HX-Redirect"] = f"/flow/conversation/summary?conversation_id={conversation_id}&session_id={session_id}"
+                resp.headers["HX-Redirect"] = (
+                    f"/flow/conversation/summary?conversation_id={conversation_id}&session_id={session_id}"
+                )
                 return resp
-            return templates.TemplateResponse(request, "flow_placement_results.html", context)
-        return templates.TemplateResponse(request, "partials/flow_conversation_summary.html", context)
+            return templates.TemplateResponse(
+                request, "flow_placement_results.html", context
+            )
+        return templates.TemplateResponse(
+            request, "partials/flow_conversation_summary.html", context
+        )
     except Exception as exc:
         import traceback
+
         traceback.print_exc()
         return HTMLResponse(
             f'<div class="rounded-2xl bg-red-500/10 p-6 ring-1 ring-red-500/30 text-center">'
             f'<p class="text-sm text-red-300 mb-3">Summary failed: {escape(str(exc))}</p>'
             f'<button hx-get="/flow/card?session_id={session_id}" hx-target="#flow-card-slot" hx-swap="innerHTML"'
             f' class="rounded-xl bg-slate-700 px-5 py-3 text-sm font-bold text-slate-200 hover:bg-slate-600">'
-            f'Skip to Next Card</button></div>',
+            f"Skip to Next Card</button></div>",
             status_code=200,
         )
 
@@ -1605,14 +1732,15 @@ async def dev_reset_concept(concept_id: str = Form(...)) -> Response:
     if not cid:
         return HTMLResponse("<span>Missing concept_id</span>", status_code=400)
     with _open_connection() as conn:
+        user_id = _uid()
         conn.execute(
             """
             UPDATE concept_knowledge
             SET p_mastery = 0.0, n_attempts = 0, n_correct = 0, n_wrong = 0, teach_shown = 0,
                 last_seen_at = NULL, updated_at = ?
-            WHERE concept_id = ?
+            WHERE user_id = ? AND concept_id = ?
             """,
-            (now_iso(), cid),
+            (now_iso(), user_id, cid),
         )
         conn.commit()
     return HTMLResponse(f"<span>Reset {escape(cid)}</span>")
@@ -1648,17 +1776,11 @@ async def dev_skip_placement() -> Response:
 
 @router.post("/flow/dev/reset-all", response_class=HTMLResponse)
 async def dev_reset_all() -> Response:
-    with _open_connection() as conn:
-        conn.execute("DELETE FROM flow_responses")
-        conn.execute("DELETE FROM flow_sessions")
-        conn.execute("DELETE FROM flow_conversations")
-        conn.execute("DELETE FROM flow_state")
-        conn.execute("DELETE FROM concept_knowledge")
-        conn.execute("DELETE FROM persona_engagement")
-        conn.execute("DELETE FROM dev_overrides")
-        conn.execute("DELETE FROM progress")
-        conn.commit()
+    from .db import reset_learning_progress
+
+    reset_learning_progress()
     from .concepts import seed_concepts_to_db
+
     seed_concepts_to_db()
     return HTMLResponse("<span>Reset all progress</span>")
 
@@ -1687,12 +1809,16 @@ async def dev_prompt_save(
     k = key.strip()
     v = value.strip()
     if not k:
-        return HTMLResponse("<span class='text-red-400'>Missing key</span>", status_code=400)
+        return HTMLResponse(
+            "<span class='text-red-400'>Missing key</span>", status_code=400
+        )
     if persist == "1":
         # Write directly to prompts.yaml
         prompt_config.save_to_yaml(k, v)
         prompt_config.invalidate_cache()
-        return HTMLResponse(f"<span class='text-emerald-300'>Saved to YAML: {escape(k)}</span>")
+        return HTMLResponse(
+            f"<span class='text-emerald-300'>Saved to YAML: {escape(k)}</span>"
+        )
     else:
         # Runtime override via dev_overrides table
         if v:
@@ -1700,7 +1826,9 @@ async def dev_prompt_save(
         else:
             delete_dev_override(f"prompt:{k}")
         prompt_config.invalidate_cache()
-        return HTMLResponse(f"<span class='text-emerald-300'>Override set: {escape(k)}</span>")
+        return HTMLResponse(
+            f"<span class='text-emerald-300'>Override set: {escape(k)}</span>"
+        )
 
 
 @router.post("/flow/dev/prompt-reset", response_class=HTMLResponse)
@@ -1721,7 +1849,9 @@ async def clear_mcq_cache_endpoint(
     cid = concept_id.strip() or None
     deleted = clear_mcq_cache(concept_id=cid, source="ai")
     label = f"concept '{cid}'" if cid else "all concepts"
-    return HTMLResponse(f"<p>Cleared {deleted} cached MCQs for {label}. Fresh questions will generate on next play.</p>")
+    return HTMLResponse(
+        f"<p>Cleared {deleted} cached MCQs for {label}. Fresh questions will generate on next play.</p>"
+    )
 
 
 def _build_dev_state_payload(
@@ -1743,58 +1873,76 @@ def _build_dev_state_payload(
     if not current_concept_id and conversation_id:
         with _open_connection() as conn:
             row = conn.execute(
-                "SELECT concept_id FROM flow_conversations WHERE id = ?",
-                (conversation_id,),
+                "SELECT concept_id FROM flow_conversations WHERE user_id = ? AND id = ?",
+                (_uid(), conversation_id),
             ).fetchone()
         if row:
             current_concept_id = str(row["concept_id"] or "")
 
-    current_knowledge = knowledge.get(current_concept_id) if current_concept_id else None
-    concept_name = concepts[current_concept_id].name if current_concept_id in concepts else current_concept_id
-    is_current_mastered = (
-        bool(current_knowledge) and is_mastered(current_knowledge.p_mastery, current_knowledge.n_attempts)
+    current_knowledge = (
+        knowledge.get(current_concept_id) if current_concept_id else None
+    )
+    concept_name = (
+        concepts[current_concept_id].name
+        if current_concept_id in concepts
+        else current_concept_id
+    )
+    is_current_mastered = bool(current_knowledge) and is_mastered(
+        current_knowledge.p_mastery, current_knowledge.n_attempts
     )
 
     with _open_connection() as conn:
-        conversation_count_row = conn.execute(
-            "SELECT COUNT(*) AS c FROM flow_conversations WHERE session_id = ?",
-            (session_id,),
-        ).fetchone() if session_id else None
+        user_id = _uid()
+        conversation_count_row = (
+            conn.execute(
+                "SELECT COUNT(*) AS c FROM flow_conversations WHERE user_id = ? AND session_id = ?",
+                (user_id, session_id),
+            ).fetchone()
+            if session_id
+            else None
+        )
         total_words_row = conn.execute("SELECT COUNT(*) AS c FROM words").fetchone()
         top_tapped_rows = conn.execute(
             """
             SELECT spanish_word, COUNT(*) AS taps
             FROM word_taps
+            WHERE user_id = ?
             GROUP BY spanish_word
             ORDER BY taps DESC, spanish_word ASC
             LIMIT 5
-            """
+            """,
+            (user_id,),
         ).fetchall()
         engagement_rows = conn.execute(
             """
             SELECT persona_id, conversation_count, avg_enjoyment_score, last_conversation_at
             FROM persona_engagement
-            WHERE topic_id IS NULL
+            WHERE user_id = ? AND topic_id IS NULL
             ORDER BY avg_enjoyment_score DESC
-            """
+            """,
+            (user_id,),
         ).fetchall()
         latest_eval_row = None
         if conversation_id:
             latest_eval_row = conn.execute(
-                "SELECT evaluation_json, persona_id, conversation_type FROM flow_conversations WHERE id = ?",
-                (conversation_id,),
+                "SELECT evaluation_json, persona_id, conversation_type FROM flow_conversations WHERE user_id = ? AND id = ?",
+                (user_id, conversation_id),
             ).fetchone()
         if latest_eval_row is None:
-            latest_eval_row = conn.execute(
-                """
+            latest_eval_row = (
+                conn.execute(
+                    """
                 SELECT evaluation_json, persona_id, conversation_type
                 FROM flow_conversations
-                WHERE session_id = ?
+                WHERE user_id = ? AND session_id = ?
                 ORDER BY id DESC
                 LIMIT 1
                 """,
-                (session_id,),
-            ).fetchone() if session_id else None
+                    (user_id, session_id),
+                ).fetchone()
+                if session_id
+                else None
+            )
 
     personas = load_all_personas()
     top_interests = InterestTracker().get_top_interests(3)
@@ -1803,7 +1951,11 @@ def _build_dev_state_payload(
         row = next((r for r in engagement_rows if str(r["persona_id"]) == p.id), None)
         avg_enjoyment = float(row["avg_enjoyment_score"]) if row else 0.5
         conv_count = int(row["conversation_count"]) if row else 0
-        last_at = str(row["last_conversation_at"]) if row and row["last_conversation_at"] else None
+        last_at = (
+            str(row["last_conversation_at"])
+            if row and row["last_conversation_at"]
+            else None
+        )
         novelty = _persona_novelty_from_timestamp(last_at, conv_count)
         selection_score = avg_enjoyment * 0.6 + novelty * 0.3 + 0.05
         persona_engagement.append(
@@ -1825,10 +1977,14 @@ def _build_dev_state_payload(
             evaluation_data = {"raw": str(latest_eval_row["evaluation_json"])}
     if latest_eval_row:
         evaluation_data.setdefault("persona_id", latest_eval_row["persona_id"])
-        evaluation_data.setdefault("conversation_type", latest_eval_row["conversation_type"])
+        evaluation_data.setdefault(
+            "conversation_type", latest_eval_row["conversation_type"]
+        )
 
     concept_overview: list[dict[str, Any]] = []
-    for concept_key, concept in sorted(concepts.items(), key=lambda item: (item[1].difficulty_level, item[1].name)):
+    for concept_key, concept in sorted(
+        concepts.items(), key=lambda item: (item[1].difficulty_level, item[1].name)
+    ):
         ck = knowledge.get(concept_key)
         p_mastery = ck.p_mastery if ck else 0.0
         attempts = ck.n_attempts if ck else 0
@@ -1852,7 +2008,9 @@ def _build_dev_state_payload(
         )
 
     session_accuracy = (
-        (session.correct_count / session.cards_answered) if session and session.cards_answered > 0 else 0.0
+        (session.correct_count / session.cards_answered)
+        if session and session.cards_answered > 0
+        else 0.0
     )
     user_level = get_user_level(knowledge, concepts)
     selected_card_type = (card_type or "").strip()
@@ -1887,10 +2045,14 @@ def _build_dev_state_payload(
             "correct_count": session.correct_count if session else 0,
             "accuracy": session_accuracy,
             "current_streak": state.current_streak if state else 0,
-            "conversations_completed": int(conversation_count_row["c"]) if conversation_count_row else 0,
+            "conversations_completed": int(conversation_count_row["c"])
+            if conversation_count_row
+            else 0,
         },
         "persona_state": {
-            "excluded_persona_id": (get_last_conversation_info(session_id) or {}).get("persona_id"),
+            "excluded_persona_id": (get_last_conversation_info(session_id) or {}).get(
+                "persona_id"
+            ),
             "engagement_rows": persona_engagement,
         },
         "word_tracking": {
@@ -1938,7 +2100,9 @@ def _render_dev_concepts_html(state: dict[str, Any]) -> str:
     )
 
 
-def _render_dev_state_html(state: dict[str, Any], *, include_all_concepts: bool = True) -> str:
+def _render_dev_state_html(
+    state: dict[str, Any], *, include_all_concepts: bool = True
+) -> str:
     def section(title: str, body: str, header_class: str = "text-slate-100") -> str:
         return (
             '<div class="mb-3 border-t border-slate-700 pt-2">'
@@ -1958,7 +2122,9 @@ def _render_dev_state_html(state: dict[str, Any], *, include_all_concepts: bool 
         f"<div>Why chosen: {escape(str(current_card.get('selection_reason') or 'n/a'))}</div>"
         f"<div>Interest focus: {escape(', '.join(current_card.get('top_interests') or []) or 'n/a')}</div>"
     )
-    tier_mastery = user_level.get("tier_mastery", {}) if isinstance(user_level, dict) else {}
+    tier_mastery = (
+        user_level.get("tier_mastery", {}) if isinstance(user_level, dict) else {}
+    )
     level_html = (
         f"<div>Level: {int(user_level.get('level') or 1)}  CEFR: {escape(str(user_level.get('cefr') or 'A1'))}</div>"
         f"<div>Session difficulty: {int(user_level.get('session_difficulty') or 1)}</div>"
@@ -1971,7 +2137,9 @@ def _render_dev_state_html(state: dict[str, Any], *, include_all_concepts: bool 
     )
 
     if not str(current.get("id") or "").strip():
-        current_lines = ["<div class='text-slate-400'>(none — card not loaded yet)</div>"]
+        current_lines = [
+            "<div class='text-slate-400'>(none — card not loaded yet)</div>"
+        ]
     else:
         current_lines = [
             f"<div>{escape(str(current.get('id') or 'n/a'))} ({escape(str(current.get('name') or ''))})</div>",
@@ -2018,7 +2186,11 @@ def _render_dev_state_html(state: dict[str, Any], *, include_all_concepts: bool 
     for row in persona_rows:
         pid = str(row.get("persona_id") or "")
         marker = " ← next likely" if pid == best_id and pid else ""
-        row_class = "text-slate-500" if pid == str(persona_state.get("excluded_persona_id") or "") else "text-slate-200"
+        row_class = (
+            "text-slate-500"
+            if pid == str(persona_state.get("excluded_persona_id") or "")
+            else "text-slate-200"
+        )
         persona_lines.append(
             f'<div class="{row_class}">'
             f"{escape(pid):<12} "
@@ -2036,10 +2208,13 @@ def _render_dev_state_html(state: dict[str, Any], *, include_all_concepts: bool 
 
     words = state.get("word_tracking", {})
     top_tapped = words.get("top_tapped_words", []) or []
-    top_tapped_text = " ".join(
-        f"{escape(str(item.get('spanish_word') or ''))}({int(item.get('taps') or 0)})"
-        for item in top_tapped
-    ) or "none"
+    top_tapped_text = (
+        " ".join(
+            f"{escape(str(item.get('spanish_word') or ''))}({int(item.get('taps') or 0)})"
+            for item in top_tapped
+        )
+        or "none"
+    )
     words_html = (
         f"<div>Total tracked: {int(words.get('total_words') or 0)}</div>"
         f"<div>Top tapped: {top_tapped_text}</div>"
@@ -2059,18 +2234,29 @@ def _render_dev_state_html(state: dict[str, Any], *, include_all_concepts: bool 
     vocab_text = ", ".join((evaluation.get("vocabulary_used") or [])[:8]) or "none"
     facts_text = ", ".join((evaluation.get("user_facts") or [])[:6]) or "none"
     cefr = evaluation.get("estimated_cefr") or {}
-    cefr_text = ", ".join(f"{k}:{v}" for k, v in list(cefr.items())[:4]) if isinstance(cefr, dict) else str(cefr)
+    cefr_text = (
+        ", ".join(f"{k}:{v}" for k, v in list(cefr.items())[:4])
+        if isinstance(cefr, dict)
+        else str(cefr)
+    )
     eval_html = (
-        f"<div>Persona: {escape(str(evaluation.get('persona_id') or 'n/a'))}  "
-        f"Type: {escape(str(evaluation.get('conversation_type') or 'n/a'))}</div>"
-        f"<div>Engagement: {float(evaluation.get('engagement_quality') or 0.0):.2f}  CEFR: {escape(cefr_text or 'n/a')}</div>"
-        f"<div>Concepts: {escape(', '.join(concept_bits) or 'none')}</div>"
-        f"<div>Vocab: {escape(vocab_text)}</div>"
-        f"<div>Facts: {escape(facts_text)}</div>"
-    ) if evaluation else ""
+        (
+            f"<div>Persona: {escape(str(evaluation.get('persona_id') or 'n/a'))}  "
+            f"Type: {escape(str(evaluation.get('conversation_type') or 'n/a'))}</div>"
+            f"<div>Engagement: {float(evaluation.get('engagement_quality') or 0.0):.2f}  CEFR: {escape(cefr_text or 'n/a')}</div>"
+            f"<div>Concepts: {escape(', '.join(concept_bits) or 'none')}</div>"
+            f"<div>Vocab: {escape(vocab_text)}</div>"
+            f"<div>Facts: {escape(facts_text)}</div>"
+        )
+        if evaluation
+        else ""
+    )
 
     overrides = state.get("overrides", {}) or {}
-    override_lines = [f"<div>{escape(str(k))}: {escape(str(v))}</div>" for k, v in sorted(overrides.items())]
+    override_lines = [
+        f"<div>{escape(str(k))}: {escape(str(v))}</div>"
+        for k, v in sorted(overrides.items())
+    ]
     overrides_html = "".join(override_lines)
 
     return (
@@ -2082,7 +2268,11 @@ def _render_dev_state_html(state: dict[str, Any], *, include_all_concepts: bool 
         + section("PERSONAS", personas_html, "text-violet-300")
         + section("WORDS", words_html, "text-indigo-300")
         + (section("LAST EVALUATION", eval_html, "text-amber-300") if eval_html else "")
-        + (section("OVERRIDES", overrides_html, "text-orange-300") if overrides_html else "")
+        + (
+            section("OVERRIDES", overrides_html, "text-orange-300")
+            if overrides_html
+            else ""
+        )
         + (_render_dev_concepts_html(state) if include_all_concepts else "")
         + "</div>"
     )
@@ -2123,7 +2313,9 @@ def _guess_bucket(ck: Any) -> str:
     return "practice"
 
 
-def _persona_novelty_from_timestamp(last_conversation_at: str | None, conversation_count: int) -> float:
+def _persona_novelty_from_timestamp(
+    last_conversation_at: str | None, conversation_count: int
+) -> float:
     if conversation_count <= 0 or not last_conversation_at:
         return 1.0
     try:
@@ -2150,6 +2342,35 @@ def _pick_placement_persona_id() -> str:
 
 def _pick_placement_concept(starting_level: int) -> str:
     concepts = load_concepts()
+    level_preferred: dict[int, tuple[str, ...]] = {
+        1: (
+            "greetings",
+            "numbers_1_20",
+            "colors_basic",
+        ),
+        2: (
+            "subject_pronouns",
+            "nouns_gender",
+            "family_vocab",
+            "food_vocab",
+        ),
+        3: (
+            "ser_present",
+            "tener_present",
+            "basic_questions",
+            "articles_definite",
+        ),
+        4: (
+            "estar_present",
+            "gustar",
+            "ir_a",
+            "querer",
+        ),
+    }
+    for preferred_id in level_preferred.get(starting_level, ()):
+        if preferred_id in concepts:
+            return preferred_id
+
     target_tier = 1 if starting_level <= 1 else (2 if starting_level == 2 else 3)
     candidates = sorted(
         [cid for cid, c in concepts.items() if c.difficulty_level == target_tier],
@@ -2158,11 +2379,13 @@ def _pick_placement_concept(starting_level: int) -> str:
     if candidates:
         return candidates[0]
     # Fallback to any concept by tier then name.
-    ordered = sorted(concepts.items(), key=lambda item: (item[1].difficulty_level, item[1].name))
+    ordered = sorted(
+        concepts.items(), key=lambda item: (item[1].difficulty_level, item[1].name)
+    )
     return ordered[0][0] if ordered else "greetings"
 
 
-def _pick_placement_topic(interest_topic_ids: list[int]) -> str:
+def _pick_placement_topic(interest_topic_ids: list[int], *, starting_level: int) -> str:
     if interest_topic_ids:
         ids = {int(tid) for tid in interest_topic_ids}
         topics = get_all_interest_topics()
@@ -2172,14 +2395,21 @@ def _pick_placement_topic(interest_topic_ids: list[int]) -> str:
     top = InterestTracker().get_top_interests(1)
     if top:
         return top[0].name
-    from .conversation import get_random_topic
-    return get_random_topic()
+    if starting_level <= 1:
+        return "la vida diaria"
+    if starting_level == 2:
+        return "rutina y pasatiempos"
+    if starting_level == 3:
+        return "viajes y trabajo"
+    return "opiniones y experiencias"
 
 
 def _pick_next_learning_concept_name() -> str:
     concepts = load_concepts()
     knowledge = get_all_concept_knowledge()
-    for concept_id, concept in sorted(concepts.items(), key=lambda item: (item[1].difficulty_level, item[1].name)):
+    for concept_id, concept in sorted(
+        concepts.items(), key=lambda item: (item[1].difficulty_level, item[1].name)
+    ):
         ck = knowledge.get(concept_id)
         if ck is None:
             continue
@@ -2189,7 +2419,9 @@ def _pick_next_learning_concept_name() -> str:
     return first[0].name if first else "your next concept"
 
 
-def _compose_persona_prompt(persona: Any, *, type_instruction: str | None = None) -> str:
+def _compose_persona_prompt(
+    persona: Any, *, type_instruction: str | None = None
+) -> str:
     persona_memories: list[str] | None = None
     user_facts: list[str] | None = None
     try:
@@ -2200,7 +2432,9 @@ def _compose_persona_prompt(persona: Any, *, type_instruction: str | None = None
         # Memory loading is additive only. Fall back to base prompt on failures.
         persona_memories = None
         user_facts = None
-    prompt = get_persona_prompt(persona, persona_memories=persona_memories, user_facts=user_facts)
+    prompt = get_persona_prompt(
+        persona, persona_memories=persona_memories, user_facts=user_facts
+    )
     if type_instruction:
         prompt = f"{prompt}\n\n{type_instruction}"
     return prompt
@@ -2257,13 +2491,15 @@ def _start_chat_conversation_card(
     messages_json = json.dumps([opener_msg.to_dict()])
 
     with _open_connection() as conn:
+        user_id = _uid()
         cursor = conn.execute(
             """
             INSERT INTO flow_conversations
-                (session_id, topic, messages_json, turn_count, completed, created_at, concept_id, difficulty, persona_id, conversation_type)
-            VALUES (?, ?, ?, 1, 0, ?, ?, ?, ?, ?)
+                (user_id, session_id, topic, messages_json, turn_count, completed, created_at, concept_id, difficulty, persona_id, conversation_type)
+            VALUES (?, ?, ?, ?, 1, 0, ?, ?, ?, ?, ?)
             """,
             (
+                user_id,
                 session_id,
                 topic,
                 messages_json,
@@ -2300,7 +2536,9 @@ def _start_chat_conversation_card(
         "persona_id": persona.id,
         "conversation_type": conversation_type,
     }
-    return templates.TemplateResponse(request, "partials/flow_conversation.html", context)
+    return templates.TemplateResponse(
+        request, "partials/flow_conversation.html", context
+    )
 
 
 def _render_story_comprehension_card(

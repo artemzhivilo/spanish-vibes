@@ -7,12 +7,29 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Literal
+from urllib.parse import quote
 
 from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from starlette.responses import Response
+from starlette.responses import RedirectResponse, Response
 
+from .auth import (
+    authenticate_user,
+    clear_session_cookie,
+    create_user,
+    create_user_session,
+    ensure_csrf_cookie,
+    generate_csrf_token,
+    get_current_user,
+    get_user_by_session_token,
+    revoke_session,
+    set_active_user_id,
+    set_session_cookie,
+    validate_csrf,
+    CSRF_COOKIE_NAME,
+    SESSION_COOKIE_NAME,
+)
 from .db import (
     add_xp,
     count_due_cards,
@@ -25,11 +42,19 @@ from .db import (
     get_xp,
     init_db,
     record_practice_today,
+    reset_learning_progress,
     seed_interest_topics,
     update_card_schedule,
 )
 from .models import CardDetail, CardKind, CardDirection, DeckSummary, PlayerProgress
-from .srs import GradingStrategy, SRS_FAST, calculate_xp_award, compare_answers, level_from_xp, person_label
+from .srs import (
+    GradingStrategy,
+    SRS_FAST,
+    calculate_xp_award,
+    compare_answers,
+    level_from_xp,
+    person_label,
+)
 from .flow_routes import router as flow_router
 from .template_helpers import register_template_filters
 from .web import router as lesson_router
@@ -66,11 +91,13 @@ async def lifespan(_: FastAPI):
     seed_words()
     # Seed concept graph on startup
     from .concepts import seed_concepts_to_db, CONCEPTS_FILE
+
     if CONCEPTS_FILE.exists():
         seed_concepts_to_db()
         # On first run, convert existing cards to MCQ for tier-1 concepts (offline fallback)
         from .flow_ai import convert_existing_cards_to_mcq
         from .flow_db import count_cached_mcqs
+
         for concept_id in ["greetings", "numbers_1_20", "colors_basic"]:
             if count_cached_mcqs(concept_id) == 0:
                 convert_existing_cards_to_mcq(concept_id)
@@ -80,6 +107,43 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Spanish Vibes", lifespan=lifespan)
 app.include_router(lesson_router)
 app.include_router(flow_router)
+
+
+def _safe_next_path(candidate: str | None) -> str:
+    if not candidate:
+        return "/"
+    safe = candidate.strip()
+    if not safe.startswith("/"):
+        return "/"
+    if safe.startswith("/auth"):
+        return "/"
+    return safe
+
+
+@app.middleware("http")
+async def auth_context_middleware(request: Request, call_next):
+    request.state.current_user = get_user_by_session_token(
+        request.cookies.get(SESSION_COOKIE_NAME)
+    )
+    set_active_user_id(
+        request.state.current_user.id if request.state.current_user else 0
+    )
+    request.state.csrf_token = (
+        request.cookies.get(CSRF_COOKIE_NAME) or generate_csrf_token()
+    )
+
+    if request.url.path.startswith("/flow") and request.state.current_user is None:
+        next_path = request.url.path
+        if request.url.query:
+            next_path = f"{next_path}?{request.url.query}"
+        return RedirectResponse(
+            url=f"/auth/login?next={quote(next_path, safe='')}", status_code=303
+        )
+
+    response = await call_next(request)
+    token = ensure_csrf_cookie(request, response)
+    request.state.csrf_token = token
+    return response
 
 
 @dataclass(slots=True)
@@ -137,22 +201,39 @@ def _as_state(
 ) -> QuizState:
     available_decks = available or {deck.id: deck for deck in fetch_decks()}
 
-    normalized_mode: CardKind = mode if mode in ("vocab", "fillblank", "verbs") else "vocab"
+    normalized_mode: CardKind = (
+        mode if mode in ("vocab", "fillblank", "verbs") else "vocab"
+    )
     normalized_direction: CardDirection = DEFAULT_DIRECTION
     if normalized_mode == "vocab" and direction == "en_to_es":
         normalized_direction = "en_to_es"
     elif normalized_mode == "fillblank":
         normalized_direction = "es_to_en"
-    normalized_grading: GradingStrategy = "lenient" if grading == "lenient" else DEFAULT_GRADING
+    normalized_grading: GradingStrategy = (
+        "lenient" if grading == "lenient" else DEFAULT_GRADING
+    )
 
     filtered_ids: list[int]
     if deck_ids:
-        filtered_ids = [deck_id for deck_id in deck_ids if deck_id in available_decks and available_decks[deck_id].kind == normalized_mode]
+        filtered_ids = [
+            deck_id
+            for deck_id in deck_ids
+            if deck_id in available_decks
+            and available_decks[deck_id].kind == normalized_mode
+        ]
     else:
-        filtered_ids = [deck_id for deck_id, deck in available_decks.items() if deck.kind == normalized_mode]
+        filtered_ids = [
+            deck_id
+            for deck_id, deck in available_decks.items()
+            if deck.kind == normalized_mode
+        ]
 
     if not filtered_ids:
-        filtered_ids = [deck_id for deck_id, deck in available_decks.items() if deck.kind == normalized_mode]
+        filtered_ids = [
+            deck_id
+            for deck_id, deck in available_decks.items()
+            if deck.kind == normalized_mode
+        ]
 
     return QuizState(
         deck_ids=filtered_ids,
@@ -163,7 +244,12 @@ def _as_state(
 
 
 def _default_state() -> QuizState:
-    return _as_state(deck_ids=None, mode=DEFAULT_MODE, direction=DEFAULT_DIRECTION, grading=DEFAULT_GRADING)
+    return _as_state(
+        deck_ids=None,
+        mode=DEFAULT_MODE,
+        direction=DEFAULT_DIRECTION,
+        grading=DEFAULT_GRADING,
+    )
 
 
 def _score_from_values(points: int | None, streak: int | None) -> QuizScore:
@@ -212,7 +298,9 @@ def _build_prompt(card: CardDetail, state: QuizState) -> dict[str, Any]:
         return prompt
 
     if card.kind == "fillblank":
-        exercise = extra.get("exercise") if isinstance(extra.get("exercise"), dict) else None
+        exercise = (
+            extra.get("exercise") if isinstance(extra.get("exercise"), dict) else None
+        )
         prompt["mode_label"] = "Fill in the Blank"
         if exercise:
             ex_prompt = exercise.get("prompt", card.prompt)
@@ -244,11 +332,16 @@ def _build_prompt(card: CardDetail, state: QuizState) -> dict[str, Any]:
         tense = extra.get("tense") or ""
         person = extra.get("person") or extra.get("person_code")
         readable = person_label(person)
-        person_display = f"{readable} ({person})" if readable and person else (person or "")
+        person_display = (
+            f"{readable} ({person})" if readable and person else (person or "")
+        )
         prompt["lines"].extend(
             [
                 {"label": "Infinitive", "value": infinitive},
-                {"label": "Tense", "value": tense.title() if isinstance(tense, str) else tense},
+                {
+                    "label": "Tense",
+                    "value": tense.title() if isinstance(tense, str) else tense,
+                },
                 {"label": "Person", "value": person_display},
             ]
         )
@@ -259,6 +352,122 @@ def _build_prompt(card: CardDetail, state: QuizState) -> dict[str, Any]:
     # Fallback for any other card type
     prompt["lines"].append({"label": "Prompt", "value": card.prompt})
     return prompt
+
+
+@app.get("/auth/signup", response_class=HTMLResponse)
+async def signup_page(request: Request, next: str | None = Query(None)) -> Response:
+    if get_current_user(request):
+        return RedirectResponse(url=_safe_next_path(next), status_code=303)
+    context = {
+        "page_title": "Spanish Vibes · Sign Up",
+        "current_page": "auth",
+        "next_path": _safe_next_path(next),
+        "error": "",
+    }
+    return templates.TemplateResponse(request, "signup.html", context)
+
+
+@app.post("/auth/signup", response_class=HTMLResponse)
+async def signup_submit(
+    request: Request,
+    email: str = Form(""),
+    password: str = Form(""),
+    csrf_token: str = Form(""),
+    next: str = Form("/"),
+) -> Response:
+    if not validate_csrf(request, csrf_token):
+        context = {
+            "page_title": "Spanish Vibes · Sign Up",
+            "current_page": "auth",
+            "next_path": _safe_next_path(next),
+            "error": "Session expired. Refresh the page and try again.",
+        }
+        return templates.TemplateResponse(
+            request, "signup.html", context, status_code=400
+        )
+
+    user = create_user(email=email, password=password)
+    if user is None:
+        context = {
+            "page_title": "Spanish Vibes · Sign Up",
+            "current_page": "auth",
+            "next_path": _safe_next_path(next),
+            "error": "Unable to create account. Use a unique email and password with at least 8 characters.",
+        }
+        return templates.TemplateResponse(
+            request, "signup.html", context, status_code=400
+        )
+
+    set_active_user_id(user.id)
+    reset_learning_progress()
+    session_token = create_user_session(user.id)
+    response = RedirectResponse(url=_safe_next_path(next), status_code=303)
+    set_session_cookie(request, response, session_token)
+    return response
+
+
+@app.get("/auth/login", response_class=HTMLResponse)
+async def login_page(request: Request, next: str | None = Query(None)) -> Response:
+    if get_current_user(request):
+        return RedirectResponse(url=_safe_next_path(next), status_code=303)
+    context = {
+        "page_title": "Spanish Vibes · Log In",
+        "current_page": "auth",
+        "next_path": _safe_next_path(next),
+        "error": "",
+    }
+    return templates.TemplateResponse(request, "login.html", context)
+
+
+@app.post("/auth/login", response_class=HTMLResponse)
+async def login_submit(
+    request: Request,
+    email: str = Form(""),
+    password: str = Form(""),
+    csrf_token: str = Form(""),
+    next: str = Form("/"),
+) -> Response:
+    if not validate_csrf(request, csrf_token):
+        context = {
+            "page_title": "Spanish Vibes · Log In",
+            "current_page": "auth",
+            "next_path": _safe_next_path(next),
+            "error": "Session expired. Refresh the page and try again.",
+        }
+        return templates.TemplateResponse(
+            request, "login.html", context, status_code=400
+        )
+
+    user = authenticate_user(email=email, password=password)
+    if user is None:
+        context = {
+            "page_title": "Spanish Vibes · Log In",
+            "current_page": "auth",
+            "next_path": _safe_next_path(next),
+            "error": "Invalid email or password.",
+        }
+        return templates.TemplateResponse(
+            request, "login.html", context, status_code=401
+        )
+
+    set_active_user_id(user.id)
+    session_token = create_user_session(user.id)
+    response = RedirectResponse(url=_safe_next_path(next), status_code=303)
+    set_session_cookie(request, response, session_token)
+    return response
+
+
+@app.post("/auth/logout")
+async def logout_submit(
+    request: Request,
+    csrf_token: str = Form(""),
+) -> Response:
+    if not validate_csrf(request, csrf_token):
+        return RedirectResponse(url="/", status_code=303)
+    revoke_session(request.cookies.get(SESSION_COOKIE_NAME))
+    response = RedirectResponse(url="/", status_code=303)
+    clear_session_cookie(response)
+    return response
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -280,8 +489,15 @@ async def index(request: Request) -> Response:
     lesson_labels = {ls.id: _chapter_label(ls.slug) for ls in lesson_summaries}
 
     def _sort_key(deck: DeckSummary) -> tuple[int, int, str]:
-        m = re.match(r"ch(\d+)-(\d+)", next((ls.slug for ls in lesson_summaries if ls.id == deck.lesson_id), ""))
-        return (int(m.group(1)), int(m.group(2)), deck.name) if m else (999, 999, deck.name)
+        m = re.match(
+            r"ch(\d+)-(\d+)",
+            next((ls.slug for ls in lesson_summaries if ls.id == deck.lesson_id), ""),
+        )
+        return (
+            (int(m.group(1)), int(m.group(2)), deck.name)
+            if m
+            else (999, 999, deck.name)
+        )
 
     deck_summaries.sort(key=_sort_key)
 
@@ -291,6 +507,7 @@ async def index(request: Request) -> Response:
 
     # Concept mastery for hero section
     from .flow_routes import _count_mastered
+
     mastered, total = _count_mastered()
 
     context = {
@@ -307,7 +524,6 @@ async def index(request: Request) -> Response:
         "current_page": "home",
     }
     return templates.TemplateResponse(request, "index.html", context)
-
 
 
 @app.get("/quiz", response_class=HTMLResponse)
@@ -332,14 +548,22 @@ async def quiz_panel(
             lesson_decks = [d for d in all_decks if d.lesson_id == lesson_info.id]
             effective_kind = kind if kind in ("vocab", "fillblank", "verbs") else None
             if effective_kind:
-                lesson_decks = [d for d in lesson_decks if d.kind == effective_kind] or lesson_decks
+                lesson_decks = [
+                    d for d in lesson_decks if d.kind == effective_kind
+                ] or lesson_decks
             deck = [d.id for d in lesson_decks]
             if not mode and lesson_decks:
                 mode = effective_kind or lesson_decks[0].kind
 
     deck_summaries = fetch_decks()
     deck_lookup = {d.id: d for d in deck_summaries}
-    state = _as_state(deck_ids=deck, mode=mode, direction=direction, grading=grading, available=deck_lookup)
+    state = _as_state(
+        deck_ids=deck,
+        mode=mode,
+        direction=direction,
+        grading=grading,
+        available=deck_lookup,
+    )
     card = fetch_next_due_card(now, deck_ids=state.deck_ids, kind=state.mode)
     prompt = _build_prompt(card, state) if card else None
     score = _score_from_values(points, streak)
@@ -368,33 +592,57 @@ async def practice(
 
     if not lesson:
         state = _default_state()
-        return templates.TemplateResponse(request, "practice.html", {
-            "page_title": "Spanish Vibes · Practice",
-            "card": None, "state": state, "prompt": None,
-            "submitted_answer": "", "feedback": None,
-            "score": score, "progress": progress,
-            "lesson_info": None, "practice_kind": state.mode,
-            "deck_kinds": [], "due_in_lesson": 0,
-        })
+        return templates.TemplateResponse(
+            request,
+            "practice.html",
+            {
+                "page_title": "Spanish Vibes · Practice",
+                "card": None,
+                "state": state,
+                "prompt": None,
+                "submitted_answer": "",
+                "feedback": None,
+                "score": score,
+                "progress": progress,
+                "lesson_info": None,
+                "practice_kind": state.mode,
+                "deck_kinds": [],
+                "due_in_lesson": 0,
+            },
+        )
 
     lesson_info = fetch_lesson_by_slug(lesson)
     if lesson_info is None:
         state = _default_state()
-        return templates.TemplateResponse(request, "practice.html", {
-            "page_title": "Spanish Vibes · Practice",
-            "card": None, "state": state, "prompt": None,
-            "submitted_answer": "", "feedback": None,
-            "score": score, "progress": progress,
-            "lesson_info": None, "practice_kind": state.mode,
-            "deck_kinds": [], "due_in_lesson": 0,
-        })
+        return templates.TemplateResponse(
+            request,
+            "practice.html",
+            {
+                "page_title": "Spanish Vibes · Practice",
+                "card": None,
+                "state": state,
+                "prompt": None,
+                "submitted_answer": "",
+                "feedback": None,
+                "score": score,
+                "progress": progress,
+                "lesson_info": None,
+                "practice_kind": state.mode,
+                "deck_kinds": [],
+                "due_in_lesson": 0,
+            },
+        )
 
     now = datetime.now(timezone.utc)
     all_lesson_decks = fetch_decks(now=now)
     all_lesson_decks = [d for d in all_lesson_decks if d.lesson_id == lesson_info.id]
     deck_kinds = sorted({d.kind for d in all_lesson_decks})
 
-    lesson_decks = [d for d in all_lesson_decks if d.kind == kind] if kind in ("vocab", "fillblank", "verbs") else all_lesson_decks
+    lesson_decks = (
+        [d for d in all_lesson_decks if d.kind == kind]
+        if kind in ("vocab", "fillblank", "verbs")
+        else all_lesson_decks
+    )
     if not lesson_decks:
         lesson_decks = all_lesson_decks
 
@@ -475,7 +723,13 @@ async def check_card(
 ) -> Response:
     deck_summaries = fetch_decks()
     deck_lookup = {d.id: d for d in deck_summaries}
-    state = _as_state(deck_ids=deck, mode=mode, direction=direction, grading=grading, available=deck_lookup)
+    state = _as_state(
+        deck_ids=deck,
+        mode=mode,
+        direction=direction,
+        grading=grading,
+        available=deck_lookup,
+    )
     score = _score_from_values(points, streak)
     card = fetch_card_detail(card_id)
     if card is None or card.kind != state.mode or card.deck_id not in state.deck_ids:

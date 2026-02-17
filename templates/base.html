@@ -248,6 +248,16 @@
         <nav class="flex flex-wrap gap-2 text-sm font-bold">
           <a href="/" class="rounded-full px-4 py-2 transition {% if current_page is defined and current_page == 'home' %}bg-emerald-500 text-emerald-950 shadow-md shadow-emerald-500/30{% else %}bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 hover:text-emerald-200{% endif %}">Home</a>
           <a href="/flow" class="rounded-full px-4 py-2 transition {% if current_page is defined and current_page == 'flow' %}bg-amber-500 text-amber-950 shadow-md shadow-amber-500/30{% else %}bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 hover:text-amber-200{% endif %}">Flow</a>
+          {% if request.state.current_user %}
+          <span class="rounded-full bg-slate-500/15 px-4 py-2 text-slate-300">{{ request.state.current_user.email }}</span>
+          <form method="post" action="/auth/logout">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token or '' }}" />
+            <button type="submit" class="rounded-full bg-slate-500/15 px-4 py-2 text-sm font-bold text-slate-300 transition hover:bg-slate-500/25 hover:text-slate-100">Logout</button>
+          </form>
+          {% else %}
+          <a href="/auth/login" class="rounded-full bg-slate-500/15 px-4 py-2 text-slate-300 transition hover:bg-slate-500/25 hover:text-slate-100">Log In</a>
+          <a href="/auth/signup" class="rounded-full bg-sky-500/15 px-4 py-2 text-sky-300 transition hover:bg-sky-500/25 hover:text-sky-200">Sign Up</a>
+          {% endif %}
         </nav>
       </header>
       {% endif %}

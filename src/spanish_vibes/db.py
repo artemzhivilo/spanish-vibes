@@ -90,6 +90,13 @@ def now_iso(value: datetime | None = None) -> str:
     return moment.isoformat(timespec="seconds")
 
 
+def get_current_user_id() -> int:
+    """Return request-scoped user id, or 0 when unauthenticated."""
+    from .auth import get_active_user_id
+
+    return max(0, int(get_active_user_id()))
+
+
 def init_db() -> None:
     """Initialise the database schema if tables are missing."""
 
@@ -102,7 +109,15 @@ def _create_tables(connection: sqlite3.Connection) -> None:
     _drop_if_schema_mismatch(
         connection,
         "lessons",
-        required={"id", "slug", "title", "level_score", "difficulty", "created_at", "updated_at"},
+        required={
+            "id",
+            "slug",
+            "title",
+            "level_score",
+            "difficulty",
+            "created_at",
+            "updated_at",
+        },
     )
     _drop_if_schema_mismatch(
         connection,
@@ -192,9 +207,11 @@ def _create_tables(connection: sqlite3.Connection) -> None:
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS progress (
-            key TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            key TEXT NOT NULL,
             value TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY(user_id, key)
         )
         """
     )
@@ -202,9 +219,14 @@ def _create_tables(connection: sqlite3.Connection) -> None:
     _ensure_lesson_content_columns(connection)
     _create_flow_tables(connection)
     _create_translation_tables(connection)
+    _create_auth_tables(connection)
+    _ensure_default_user(connection)
+    _migrate_user_scoped_tables(connection)
 
 
-def _drop_if_schema_mismatch(connection: sqlite3.Connection, table: str, *, required: set[str]) -> None:
+def _drop_if_schema_mismatch(
+    connection: sqlite3.Connection, table: str, *, required: set[str]
+) -> None:
     if table not in _existing_tables(connection):
         return
     columns = _get_columns(connection, table)
@@ -213,7 +235,9 @@ def _drop_if_schema_mismatch(connection: sqlite3.Connection, table: str, *, requ
 
 
 def _existing_tables(connection: sqlite3.Connection) -> set[str]:
-    rows = connection.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+    rows = connection.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'"
+    ).fetchall()
     return {str(row["name"]) for row in rows}
 
 
@@ -225,11 +249,399 @@ def _get_columns(connection: sqlite3.Connection, table: str) -> set[str]:
 def _ensure_lesson_content_columns(connection: sqlite3.Connection) -> None:
     columns = _get_columns(connection, "lessons")
     if "path" not in columns:
-        connection.execute("ALTER TABLE lessons ADD COLUMN path TEXT NOT NULL DEFAULT ''")
+        connection.execute(
+            "ALTER TABLE lessons ADD COLUMN path TEXT NOT NULL DEFAULT ''"
+        )
     if "content_sha" not in columns:
-        connection.execute("ALTER TABLE lessons ADD COLUMN content_sha TEXT NOT NULL DEFAULT ''")
+        connection.execute(
+            "ALTER TABLE lessons ADD COLUMN content_sha TEXT NOT NULL DEFAULT ''"
+        )
     if "content_html" not in columns:
-        connection.execute("ALTER TABLE lessons ADD COLUMN content_html TEXT NOT NULL DEFAULT ''")
+        connection.execute(
+            "ALTER TABLE lessons ADD COLUMN content_html TEXT NOT NULL DEFAULT ''"
+        )
+
+
+def _create_auth_tables(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            last_login_at TEXT
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            session_token_hash TEXT NOT NULL UNIQUE,
+            expires_at TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            last_seen_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id)"
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions(expires_at)"
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_learning_snapshots (
+            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            snapshot_json TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+
+
+def _ensure_default_user(connection: sqlite3.Connection) -> None:
+    row = connection.execute("SELECT id FROM users WHERE id = 1").fetchone()
+    if row is not None:
+        return
+    timestamp = now_iso()
+    connection.execute(
+        """
+        INSERT INTO users (id, email, password_hash, created_at, last_login_at)
+        VALUES (1, 'legacy-local@spanish-vibes.local', 'legacy', ?, ?)
+        """,
+        (timestamp, timestamp),
+    )
+
+
+def _table_has_user_id(connection: sqlite3.Connection, table: str) -> bool:
+    return "user_id" in _get_columns(connection, table)
+
+
+def _migrate_user_scoped_tables(connection: sqlite3.Connection) -> None:
+    if not _table_has_user_id(connection, "flow_sessions"):
+        connection.execute(
+            "ALTER TABLE flow_sessions ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_flow_sessions_user_id ON flow_sessions(user_id)"
+        )
+
+    if not _table_has_user_id(connection, "flow_responses"):
+        connection.execute(
+            "ALTER TABLE flow_responses ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_flow_responses_user_id ON flow_responses(user_id)"
+        )
+
+    if not _table_has_user_id(connection, "flow_conversations"):
+        connection.execute(
+            "ALTER TABLE flow_conversations ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_flow_conversations_user_id ON flow_conversations(user_id)"
+        )
+
+    if not _table_has_user_id(connection, "card_signals"):
+        connection.execute(
+            "ALTER TABLE card_signals ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_card_signals_user_id ON card_signals(user_id)"
+        )
+
+    if not _table_has_user_id(connection, "word_taps"):
+        connection.execute(
+            "ALTER TABLE word_taps ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_word_taps_user_id ON word_taps(user_id)"
+        )
+    if not _table_has_user_id(connection, "persona_memories"):
+        connection.execute(
+            "ALTER TABLE persona_memories ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_persona_memories_user_id ON persona_memories(user_id)"
+        )
+
+    if not _table_has_user_id(connection, "progress"):
+        connection.execute("ALTER TABLE progress RENAME TO progress_legacy")
+        connection.execute(
+            """
+            CREATE TABLE progress (
+                user_id INTEGER NOT NULL,
+                key TEXT NOT NULL,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY(user_id, key)
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO progress (user_id, key, value, updated_at)
+            SELECT 1, key, value, updated_at FROM progress_legacy
+            """
+        )
+        connection.execute("DROP TABLE progress_legacy")
+
+    if _get_columns(connection, "flow_state") == {
+        "id",
+        "current_flow_score",
+        "total_sessions",
+        "total_cards",
+        "updated_at",
+    }:
+        connection.execute("ALTER TABLE flow_state RENAME TO flow_state_legacy")
+        connection.execute(
+            """
+            CREATE TABLE flow_state (
+                user_id INTEGER PRIMARY KEY,
+                current_flow_score REAL NOT NULL DEFAULT 1000.0,
+                total_sessions INTEGER NOT NULL DEFAULT 0,
+                total_cards INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO flow_state (user_id, current_flow_score, total_sessions, total_cards, updated_at)
+            SELECT 1, current_flow_score, total_sessions, total_cards, updated_at FROM flow_state_legacy
+            """
+        )
+        connection.execute("DROP TABLE flow_state_legacy")
+
+    if _get_columns(connection, "concept_knowledge") == {
+        "concept_id",
+        "p_mastery",
+        "n_attempts",
+        "n_correct",
+        "n_wrong",
+        "teach_shown",
+        "last_seen_at",
+        "updated_at",
+    }:
+        connection.execute(
+            "ALTER TABLE concept_knowledge RENAME TO concept_knowledge_legacy"
+        )
+        connection.execute(
+            """
+            CREATE TABLE concept_knowledge (
+                user_id INTEGER NOT NULL,
+                concept_id TEXT NOT NULL REFERENCES concepts(id),
+                p_mastery REAL NOT NULL DEFAULT 0.0,
+                n_attempts INTEGER NOT NULL DEFAULT 0,
+                n_correct INTEGER NOT NULL DEFAULT 0,
+                n_wrong INTEGER NOT NULL DEFAULT 0,
+                teach_shown INTEGER NOT NULL DEFAULT 0,
+                last_seen_at TEXT,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, concept_id)
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO concept_knowledge
+                (user_id, concept_id, p_mastery, n_attempts, n_correct, n_wrong, teach_shown, last_seen_at, updated_at)
+            SELECT 1, concept_id, p_mastery, n_attempts, n_correct, n_wrong, teach_shown, last_seen_at, updated_at
+            FROM concept_knowledge_legacy
+            """
+        )
+        connection.execute("DROP TABLE concept_knowledge_legacy")
+
+    if _get_columns(connection, "user_interest_scores") == {
+        "topic_id",
+        "score",
+        "last_updated",
+        "interaction_count",
+        "decay_half_life_days",
+    }:
+        connection.execute(
+            "ALTER TABLE user_interest_scores RENAME TO user_interest_scores_legacy"
+        )
+        connection.execute(
+            """
+            CREATE TABLE user_interest_scores (
+                user_id INTEGER NOT NULL,
+                topic_id INTEGER NOT NULL REFERENCES interest_topics(id),
+                score REAL NOT NULL DEFAULT 0.0,
+                last_updated TEXT NOT NULL,
+                interaction_count INTEGER NOT NULL DEFAULT 0,
+                decay_half_life_days REAL NOT NULL DEFAULT 45.0,
+                PRIMARY KEY(user_id, topic_id)
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO user_interest_scores (user_id, topic_id, score, last_updated, interaction_count, decay_half_life_days)
+            SELECT 1, topic_id, score, last_updated, interaction_count, decay_half_life_days
+            FROM user_interest_scores_legacy
+            """
+        )
+        connection.execute("DROP TABLE user_interest_scores_legacy")
+
+    if _get_columns(connection, "user_profile") == {
+        "id",
+        "key",
+        "value",
+        "source_conversation_id",
+        "confidence",
+        "created_at",
+        "updated_at",
+    }:
+        connection.execute("ALTER TABLE user_profile RENAME TO user_profile_legacy")
+        connection.execute(
+            """
+            CREATE TABLE user_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                key TEXT NOT NULL,
+                value TEXT NOT NULL,
+                source_conversation_id INTEGER,
+                confidence REAL NOT NULL DEFAULT 0.5,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(user_id, key)
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO user_profile (user_id, key, value, source_conversation_id, confidence, created_at, updated_at)
+            SELECT 1, key, value, source_conversation_id, confidence, created_at, updated_at
+            FROM user_profile_legacy
+            """
+        )
+        connection.execute("DROP TABLE user_profile_legacy")
+
+    if _get_columns(connection, "vocabulary_gaps") == {
+        "id",
+        "english_word",
+        "spanish_word",
+        "concept_id",
+        "source",
+        "times_seen",
+        "times_correct",
+        "created_at",
+    }:
+        connection.execute(
+            "ALTER TABLE vocabulary_gaps RENAME TO vocabulary_gaps_legacy"
+        )
+        connection.execute(
+            """
+            CREATE TABLE vocabulary_gaps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                english_word TEXT NOT NULL,
+                spanish_word TEXT NOT NULL,
+                concept_id TEXT,
+                source TEXT NOT NULL DEFAULT 'conversation',
+                times_seen INTEGER NOT NULL DEFAULT 0,
+                times_correct INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                UNIQUE(user_id, english_word, spanish_word)
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO vocabulary_gaps
+                (user_id, english_word, spanish_word, concept_id, source, times_seen, times_correct, created_at)
+            SELECT 1, english_word, spanish_word, concept_id, source, times_seen, times_correct, created_at
+            FROM vocabulary_gaps_legacy
+            """
+        )
+        connection.execute("DROP TABLE vocabulary_gaps_legacy")
+
+    if _get_columns(connection, "persona_engagement") == {
+        "id",
+        "persona_id",
+        "topic_id",
+        "conversation_count",
+        "avg_enjoyment_score",
+        "avg_message_length",
+        "avg_turns",
+        "early_exit_rate",
+        "last_conversation_at",
+    }:
+        connection.execute(
+            "ALTER TABLE persona_engagement RENAME TO persona_engagement_legacy"
+        )
+        connection.execute(
+            """
+            CREATE TABLE persona_engagement (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                persona_id TEXT NOT NULL,
+                topic_id INTEGER,
+                conversation_count INTEGER NOT NULL DEFAULT 0,
+                avg_enjoyment_score REAL NOT NULL DEFAULT 0.5,
+                avg_message_length REAL NOT NULL DEFAULT 0.0,
+                avg_turns REAL NOT NULL DEFAULT 0.0,
+                early_exit_rate REAL NOT NULL DEFAULT 0.0,
+                last_conversation_at TEXT,
+                UNIQUE(user_id, persona_id, topic_id)
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO persona_engagement
+                (user_id, persona_id, topic_id, conversation_count, avg_enjoyment_score, avg_message_length, avg_turns, early_exit_rate,
+                 last_conversation_at)
+            SELECT 1, persona_id, topic_id, conversation_count, avg_enjoyment_score, avg_message_length, avg_turns, early_exit_rate,
+                   last_conversation_at
+            FROM persona_engagement_legacy
+            """
+        )
+        connection.execute("DROP TABLE persona_engagement_legacy")
+
+    if _get_columns(connection, "flow_skill_profile") == {
+        "id",
+        "lesson_id",
+        "card_kind",
+        "proficiency",
+        "total_attempts",
+        "correct_attempts",
+        "avg_response_ms",
+        "last_seen_at",
+    }:
+        connection.execute(
+            "ALTER TABLE flow_skill_profile RENAME TO flow_skill_profile_legacy"
+        )
+        connection.execute(
+            """
+            CREATE TABLE flow_skill_profile (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                lesson_id INTEGER REFERENCES lessons(id),
+                card_kind TEXT NOT NULL,
+                proficiency REAL NOT NULL DEFAULT 0.0,
+                total_attempts INTEGER NOT NULL DEFAULT 0,
+                correct_attempts INTEGER NOT NULL DEFAULT 0,
+                avg_response_ms INTEGER,
+                last_seen_at TEXT,
+                UNIQUE(user_id, lesson_id, card_kind)
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO flow_skill_profile
+                (user_id, lesson_id, card_kind, proficiency, total_attempts, correct_attempts, avg_response_ms, last_seen_at)
+            SELECT 1, lesson_id, card_kind, proficiency, total_attempts, correct_attempts, avg_response_ms, last_seen_at
+            FROM flow_skill_profile_legacy
+            """
+        )
+        connection.execute("DROP TABLE flow_skill_profile_legacy")
 
 
 def _create_flow_tables(connection: sqlite3.Connection) -> None:
@@ -335,21 +747,31 @@ def _create_flow_tables(connection: sqlite3.Connection) -> None:
     if "flow_conversations" in _existing_tables(connection):
         conv_cols = _get_columns(connection, "flow_conversations")
         if "concept_id" not in conv_cols:
-            connection.execute("ALTER TABLE flow_conversations ADD COLUMN concept_id TEXT")
+            connection.execute(
+                "ALTER TABLE flow_conversations ADD COLUMN concept_id TEXT"
+            )
         if "corrections_json" not in conv_cols:
-            connection.execute("ALTER TABLE flow_conversations ADD COLUMN corrections_json TEXT NOT NULL DEFAULT '[]'")
+            connection.execute(
+                "ALTER TABLE flow_conversations ADD COLUMN corrections_json TEXT NOT NULL DEFAULT '[]'"
+            )
         if "difficulty" not in conv_cols:
-            connection.execute("ALTER TABLE flow_conversations ADD COLUMN difficulty INTEGER NOT NULL DEFAULT 1")
+            connection.execute(
+                "ALTER TABLE flow_conversations ADD COLUMN difficulty INTEGER NOT NULL DEFAULT 1"
+            )
         if "score" not in conv_cols:
             connection.execute("ALTER TABLE flow_conversations ADD COLUMN score REAL")
         if "persona_id" not in conv_cols:
-            connection.execute("ALTER TABLE flow_conversations ADD COLUMN persona_id TEXT")
+            connection.execute(
+                "ALTER TABLE flow_conversations ADD COLUMN persona_id TEXT"
+            )
         if "conversation_type" not in conv_cols:
             connection.execute(
                 "ALTER TABLE flow_conversations ADD COLUMN conversation_type TEXT NOT NULL DEFAULT 'general_chat'"
             )
         if "evaluation_json" not in conv_cols:
-            connection.execute("ALTER TABLE flow_conversations ADD COLUMN evaluation_json TEXT")
+            connection.execute(
+                "ALTER TABLE flow_conversations ADD COLUMN evaluation_json TEXT"
+            )
 
     connection.execute(
         """
@@ -540,9 +962,7 @@ def _create_word_tables(connection: sqlite3.Connection) -> None:
     connection.execute(
         "CREATE INDEX IF NOT EXISTS idx_words_concept ON words(concept_id)"
     )
-    connection.execute(
-        "CREATE INDEX IF NOT EXISTS idx_words_status ON words(status)"
-    )
+    connection.execute("CREATE INDEX IF NOT EXISTS idx_words_status ON words(status)")
     try:
         connection.execute("ALTER TABLE words ADD COLUMN topic_slug TEXT")
     except Exception:
@@ -589,6 +1009,7 @@ def _create_memory_tables(connection: sqlite3.Connection) -> None:
         """
         CREATE TABLE IF NOT EXISTS persona_memories (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
             persona_id TEXT NOT NULL,
             memory_text TEXT NOT NULL,
             conversation_id INTEGER,
@@ -619,12 +1040,18 @@ def _ensure_flow_response_concept_columns(connection: sqlite3.Connection) -> Non
     if "flow_responses" not in _existing_tables(connection):
         return
     columns = _get_columns(connection, "flow_responses")
+    if "user_id" not in columns:
+        connection.execute(
+            "ALTER TABLE flow_responses ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1"
+        )
     if "concept_id" not in columns:
         connection.execute("ALTER TABLE flow_responses ADD COLUMN concept_id TEXT")
     if "chosen_option" not in columns:
         connection.execute("ALTER TABLE flow_responses ADD COLUMN chosen_option TEXT")
     if "misconception_concept" not in columns:
-        connection.execute("ALTER TABLE flow_responses ADD COLUMN misconception_concept TEXT")
+        connection.execute(
+            "ALTER TABLE flow_responses ADD COLUMN misconception_concept TEXT"
+        )
 
 
 def _create_interest_tables(connection: sqlite3.Connection) -> None:
@@ -749,9 +1176,7 @@ def seed_interest_topics() -> int:
 def get_all_interest_topics() -> list[dict[str, Any]]:
     """Return all interest topics as dicts."""
     with _open_connection() as conn:
-        rows = conn.execute(
-            "SELECT * FROM interest_topics ORDER BY id"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM interest_topics ORDER BY id").fetchall()
     return [dict(row) for row in rows]
 
 
@@ -763,7 +1188,9 @@ def get_interest_topic_by_slug(slug: str) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
-def get_or_create_lesson(slug: str, title: str, level_score: int, difficulty: str) -> int:
+def get_or_create_lesson(
+    slug: str, title: str, level_score: int, difficulty: str
+) -> int:
     """Return an existing lesson id or insert a new one."""
 
     timestamp = now_iso()
@@ -835,7 +1262,16 @@ def upsert_lesson_with_content(
                     SET title = ?, level_score = ?, difficulty = ?, path = ?, content_sha = ?, content_html = ?, updated_at = ?
                     WHERE slug = ?
                     """,
-                    (title, level_score, difficulty, path, content_sha, content_html, timestamp, slug),
+                    (
+                        title,
+                        level_score,
+                        difficulty,
+                        path,
+                        content_sha,
+                        content_html,
+                        timestamp,
+                        slug,
+                    ),
                 )
                 connection.commit()
                 return "updated", lesson_id
@@ -847,7 +1283,17 @@ def upsert_lesson_with_content(
                 slug, title, level_score, difficulty, path, content_sha, content_html, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (slug, title, level_score, difficulty, path, content_sha, content_html, timestamp, timestamp),
+            (
+                slug,
+                title,
+                level_score,
+                difficulty,
+                path,
+                content_sha,
+                content_html,
+                timestamp,
+                timestamp,
+            ),
         )
         connection.commit()
         return "inserted", int(cursor.lastrowid)
@@ -888,7 +1334,9 @@ def get_or_create_deck(lesson_id: int, kind: str, name: str) -> int:
         return int(cursor.lastrowid)
 
 
-def upsert_card_by_key(fields: Mapping[str, Any]) -> tuple[Literal["inserted", "updated"], int]:
+def upsert_card_by_key(
+    fields: Mapping[str, Any],
+) -> tuple[Literal["inserted", "updated"], int]:
     """Insert or update a card based on its unique content key."""
 
     if "content_key" not in fields:
@@ -965,8 +1413,7 @@ def fetch_lesson_deck_summaries(now: datetime | None = None) -> list[LessonDeckS
     """Return per-lesson deck summaries with card counts and due totals."""
 
     reference = now_iso(now)
-    query = (
-        """
+    query = """
         SELECT
             l.id AS lesson_id,
             l.slug AS lesson_slug,
@@ -984,7 +1431,6 @@ def fetch_lesson_deck_summaries(now: datetime | None = None) -> list[LessonDeckS
         GROUP BY l.id, d.id
         ORDER BY l.level_score ASC, l.slug ASC, d.kind ASC, d.name ASC
         """
-    )
 
     summaries: dict[int, LessonDeckSummary] = {}
     with _open_connection() as connection:
@@ -1112,13 +1558,17 @@ def fetch_card_detail(card_id: int) -> CardDetail | None:
     """Return card detail for the given id."""
 
     with _open_connection() as connection:
-        row = connection.execute("SELECT * FROM cards WHERE id = ?", (card_id,)).fetchone()
+        row = connection.execute(
+            "SELECT * FROM cards WHERE id = ?", (card_id,)
+        ).fetchone()
     return _row_to_card_detail(row)
 
 
 def get_lesson_by_slug(slug: str) -> dict[str, Any] | None:
     with _open_connection() as connection:
-        row = connection.execute("SELECT * FROM lessons WHERE slug = ?", (slug,)).fetchone()
+        row = connection.execute(
+            "SELECT * FROM lessons WHERE slug = ?", (slug,)
+        ).fetchone()
     return dict(row) if row else None
 
 
@@ -1291,23 +1741,31 @@ def fetch_cards_for_deck(deck_id: int, *, limit: int | None = None) -> list[Card
 
 
 def get_progress(key: str, default: str = "0") -> str:
+    user_id = get_current_user_id()
+    if user_id <= 0:
+        return default
     with _open_connection() as connection:
         row = connection.execute(
-            "SELECT value FROM progress WHERE key = ?", (key,)
+            "SELECT value FROM progress WHERE user_id = ? AND key = ?",
+            (user_id, key),
         ).fetchone()
     return str(row["value"]) if row else default
 
 
 def set_progress(key: str, value: str) -> None:
+    user_id = get_current_user_id()
+    if user_id <= 0:
+        return
     timestamp = now_iso()
     with _open_connection() as connection:
         connection.execute(
             """
-            INSERT INTO progress (key, value, updated_at)
-            VALUES (?, ?, ?)
-            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+            INSERT INTO progress (user_id, key, value, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_id, key) DO UPDATE
+            SET value = excluded.value, updated_at = excluded.updated_at
             """,
-            (key, value, timestamp),
+            (user_id, key, value, timestamp),
         )
         connection.commit()
 
@@ -1436,21 +1894,55 @@ def consume_dev_override(key: str) -> str | None:
 
 def is_user_onboarded() -> bool:
     """Return True when placement/onboarding has been completed."""
-    value = get_dev_override("onboarding_complete")
-    if value is not None:
+    value = get_progress("onboarding_complete", "")
+    if value:
         return value.strip().lower() in {"1", "true", "yes", "y"}
 
     # Backwards-compatible fallback: any answered concepts implies onboarding done.
     with _open_connection() as connection:
         row = connection.execute(
-            "SELECT COUNT(*) AS c FROM concept_knowledge WHERE n_attempts > 0",
+            "SELECT COUNT(*) AS c FROM concept_knowledge WHERE user_id = ? AND n_attempts > 0",
+            (get_current_user_id(),),
         ).fetchone()
     return bool(row and int(row["c"]) > 0)
 
 
 def set_user_onboarded(value: bool) -> None:
-    """Persist onboarding completion via dev_overrides."""
-    set_dev_override("onboarding_complete", "1" if value else "0")
+    """Persist onboarding completion."""
+    set_progress("onboarding_complete", "1" if value else "0")
+
+
+def reset_learning_progress() -> None:
+    """Reset learner-facing progress state to a fresh account baseline."""
+    user_id = get_current_user_id()
+    if user_id <= 0:
+        return
+    with _open_connection() as connection:
+        connection.execute("DELETE FROM flow_responses WHERE user_id = ?", (user_id,))
+        connection.execute(
+            "DELETE FROM flow_conversations WHERE user_id = ?", (user_id,)
+        )
+        connection.execute("DELETE FROM flow_sessions WHERE user_id = ?", (user_id,))
+        connection.execute("DELETE FROM flow_state WHERE user_id = ?", (user_id,))
+        connection.execute(
+            "DELETE FROM concept_knowledge WHERE user_id = ?", (user_id,)
+        )
+        connection.execute(
+            "DELETE FROM persona_engagement WHERE user_id = ?", (user_id,)
+        )
+        connection.execute("DELETE FROM progress WHERE user_id = ?", (user_id,))
+        connection.execute(
+            "DELETE FROM user_interest_scores WHERE user_id = ?", (user_id,)
+        )
+        connection.execute("DELETE FROM card_signals WHERE user_id = ?", (user_id,))
+        connection.execute("DELETE FROM word_taps WHERE user_id = ?", (user_id,))
+        connection.execute("DELETE FROM user_profile WHERE user_id = ?", (user_id,))
+        connection.execute("DELETE FROM vocabulary_gaps WHERE user_id = ?", (user_id,))
+        connection.commit()
+    from .concepts import seed_concepts_to_db
+
+    seed_concepts_to_db()
+    set_user_onboarded(False)
 
 
 __all__ = [
@@ -1474,6 +1966,7 @@ __all__ = [
     "get_or_create_lesson",
     "init_db",
     "now_iso",
+    "get_current_user_id",
     "upsert_card_by_key",
     "get_progress",
     "set_progress",
@@ -1482,6 +1975,7 @@ __all__ = [
     "get_streak",
     "is_user_onboarded",
     "set_user_onboarded",
+    "reset_learning_progress",
     "record_practice_today",
     "fetch_lesson_mastery",
 ]

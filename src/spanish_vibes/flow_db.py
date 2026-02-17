@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .db import _open_connection, now_iso
+from .db import _open_connection, get_current_user_id, now_iso
 from .words import record_word_gap
 from .models import ConceptKnowledge, FlowResponse, FlowSession, MCQCard
 
@@ -16,13 +16,14 @@ from .models import ConceptKnowledge, FlowResponse, FlowSession, MCQCard
 def create_session(flow_score: float) -> FlowSession:
     """Create a new flow session and return it."""
     timestamp = now_iso()
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO flow_sessions (started_at, flow_score, status)
-            VALUES (?, ?, 'active')
+            INSERT INTO flow_sessions (user_id, started_at, flow_score, status)
+            VALUES (?, ?, ?, 'active')
             """,
-            (timestamp, flow_score),
+            (user_id, timestamp, flow_score),
         )
         conn.commit()
         session_id = int(cursor.lastrowid)
@@ -40,9 +41,11 @@ def create_session(flow_score: float) -> FlowSession:
 
 
 def get_session(session_id: int) -> FlowSession | None:
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         row = conn.execute(
-            "SELECT * FROM flow_sessions WHERE id = ?", (session_id,)
+            "SELECT * FROM flow_sessions WHERE id = ? AND user_id = ?",
+            (session_id, user_id),
         ).fetchone()
     if row is None:
         return None
@@ -58,6 +61,7 @@ def update_session(
     xp_earned: int | None = None,
     longest_streak: int | None = None,
 ) -> None:
+    user_id = get_current_user_id()
     updates: list[str] = []
     params: list[Any] = []
     if cards_answered is not None:
@@ -80,18 +84,19 @@ def update_session(
     params.append(session_id)
     with _open_connection() as conn:
         conn.execute(
-            f"UPDATE flow_sessions SET {', '.join(updates)} WHERE id = ?",
-            params,
+            f"UPDATE flow_sessions SET {', '.join(updates)} WHERE id = ? AND user_id = ?",
+            [*params, user_id],
         )
         conn.commit()
 
 
 def end_session(session_id: int) -> FlowSession | None:
     timestamp = now_iso()
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         conn.execute(
-            "UPDATE flow_sessions SET ended_at = ?, status = 'completed' WHERE id = ?",
-            (timestamp, session_id),
+            "UPDATE flow_sessions SET ended_at = ?, status = 'completed' WHERE id = ? AND user_id = ?",
+            (timestamp, session_id, user_id),
         )
         conn.commit()
     return get_session(session_id)
@@ -99,9 +104,11 @@ def end_session(session_id: int) -> FlowSession | None:
 
 def get_active_session() -> FlowSession | None:
     """Return the most recent active session, if any."""
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         row = conn.execute(
-            "SELECT * FROM flow_sessions WHERE status = 'active' ORDER BY id DESC LIMIT 1"
+            "SELECT * FROM flow_sessions WHERE user_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1",
+            (user_id,),
         ).fetchone()
     if row is None:
         return None
@@ -110,10 +117,11 @@ def get_active_session() -> FlowSession | None:
 
 def get_recent_sessions(limit: int = 10) -> list[FlowSession]:
     """Return the most recent completed sessions."""
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         rows = conn.execute(
-            "SELECT * FROM flow_sessions ORDER BY id DESC LIMIT ?",
-            (limit,),
+            "SELECT * FROM flow_sessions WHERE user_id = ? ORDER BY id DESC LIMIT ?",
+            (user_id, limit),
         ).fetchall()
     return [_row_to_session(row) for row in rows]
 
@@ -152,19 +160,32 @@ def record_response(
     misconception_concept: str | None = None,
 ) -> int:
     timestamp = now_iso()
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         cursor = conn.execute(
             """
             INSERT INTO flow_responses (
-                session_id, card_id, response_type, prompt_json, user_answer,
+                user_id, session_id, card_id, response_type, prompt_json, user_answer,
                 expected_answer, is_correct, response_time_ms, difficulty_score,
                 flow_score_after, created_at, concept_id, chosen_option, misconception_concept
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                session_id, card_id, response_type, prompt_json, user_answer,
-                expected_answer, int(is_correct), response_time_ms, difficulty_score,
-                flow_score_after, timestamp, concept_id, chosen_option, misconception_concept,
+                user_id,
+                session_id,
+                card_id,
+                response_type,
+                prompt_json,
+                user_answer,
+                expected_answer,
+                int(is_correct),
+                response_time_ms,
+                difficulty_score,
+                flow_score_after,
+                timestamp,
+                concept_id,
+                chosen_option,
+                misconception_concept,
             ),
         )
         conn.commit()
@@ -172,10 +193,11 @@ def record_response(
 
 
 def get_session_responses(session_id: int) -> list[FlowResponse]:
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         rows = conn.execute(
-            "SELECT * FROM flow_responses WHERE session_id = ? ORDER BY id",
-            (session_id,),
+            "SELECT * FROM flow_responses WHERE user_id = ? AND session_id = ? ORDER BY id",
+            (user_id, session_id),
         ).fetchall()
     return [_row_to_response(row) for row in rows]
 
@@ -190,7 +212,9 @@ def _row_to_response(row: Any) -> FlowResponse:
         user_answer=str(row["user_answer"]),
         expected_answer=str(row["expected_answer"]),
         is_correct=bool(row["is_correct"]),
-        response_time_ms=int(row["response_time_ms"]) if row["response_time_ms"] is not None else None,
+        response_time_ms=int(row["response_time_ms"])
+        if row["response_time_ms"] is not None
+        else None,
         difficulty_score=float(row["difficulty_score"]),
         flow_score_after=float(row["flow_score_after"]),
         created_at=str(row["created_at"]),
@@ -209,6 +233,7 @@ def store_vocabulary_gap(
 ) -> None:
     """Persist a discovered vocabulary gap (idempotent)."""
     timestamp = now_iso()
+    user_id = get_current_user_id()
     english = english_word.strip().lower()
     spanish = spanish_word.strip().lower()
     if not english or not spanish:
@@ -216,13 +241,13 @@ def store_vocabulary_gap(
     with _open_connection() as conn:
         conn.execute(
             """
-            INSERT INTO vocabulary_gaps (english_word, spanish_word, concept_id, source, times_seen, created_at)
-            VALUES (?, ?, ?, ?, 1, ?)
-            ON CONFLICT(english_word, spanish_word) DO UPDATE SET times_seen = times_seen + 1,
+            INSERT INTO vocabulary_gaps (user_id, english_word, spanish_word, concept_id, source, times_seen, created_at)
+            VALUES (?, ?, ?, ?, ?, 1, ?)
+            ON CONFLICT(user_id, english_word, spanish_word) DO UPDATE SET times_seen = times_seen + 1,
                 source = excluded.source,
                 concept_id = COALESCE(excluded.concept_id, vocabulary_gaps.concept_id)
             """,
-            (english, spanish, concept_id, source, timestamp),
+            (user_id, english, spanish, concept_id, source, timestamp),
         )
         conn.commit()
     record_word_gap(spanish, english, concept_id)
@@ -232,21 +257,24 @@ def store_vocabulary_gap(
 
 
 def get_or_create_flow_state() -> dict[str, Any]:
+    user_id = get_current_user_id()
     with _open_connection() as conn:
-        row = conn.execute("SELECT * FROM flow_state WHERE id = 1").fetchone()
+        row = conn.execute(
+            "SELECT * FROM flow_state WHERE user_id = ?", (user_id,)
+        ).fetchone()
         if row:
             return dict(row)
         timestamp = now_iso()
         conn.execute(
             """
-            INSERT INTO flow_state (id, current_flow_score, total_sessions, total_cards, updated_at)
-            VALUES (1, 1000.0, 0, 0, ?)
+            INSERT INTO flow_state (user_id, current_flow_score, total_sessions, total_cards, updated_at)
+            VALUES (?, 1000.0, 0, 0, ?)
             """,
-            (timestamp,),
+            (user_id, timestamp),
         )
         conn.commit()
         return {
-            "id": 1,
+            "user_id": user_id,
             "current_flow_score": 1000.0,
             "total_sessions": 0,
             "total_cards": 0,
@@ -260,8 +288,13 @@ def update_flow_state(
     total_sessions_increment: int = 0,
     total_cards_increment: int = 0,
 ) -> None:
+    user_id = get_current_user_id()
     state = get_or_create_flow_state()
-    new_score = current_flow_score if current_flow_score is not None else state["current_flow_score"]
+    new_score = (
+        current_flow_score
+        if current_flow_score is not None
+        else state["current_flow_score"]
+    )
     new_sessions = int(state["total_sessions"]) + total_sessions_increment
     new_cards = int(state["total_cards"]) + total_cards_increment
     timestamp = now_iso()
@@ -270,9 +303,9 @@ def update_flow_state(
             """
             UPDATE flow_state
             SET current_flow_score = ?, total_sessions = ?, total_cards = ?, updated_at = ?
-            WHERE id = 1
+            WHERE user_id = ?
             """,
-            (new_score, new_sessions, new_cards, timestamp),
+            (new_score, new_sessions, new_cards, timestamp, user_id),
         )
         conn.commit()
 
@@ -286,11 +319,12 @@ def update_skill_profile(
     is_correct: bool,
     response_time_ms: int | None = None,
 ) -> None:
+    user_id = get_current_user_id()
     timestamp = now_iso()
     with _open_connection() as conn:
         row = conn.execute(
-            "SELECT * FROM flow_skill_profile WHERE lesson_id = ? AND card_kind = ?",
-            (lesson_id, card_kind),
+            "SELECT * FROM flow_skill_profile WHERE user_id = ? AND lesson_id = ? AND card_kind = ?",
+            (user_id, lesson_id, card_kind),
         ).fetchone()
         if row:
             total = int(row["total_attempts"]) + 1
@@ -307,35 +341,53 @@ def update_skill_profile(
                 UPDATE flow_skill_profile
                 SET proficiency = ?, total_attempts = ?, correct_attempts = ?,
                     avg_response_ms = ?, last_seen_at = ?
-                WHERE lesson_id = ? AND card_kind = ?
+                WHERE user_id = ? AND lesson_id = ? AND card_kind = ?
                 """,
-                (proficiency, total, correct, avg_ms, timestamp, lesson_id, card_kind),
+                (
+                    proficiency,
+                    total,
+                    correct,
+                    avg_ms,
+                    timestamp,
+                    user_id,
+                    lesson_id,
+                    card_kind,
+                ),
             )
         else:
             proficiency = 1.0 if is_correct else 0.0
             conn.execute(
                 """
                 INSERT INTO flow_skill_profile
-                    (lesson_id, card_kind, proficiency, total_attempts, correct_attempts, avg_response_ms, last_seen_at)
-                VALUES (?, ?, ?, 1, ?, ?, ?)
+                    (user_id, lesson_id, card_kind, proficiency, total_attempts, correct_attempts, avg_response_ms, last_seen_at)
+                VALUES (?, ?, ?, ?, 1, ?, ?, ?)
                 """,
-                (lesson_id, card_kind, proficiency, 1 if is_correct else 0, response_time_ms, timestamp),
+                (
+                    user_id,
+                    lesson_id,
+                    card_kind,
+                    proficiency,
+                    1 if is_correct else 0,
+                    response_time_ms,
+                    timestamp,
+                ),
             )
         conn.commit()
 
 
 def get_weak_lessons(limit: int = 10) -> list[dict[str, Any]]:
     """Return lessons with lowest proficiency, useful for targeting weak areas."""
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         rows = conn.execute(
             """
             SELECT lesson_id, card_kind, proficiency, total_attempts
             FROM flow_skill_profile
-            WHERE total_attempts >= 2
+            WHERE user_id = ? AND total_attempts >= 2
             ORDER BY proficiency ASC, total_attempts DESC
             LIMIT ?
             """,
-            (limit,),
+            (user_id, limit),
         ).fetchall()
     return [dict(row) for row in rows]
 
@@ -371,7 +423,16 @@ def save_ai_card(
                 (card_type, base_card_id, difficulty_score, prompt, solution, extra_json, content_hash, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (card_type, base_card_id, difficulty_score, prompt, solution, extra_json, content_hash, timestamp),
+            (
+                card_type,
+                base_card_id,
+                difficulty_score,
+                prompt,
+                solution,
+                extra_json,
+                content_hash,
+                timestamp,
+            ),
         )
         conn.commit()
         return int(cursor.lastrowid)
@@ -390,23 +451,27 @@ def get_cached_ai_card(content_hash: str) -> dict[str, Any] | None:
 
 def create_conversation(session_id: int, topic: str) -> int:
     timestamp = now_iso()
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO flow_conversations (session_id, topic, messages_json, turn_count, completed, created_at)
-            VALUES (?, ?, '[]', 0, 0, ?)
+            INSERT INTO flow_conversations (user_id, session_id, topic, messages_json, turn_count, completed, created_at)
+            VALUES (?, ?, ?, '[]', 0, 0, ?)
             """,
-            (session_id, topic, timestamp),
+            (user_id, session_id, topic, timestamp),
         )
         conn.commit()
         return int(cursor.lastrowid)
 
 
-def add_conversation_turn(conversation_id: int, role: str, content: str) -> dict[str, Any]:
+def add_conversation_turn(
+    conversation_id: int, role: str, content: str
+) -> dict[str, Any]:
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         row = conn.execute(
-            "SELECT messages_json, turn_count FROM flow_conversations WHERE id = ?",
-            (conversation_id,),
+            "SELECT messages_json, turn_count FROM flow_conversations WHERE id = ? AND user_id = ?",
+            (conversation_id, user_id),
         ).fetchone()
         if row is None:
             raise ValueError(f"Conversation {conversation_id} not found")
@@ -417,27 +482,30 @@ def add_conversation_turn(conversation_id: int, role: str, content: str) -> dict
             """
             UPDATE flow_conversations
             SET messages_json = ?, turn_count = ?
-            WHERE id = ?
+            WHERE id = ? AND user_id = ?
             """,
-            (json.dumps(messages), turn_count, conversation_id),
+            (json.dumps(messages), turn_count, conversation_id, user_id),
         )
         conn.commit()
     return {"messages": messages, "turn_count": turn_count}
 
 
 def complete_conversation(conversation_id: int) -> None:
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         conn.execute(
-            "UPDATE flow_conversations SET completed = 1 WHERE id = ?",
-            (conversation_id,),
+            "UPDATE flow_conversations SET completed = 1 WHERE id = ? AND user_id = ?",
+            (conversation_id, user_id),
         )
         conn.commit()
 
 
 def get_conversation(conversation_id: int) -> dict[str, Any] | None:
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         row = conn.execute(
-            "SELECT * FROM flow_conversations WHERE id = ?", (conversation_id,)
+            "SELECT * FROM flow_conversations WHERE id = ? AND user_id = ?",
+            (conversation_id, user_id),
         ).fetchone()
     if row is None:
         return None
@@ -448,14 +516,15 @@ def get_conversation(conversation_id: int) -> dict[str, Any] | None:
 
 def get_recent_card_ids(session_id: int, limit: int = 10) -> list[int]:
     """Return the last N card_ids answered in a session (for exclusion)."""
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         rows = conn.execute(
             """
             SELECT card_id FROM flow_responses
-            WHERE session_id = ? AND card_id IS NOT NULL
+            WHERE user_id = ? AND session_id = ? AND card_id IS NOT NULL
             ORDER BY id DESC LIMIT ?
             """,
-            (session_id, limit),
+            (user_id, session_id, limit),
         ).fetchall()
     return [int(row["card_id"]) for row in rows]
 
@@ -465,16 +534,20 @@ def get_recent_card_ids(session_id: int, limit: int = 10) -> list[int]:
 
 def get_all_concept_knowledge() -> dict[str, ConceptKnowledge]:
     """Return all concept knowledge entries as dict keyed by concept_id."""
+    user_id = get_current_user_id()
     with _open_connection() as conn:
-        rows = conn.execute("SELECT * FROM concept_knowledge").fetchall()
+        rows = conn.execute(
+            "SELECT * FROM concept_knowledge WHERE user_id = ?", (user_id,)
+        ).fetchall()
     return {str(row["concept_id"]): _row_to_knowledge(row) for row in rows}
 
 
 def get_concept_knowledge(concept_id: str) -> ConceptKnowledge | None:
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         row = conn.execute(
-            "SELECT * FROM concept_knowledge WHERE concept_id = ?",
-            (concept_id,),
+            "SELECT * FROM concept_knowledge WHERE user_id = ? AND concept_id = ?",
+            (user_id, concept_id),
         ).fetchone()
     if row is None:
         return None
@@ -488,6 +561,7 @@ def update_concept_knowledge(
 ) -> None:
     """Update concept knowledge: set p_mastery, increment attempts/correct/wrong."""
     timestamp = now_iso()
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         if is_correct:
             conn.execute(
@@ -495,9 +569,9 @@ def update_concept_knowledge(
                 UPDATE concept_knowledge
                 SET p_mastery = ?, n_attempts = n_attempts + 1, n_correct = n_correct + 1,
                     last_seen_at = ?, updated_at = ?
-                WHERE concept_id = ?
+                WHERE user_id = ? AND concept_id = ?
                 """,
-                (p_mastery, timestamp, timestamp, concept_id),
+                (p_mastery, timestamp, timestamp, user_id, concept_id),
             )
         else:
             conn.execute(
@@ -505,13 +579,14 @@ def update_concept_knowledge(
                 UPDATE concept_knowledge
                 SET p_mastery = ?, n_attempts = n_attempts + 1, n_wrong = n_wrong + 1,
                     last_seen_at = ?, updated_at = ?
-                WHERE concept_id = ?
+                WHERE user_id = ? AND concept_id = ?
                 """,
-                (p_mastery, timestamp, timestamp, concept_id),
+                (p_mastery, timestamp, timestamp, user_id, concept_id),
             )
         conn.commit()
     try:
         from .flow import invalidate_user_level_cache
+
         invalidate_user_level_cache()
     except Exception:
         pass
@@ -520,10 +595,11 @@ def update_concept_knowledge(
 def mark_teach_shown(concept_id: str) -> None:
     """Mark that the teach card for a concept has been displayed."""
     timestamp = now_iso()
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         conn.execute(
-            "UPDATE concept_knowledge SET teach_shown = 1, updated_at = ? WHERE concept_id = ?",
-            (timestamp, concept_id),
+            "UPDATE concept_knowledge SET teach_shown = 1, updated_at = ? WHERE user_id = ? AND concept_id = ?",
+            (timestamp, user_id, concept_id),
         )
         conn.commit()
 
@@ -668,15 +744,17 @@ def clear_mcq_cache(concept_id: str | None = None, source: str = "ai") -> int:
 
 def get_last_conversation_info(session_id: int | None = None) -> dict[str, str] | None:
     """Return metadata from the most recent conversation, or None."""
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         if session_id:
             row = conn.execute(
-                "SELECT topic, concept_id, persona_id FROM flow_conversations WHERE session_id = ? ORDER BY id DESC LIMIT 1",
-                (session_id,),
+                "SELECT topic, concept_id, persona_id FROM flow_conversations WHERE user_id = ? AND session_id = ? ORDER BY id DESC LIMIT 1",
+                (user_id, session_id),
             ).fetchone()
         else:
             row = conn.execute(
-                "SELECT topic, concept_id, persona_id FROM flow_conversations ORDER BY id DESC LIMIT 1"
+                "SELECT topic, concept_id, persona_id FROM flow_conversations WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+                (user_id,),
             ).fetchone()
     if row is None:
         return None

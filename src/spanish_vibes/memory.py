@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from .db import _open_connection, now_iso
+from .db import _open_connection, get_current_user_id, now_iso
 
 _TRIVIAL_FACT_PATTERNS: tuple[str, ...] = (
     "learning spanish",
@@ -78,7 +78,9 @@ def _normalize_fact_key(fact: str) -> str:
 
 def _fact_confidence(fact: str) -> float:
     text = fact.lower()
-    if any(token in text for token in ("named ", "name is ", " vive en ", " lives in ")):
+    if any(
+        token in text for token in ("named ", "name is ", " vive en ", " lives in ")
+    ):
         return 0.8
     if any(token in text for token in ("likes ", "loves ", "prefers ", "has ")):
         return 0.7
@@ -92,15 +94,16 @@ def _is_trivial_fact(fact: str) -> bool:
 
 def prune_persona_memories(persona_id: str, max_memories: int = 20) -> int:
     """Delete oldest/least-important memories when over the cap."""
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         rows = conn.execute(
             """
             SELECT id
             FROM persona_memories
-            WHERE persona_id = ?
+            WHERE user_id = ? AND persona_id = ?
             ORDER BY importance_score DESC, created_at DESC, id DESC
             """,
-            (persona_id,),
+            (user_id, persona_id),
         ).fetchall()
         if len(rows) <= max_memories:
             return 0
@@ -111,8 +114,8 @@ def prune_persona_memories(persona_id: str, max_memories: int = 20) -> int:
             return 0
         placeholders = ",".join("?" for _ in prune_ids)
         conn.execute(
-            f"DELETE FROM persona_memories WHERE id IN ({placeholders})",
-            prune_ids,
+            f"DELETE FROM persona_memories WHERE user_id = ? AND id IN ({placeholders})",
+            [user_id, *prune_ids],
         )
         conn.commit()
         return len(prune_ids)
@@ -127,6 +130,7 @@ def store_persona_memories(
     cleaned = [_clean_text(obs) for obs in observations if obs and _clean_text(obs)]
     if not cleaned:
         return 0
+    user_id = get_current_user_id()
     timestamp = now_iso()
     inserted = 0
     with _open_connection() as conn:
@@ -134,10 +138,11 @@ def store_persona_memories(
             conn.execute(
                 """
                 INSERT INTO persona_memories (
-                    persona_id, memory_text, conversation_id, importance_score, created_at
-                ) VALUES (?, ?, ?, ?, ?)
+                    user_id, persona_id, memory_text, conversation_id, importance_score, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    user_id,
                     persona_id,
                     memory_text,
                     conversation_id,
@@ -159,6 +164,7 @@ def store_user_facts(
     cleaned = [_clean_text(fact) for fact in facts if fact and _clean_text(fact)]
     if not cleaned:
         return 0
+    user_id = get_current_user_id()
     upserts = 0
     timestamp = now_iso()
     with _open_connection() as conn:
@@ -170,17 +176,25 @@ def store_user_facts(
                 continue
             confidence = _fact_confidence(fact)
             existing = conn.execute(
-                "SELECT value, confidence FROM user_profile WHERE key = ?",
-                (key,),
+                "SELECT value, confidence FROM user_profile WHERE user_id = ? AND key = ?",
+                (user_id, key),
             ).fetchone()
             if existing is None:
                 conn.execute(
                     """
                     INSERT INTO user_profile (
-                        key, value, source_conversation_id, confidence, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?)
+                        user_id, key, value, source_conversation_id, confidence, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (key, fact, conversation_id, confidence, timestamp, timestamp),
+                    (
+                        user_id,
+                        key,
+                        fact,
+                        conversation_id,
+                        confidence,
+                        timestamp,
+                        timestamp,
+                    ),
                 )
                 upserts += 1
                 continue
@@ -193,9 +207,16 @@ def store_user_facts(
                 """
                 UPDATE user_profile
                 SET value = ?, source_conversation_id = ?, confidence = ?, updated_at = ?
-                WHERE key = ?
+                WHERE user_id = ? AND key = ?
                 """,
-                (chosen_value, conversation_id, chosen_confidence, timestamp, key),
+                (
+                    chosen_value,
+                    conversation_id,
+                    chosen_confidence,
+                    timestamp,
+                    user_id,
+                    key,
+                ),
             )
             upserts += 1
         conn.commit()
@@ -204,31 +225,34 @@ def store_user_facts(
 
 def get_persona_memories(persona_id: str, limit: int = 10) -> list[str]:
     """Get recent memories for a persona, ordered by importance then recency."""
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         rows = conn.execute(
             """
             SELECT memory_text
             FROM persona_memories
-            WHERE persona_id = ?
+            WHERE user_id = ? AND persona_id = ?
             ORDER BY importance_score DESC, created_at DESC, id DESC
             LIMIT ?
             """,
-            (persona_id, limit),
+            (user_id, persona_id, limit),
         ).fetchall()
     return [str(row["memory_text"]) for row in rows]
 
 
 def get_user_profile(limit: int = 10) -> list[str]:
     """Get user profile facts ordered by confidence then recency."""
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         rows = conn.execute(
             """
             SELECT value
             FROM user_profile
+            WHERE user_id = ?
             ORDER BY confidence DESC, updated_at DESC, id DESC
             LIMIT ?
             """,
-            (limit,),
+            (user_id, limit),
         ).fetchall()
     return [str(row["value"]) for row in rows]
 

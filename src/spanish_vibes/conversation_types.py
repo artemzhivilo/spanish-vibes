@@ -133,18 +133,36 @@ def get_type_instruction(
         return None
 
     concepts = load_concepts()
-    concept_name = concepts.get(concept_id).name if concept_id in concepts else concept_id
+    concept_name = (
+        concepts.get(concept_id).name if concept_id in concepts else concept_id
+    )
 
     if conversation_type == "role_play":
         scenario = select_role_play_scenario(topic=topic, persona_id=persona_id)
         if not scenario:
-            return prompt_config.get_conversation_type_instruction("general_chat") or CONVERSATION_TYPE_INSTRUCTIONS["general_chat"]
+            return (
+                prompt_config.get_conversation_type_instruction("general_chat")
+                or CONVERSATION_TYPE_INSTRUCTIONS["general_chat"]
+            )
         return template.format(scenario=scenario)
 
     if conversation_type in {"concept_required", "tutor"}:
         return template.format(concept_name=concept_name)
     if conversation_type == "placement":
-        return template.format(starting_level=max(1, min(4, int(starting_level or 1))))
+        level = max(1, min(4, int(starting_level or 1)))
+        instruction = template.format(starting_level=level)
+        if level == 1:
+            instruction = (
+                f"{instruction}\n\n"
+                "BEGINNER LEVEL 1 OVERRIDE:\n"
+                "- Assume the learner may know almost no Spanish.\n"
+                "- Use only very common A1 words and present tense.\n"
+                "- Keep each sentence short (about 3-8 words).\n"
+                "- Ask simple yes/no or either/or questions first.\n"
+                "- Avoid abstract topics and long open-ended prompts.\n"
+                "- If needed, include one brief English gloss in parentheses."
+            )
+        return instruction
 
     return template
 
@@ -175,9 +193,7 @@ def _find_stuck_concept(preferred_concept_id: str) -> str | None:
         return preferred_concept_id
 
     candidates = [
-        ck
-        for ck in knowledge.values()
-        if ck.n_attempts >= 5 and ck.p_mastery < 0.7
+        ck for ck in knowledge.values() if ck.n_attempts >= 5 and ck.p_mastery < 0.7
     ]
     if not candidates:
         return None

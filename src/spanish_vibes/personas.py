@@ -10,7 +10,7 @@ from typing import Dict, List
 
 import yaml
 
-from .db import DATA_DIR, _open_connection, consume_dev_override
+from .db import DATA_DIR, _open_connection, consume_dev_override, get_current_user_id
 from .conversation import MARTA_PERSONA
 
 PERSONAS_DIR = DATA_DIR / "personas"
@@ -58,7 +58,9 @@ def load_all_personas() -> List[Persona]:
     if _PERSONA_CACHE is None:
         _PERSONA_CACHE = _load_yaml_personas()
     if not _PERSONA_CACHE:
-        fallback = Persona(id="marta_fallback", name="Marta", system_prompt=MARTA_PERSONA)
+        fallback = Persona(
+            id="marta_fallback", name="Marta", system_prompt=MARTA_PERSONA
+        )
         _PERSONA_CACHE = {fallback.id: fallback}
     return list(_PERSONA_CACHE.values())
 
@@ -67,7 +69,9 @@ def load_persona(persona_id: str | None) -> Persona:
     if not persona_id:
         return Persona(id="marta_fallback", name="Marta", system_prompt=MARTA_PERSONA)
     all_personas = {p.id: p for p in load_all_personas()}
-    return all_personas.get(persona_id) or Persona(id="marta_fallback", name="Marta", system_prompt=MARTA_PERSONA)
+    return all_personas.get(persona_id) or Persona(
+        id="marta_fallback", name="Marta", system_prompt=MARTA_PERSONA
+    )
 
 
 def select_persona(exclude_id: str | None = None) -> Persona:
@@ -105,18 +109,22 @@ def select_persona(exclude_id: str | None = None) -> Persona:
 
 
 def _load_persona_engagement() -> dict[str, dict[str, object]]:
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         rows = conn.execute(
             """
             SELECT persona_id, conversation_count, avg_enjoyment_score, last_conversation_at
             FROM persona_engagement
-            WHERE topic_id IS NULL
-            """
+            WHERE user_id = ? AND topic_id IS NULL
+            """,
+            (user_id,),
         ).fetchall()
     return {str(row["persona_id"]): dict(row) for row in rows}
 
 
-def _compute_novelty_bonus(last_conversation_at: str | None, conversation_count: int) -> float:
+def _compute_novelty_bonus(
+    last_conversation_at: str | None, conversation_count: int
+) -> float:
     if conversation_count <= 0 or not last_conversation_at:
         return 1.0
     try:
@@ -135,7 +143,9 @@ def get_persona_prompt(
     persona_memories: list[str] | None = None,
     user_facts: list[str] | None = None,
 ) -> str:
-    base_prompt = persona.system_prompt if persona and persona.system_prompt else MARTA_PERSONA
+    base_prompt = (
+        persona.system_prompt if persona and persona.system_prompt else MARTA_PERSONA
+    )
     sections = [base_prompt]
 
     if persona_memories:

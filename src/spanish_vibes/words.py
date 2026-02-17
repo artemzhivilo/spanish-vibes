@@ -9,29 +9,103 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .db import _open_connection, now_iso
+from .db import _open_connection, get_current_user_id, now_iso
 
 # ── Common Spanish stop words to exclude from vocabulary harvesting ───────────
-_STOP_WORDS = frozenset({
-    "a", "al", "con", "de", "del", "e", "el", "en", "es", "la", "las", "lo",
-    "los", "me", "mi", "muy", "no", "o", "por", "que", "se", "si", "sí",
-    "su", "te", "tu", "tú", "un", "una", "y", "yo", "le", "les", "nos",
-    "pero", "más", "como", "para", "sin", "ni", "ya", "ha", "he",
-})
+_STOP_WORDS = frozenset(
+    {
+        "a",
+        "al",
+        "con",
+        "de",
+        "del",
+        "e",
+        "el",
+        "en",
+        "es",
+        "la",
+        "las",
+        "lo",
+        "los",
+        "me",
+        "mi",
+        "muy",
+        "no",
+        "o",
+        "por",
+        "que",
+        "se",
+        "si",
+        "sí",
+        "su",
+        "te",
+        "tu",
+        "tú",
+        "un",
+        "una",
+        "y",
+        "yo",
+        "le",
+        "les",
+        "nos",
+        "pero",
+        "más",
+        "como",
+        "para",
+        "sin",
+        "ni",
+        "ya",
+        "ha",
+        "he",
+    }
+)
 
-_GRAMMAR_CONCEPTS = frozenset({
-    "subject_pronouns", "nouns_gender", "articles_definite", "articles_indefinite",
-    "ser_present", "estar_present", "tener_present", "hay", "plurals",
-    "possessive_adjectives", "demonstratives", "basic_questions",
-    "adjective_agreement", "negation", "muy_mucho",
-    "present_tense_ar", "present_tense_er_ir", "basic_prepositions",
-    "telling_time", "frequency_adverbs", "ir_a", "gustar", "querer",
-    "describing_people", "ordering_food", "asking_directions", "daily_routine",
-    "tener_que_hay_que", "estar_gerund", "poder_infinitive", "conjunctions",
-    "reflexive_verbs", "direct_object_pronouns", "indirect_object_pronouns",
-    "comparatives", "present_perfect", "preterite_regular", "preterite_irregular",
-    "imperfect_intro", "por_vs_para", "conditional_politeness", "imperative_basic",
-})
+_GRAMMAR_CONCEPTS = frozenset(
+    {
+        "subject_pronouns",
+        "nouns_gender",
+        "articles_definite",
+        "articles_indefinite",
+        "ser_present",
+        "estar_present",
+        "tener_present",
+        "hay",
+        "plurals",
+        "possessive_adjectives",
+        "demonstratives",
+        "basic_questions",
+        "adjective_agreement",
+        "negation",
+        "muy_mucho",
+        "present_tense_ar",
+        "present_tense_er_ir",
+        "basic_prepositions",
+        "telling_time",
+        "frequency_adverbs",
+        "ir_a",
+        "gustar",
+        "querer",
+        "describing_people",
+        "ordering_food",
+        "asking_directions",
+        "daily_routine",
+        "tener_que_hay_que",
+        "estar_gerund",
+        "poder_infinitive",
+        "conjunctions",
+        "reflexive_verbs",
+        "direct_object_pronouns",
+        "indirect_object_pronouns",
+        "comparatives",
+        "present_perfect",
+        "preterite_regular",
+        "preterite_irregular",
+        "imperfect_intro",
+        "por_vs_para",
+        "conditional_politeness",
+        "imperative_basic",
+    }
+)
 
 SEED_WORDS_PATH = Path(__file__).resolve().parents[2] / "data" / "seed_words.json"
 FILL_BLANKS_PATH = Path(__file__).resolve().parents[2] / "data" / "fill_blanks.json"
@@ -83,14 +157,26 @@ def seed_words() -> int:
                 emoji = entry.get("emoji")
                 example = entry.get("example")
                 topic_slug = entry.get("topic_slug")
-                initial_status = "introduced" if concept_id in _GRAMMAR_CONCEPTS else "unseen"
+                initial_status = (
+                    "introduced" if concept_id in _GRAMMAR_CONCEPTS else "unseen"
+                )
                 result = conn.execute(
                     """
                     INSERT OR IGNORE INTO words
                     (spanish, english, emoji, example_sentence, concept_id, topic_slug, status, mastery_score, times_seen, times_correct, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, 0.0, 0, 0, ?, ?)
                     """,
-                    (spanish, english, emoji, example, concept_id, topic_slug, initial_status, timestamp, timestamp),
+                    (
+                        spanish,
+                        english,
+                        emoji,
+                        example,
+                        concept_id,
+                        topic_slug,
+                        initial_status,
+                        timestamp,
+                        timestamp,
+                    ),
                 )
                 if result.rowcount and int(result.rowcount) > 0:
                     seeded += 1
@@ -133,7 +219,14 @@ def record_word_gap(spanish: str, english: str, concept_id: str | None) -> None:
                 INSERT INTO words (spanish, english, emoji, example_sentence, concept_id, topic_slug, status, mastery_score, times_seen, times_correct, created_at, updated_at)
                 VALUES (?, ?, NULL, NULL, ?, ?, 'unseen', 0.0, 1, 0, ?, ?)
                 """,
-                (spanish_norm, english_clean, concept_id, _topic_slug_for_concept(concept_id), timestamp, timestamp),
+                (
+                    spanish_norm,
+                    english_clean,
+                    concept_id,
+                    _topic_slug_for_concept(concept_id),
+                    timestamp,
+                    timestamp,
+                ),
             )
         conn.commit()
 
@@ -148,16 +241,19 @@ def record_word_tap(
     spanish_norm = _normalize_spanish(spanish)
     if not spanish_norm or len(spanish_norm) < 2:
         return
+    user_id = get_current_user_id()
     timestamp = now_iso()
     with _open_connection() as conn:
         conn.execute(
             """
-            INSERT INTO word_taps (spanish_word, english_translation, conversation_id, source, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO word_taps (user_id, spanish_word, english_translation, conversation_id, source, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (spanish_norm, english, conversation_id, source, timestamp),
+            (user_id, spanish_norm, english, conversation_id, source, timestamp),
         )
-        row = conn.execute("SELECT id FROM words WHERE spanish = ?", (spanish_norm,)).fetchone()
+        row = conn.execute(
+            "SELECT id FROM words WHERE spanish = ?", (spanish_norm,)
+        ).fetchone()
         if row:
             conn.execute(
                 "UPDATE words SET times_seen = times_seen + 1, updated_at = ? WHERE id = ?",
@@ -195,7 +291,11 @@ def get_intro_candidate_weighted(
     """Pick unseen word, preferring high-interest topic slugs."""
     with _open_connection() as conn:
         if top_interest_slugs:
-            cleaned = [slug.strip().lower() for slug in top_interest_slugs if slug and slug.strip()]
+            cleaned = [
+                slug.strip().lower()
+                for slug in top_interest_slugs
+                if slug and slug.strip()
+            ]
             if cleaned:
                 placeholders = ",".join("?" for _ in cleaned)
                 row = conn.execute(
@@ -248,7 +348,9 @@ def get_practice_candidate(concept_id: str) -> Word | None:
 def mark_word_practice_result(word_id: int, is_correct: bool) -> None:
     timestamp = now_iso()
     with _open_connection() as conn:
-        row = conn.execute("SELECT times_correct FROM words WHERE id = ?", (word_id,)).fetchone()
+        row = conn.execute(
+            "SELECT times_correct FROM words WHERE id = ?", (word_id,)
+        ).fetchone()
         current_correct = int(row["times_correct"]) if row else 0
         new_correct = current_correct + 1 if is_correct else current_correct
         new_status = "practicing"
@@ -307,7 +409,9 @@ def build_match_card(concept_id: str, count: int = 4) -> dict[str, Any] | None:
     selected = words[: min(len(words), count)]
     english_options = [w.english for w in selected]
     random.shuffle(english_options)
-    pairs = [{"word_id": w.id, "spanish": w.spanish, "english": w.english} for w in selected]
+    pairs = [
+        {"word_id": w.id, "spanish": w.spanish, "english": w.english} for w in selected
+    ]
     return {"pairs": pairs, "options": english_options}
 
 
@@ -428,7 +532,11 @@ def build_fill_blank_card(concept_id: str) -> dict[str, Any] | None:
     distractors = item.get("distractors", [])
     if not answer or not sentence or not isinstance(distractors, list):
         return None
-    clean_distractors = [str(d).strip() for d in distractors if str(d).strip() and str(d).strip() != answer]
+    clean_distractors = [
+        str(d).strip()
+        for d in distractors
+        if str(d).strip() and str(d).strip() != answer
+    ]
     clean_distractors = clean_distractors[:3]
     if len(clean_distractors) < 3:
         return None
@@ -500,16 +608,18 @@ def _row_to_word(row: Any) -> Word:
 
 def get_tap_counts(limit: int = 50) -> list[dict[str, Any]]:
     """Return most-tapped words with tap counts."""
+    user_id = get_current_user_id()
     with _open_connection() as conn:
         rows = conn.execute(
             """
             SELECT spanish_word, COUNT(*) as tap_count, MAX(created_at) as last_tapped
             FROM word_taps
+            WHERE user_id = ?
             GROUP BY spanish_word
             ORDER BY tap_count DESC
             LIMIT ?
             """,
-            (limit,),
+            (user_id, limit),
         ).fetchall()
     return [dict(row) for row in rows]
 
