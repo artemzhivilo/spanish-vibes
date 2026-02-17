@@ -7,11 +7,11 @@ import re
 import unicodedata
 
 from .db import DATA_DIR, _open_connection, now_iso
-from .flow_ai import ai_available, _get_client
 
 _DICTIONARY_PATH = DATA_DIR / "es_en_dictionary.json"
 _DICTIONARY: dict[str, str] | None = None
 _NORMALIZED_MAP: dict[str, str] | None = None
+_WORDS_TRANSLATION_INDEX: dict[str, str] | None = None
 _WORD_RE = re.compile(r"[A-Za-zÁÉÍÓÚÜáéíóúñÑ]+", re.UNICODE)
 
 _VERB_SUFFIXES: dict[str, tuple[str, ...]] = {
@@ -119,6 +119,55 @@ def lookup_local_translation(word: str) -> str | None:
     return None
 
 
+def _load_words_translation_index() -> dict[str, str]:
+    """Load learned word translations from the DB as an additional fallback."""
+    global _WORDS_TRANSLATION_INDEX
+    if _WORDS_TRANSLATION_INDEX is not None:
+        return _WORDS_TRANSLATION_INDEX
+    index: dict[str, str] = {}
+    try:
+        with _open_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT spanish, english
+                FROM words
+                WHERE english IS NOT NULL AND english != ''
+                """,
+            ).fetchall()
+    except Exception:
+        _WORDS_TRANSLATION_INDEX = {}
+        return _WORDS_TRANSLATION_INDEX
+
+    for row in rows:
+        spanish = str(row["spanish"] or "").strip()
+        english = str(row["english"] or "").strip()
+        if not spanish or not english:
+            continue
+        lower = spanish.lower()
+        index.setdefault(lower, english)
+        index.setdefault(_normalize_key(lower), english)
+    _WORDS_TRANSLATION_INDEX = index
+    return _WORDS_TRANSLATION_INDEX
+
+
+def _lookup_words_table_translation(word: str) -> str | None:
+    """Lookup from dynamic words table (user-learned vocab)."""
+    index = _load_words_translation_index()
+    lower = word.lower()
+    if lower in index:
+        return index[lower]
+    normalized = _normalize_key(lower)
+    if normalized in index:
+        return index[normalized]
+    for candidate in _lemmatize_candidates(lower):
+        if candidate in index:
+            return index[candidate]
+        normalized_candidate = _normalize_key(candidate)
+        if normalized_candidate in index:
+            return index[normalized_candidate]
+    return None
+
+
 def _get_cached_translation(word: str) -> str | None:
     lower = word.lower()
     normalized = _normalize_key(lower)
@@ -139,6 +188,41 @@ def _get_cached_translation(word: str) -> str | None:
     except Exception:
         return None
     return None
+
+
+def _translate_phrase_from_local_sources(phrase: str) -> str | None:
+    """Best-effort phrase translation without AI by translating token-by-token."""
+    tokens = _WORD_RE.findall(phrase)
+    if not tokens:
+        return None
+    translated_tokens: list[str] = []
+    translated_count = 0
+    for token in tokens:
+        translated = (
+            lookup_local_translation(token)
+            or _lookup_words_table_translation(token)
+            or _get_cached_translation(token)
+        )
+        if translated:
+            translated_tokens.append(translated)
+            translated_count += 1
+        else:
+            translated_tokens.append(token)
+    if translated_count == 0:
+        return None
+    return " ".join(translated_tokens)
+
+
+def _get_ai_client() -> object | None:
+    """Lazy AI client import to avoid module import cycles at startup."""
+    try:
+        from .flow_ai import ai_available, _get_client
+
+        if not ai_available():
+            return None
+        return _get_client()
+    except Exception:
+        return None
 
 
 def _store_translation(word: str, translation: str, context: str, source: str) -> None:
@@ -166,9 +250,7 @@ def _store_translation(word: str, translation: str, context: str, source: str) -
 
 
 def _translate_with_ai(word: str, context: str, *, phrase: bool = False) -> str | None:
-    if not ai_available():
-        return None
-    client = _get_client()
+    client = _get_ai_client()
     if client is None:
         return None
     safe_context = context.strip().replace("\n", " ")[:160]
@@ -212,6 +294,15 @@ def translate_spanish_word(word: str, context: str = "") -> dict[str, str] | Non
         if translation:
             _store_translation(cleaned, translation, context, source="local")
             return {"word": cleaned, "translation": translation, "source": "local"}
+        translation = _lookup_words_table_translation(cleaned)
+        if translation:
+            _store_translation(cleaned, translation, context, source="words")
+            return {"word": cleaned, "translation": translation, "source": "words"}
+    else:
+        translation = _translate_phrase_from_local_sources(cleaned)
+        if translation:
+            _store_translation(cleaned, translation, context, source="local_phrase")
+            return {"word": cleaned, "translation": translation, "source": "local_phrase"}
     translation = _translate_with_ai(cleaned, context, phrase=is_phrase)
     if translation:
         _store_translation(cleaned, translation, context, source="ai")

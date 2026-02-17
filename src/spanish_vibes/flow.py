@@ -50,6 +50,9 @@ CONVERSATION_EVERY_N_CARDS = 5
 WEIGHT_SPOT_CHECK = 0.30  # mastered concepts
 WEIGHT_PRACTICE = 0.50  # learning concepts
 WEIGHT_NEW = 0.20  # new concepts
+NEW_CONCEPT_LIMIT = 2
+TIER_MASTERY_TO_ADVANCE = 0.80
+MAX_AHEAD_TIERS = 1
 _FORCEABLE_CARD_TYPES: tuple[str, ...] = (
     "mcq",
     "conversation",
@@ -221,7 +224,26 @@ def select_next_card(session_id: int) -> FlowCardContext | None:
         else:
             learning_ids.append(concept_id)
 
-    available_new = get_next_new_concepts(knowledge, concepts, limit=3)
+    available_new = get_next_new_concepts(knowledge, concepts, limit=NEW_CONCEPT_LIMIT)
+    tier_cap = _get_unlock_tier_cap(knowledge, concepts)
+    available_new = [
+        cid for cid in available_new if concepts[cid].difficulty_level <= tier_cap
+    ]
+    learning_ids = [cid for cid in learning_ids if concepts[cid].difficulty_level <= tier_cap]
+    mastered_ids = [cid for cid in mastered_ids if concepts[cid].difficulty_level <= tier_cap]
+
+    # If strict tier window removes everything, gracefully fall back.
+    if not learning_ids and not mastered_ids and not available_new:
+        for concept_id, ck in knowledge.items():
+            if concept_id not in concepts:
+                continue
+            if ck.n_attempts == 0:
+                continue
+            if is_mastered(ck.p_mastery, ck.n_attempts):
+                mastered_ids.append(concept_id)
+            else:
+                learning_ids.append(concept_id)
+        available_new = get_next_new_concepts(knowledge, concepts, limit=NEW_CONCEPT_LIMIT)
 
     forced_concept = consume_dev_override("force_next_concept")
     concept_id = forced_concept if forced_concept in concepts else None
@@ -532,6 +554,42 @@ def _get_bucket_weights() -> tuple[float, float, float]:
     if total <= 0:
         return WEIGHT_SPOT_CHECK, WEIGHT_PRACTICE, WEIGHT_NEW
     return spot / total, practice / total, new / total
+
+
+def _get_unlock_tier_cap(
+    knowledge: dict[str, ConceptKnowledge],
+    concepts: dict[str, object],
+) -> int:
+    """Keep progression near the learner's current tier.
+
+    Unlock window is current tier plus at most one tier ahead.
+    """
+    tiers = sorted({int(getattr(c, "difficulty_level", 1)) for c in concepts.values()})
+    if not tiers:
+        return 1
+
+    current_tier = tiers[0]
+    for tier in tiers:
+        tier_ids = [
+            cid
+            for cid, concept in concepts.items()
+            if int(getattr(concept, "difficulty_level", 1)) == tier
+        ]
+        if not tier_ids:
+            continue
+        mastered = 0
+        for concept_id in tier_ids:
+            ck = knowledge.get(concept_id)
+            if ck and is_mastered(ck.p_mastery, ck.n_attempts):
+                mastered += 1
+        tier_mastery = mastered / len(tier_ids)
+        if tier_mastery < TIER_MASTERY_TO_ADVANCE:
+            current_tier = tier
+            break
+        current_tier = tier
+
+    max_tier = tiers[-1]
+    return min(max_tier, current_tier + MAX_AHEAD_TIERS)
 
 
 def _get_conversation_frequency() -> int:

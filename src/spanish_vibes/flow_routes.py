@@ -22,6 +22,7 @@ from .flow import (
     build_session_state,
     end_flow_session,
     get_user_level,
+    invalidate_user_level_cache,
     process_mcq_answer,
     select_next_card,
     start_or_resume_session,
@@ -188,7 +189,6 @@ async def onboarding_page(request: Request) -> Response:
 async def start_placement(
     request: Request,
     start_tier: int = Form(1),
-    start_concept_id: str = Form(""),
     interest_topic_ids: list[int] = Form(default=[]),
 ) -> Response:
     """Apply onboarding start selection and jump into flow directly."""
@@ -219,20 +219,18 @@ async def start_placement(
                     (_uid(), concept_id),
                 )
 
-    selected_concept_id = start_concept_id.strip()
-    if selected_concept_id in concepts and concepts[selected_concept_id].difficulty_level == tier:
-        set_dev_override("force_next_concept", selected_concept_id)
-    else:
-        tier_concepts = sorted(
-            [
-                cid
-                for cid, concept in concepts.items()
-                if concept.difficulty_level == tier
-            ],
-            key=lambda cid: concepts[cid].name,
-        )
-        if tier_concepts:
-            set_dev_override("force_next_concept", tier_concepts[0])
+    invalidate_user_level_cache()
+
+    tier_concepts = sorted(
+        [
+            cid
+            for cid, concept in concepts.items()
+            if concept.difficulty_level == tier
+        ],
+        key=lambda cid: concepts[cid].name,
+    )
+    if tier_concepts:
+        set_dev_override("force_next_concept", tier_concepts[0])
 
     from .flow_db import get_active_session, end_session
 
@@ -710,9 +708,16 @@ async def flow_skip_to_tier(
                 )
 
     # Populate MCQ cache for new tier concepts
+    tier_concepts: list[str] = []
     for concept_id, concept in concepts.items():
         if concept.difficulty_level == tier:
+            tier_concepts.append(concept_id)
             background_tasks.add_task(ensure_cache_populated, concept_id)
+
+    invalidate_user_level_cache()
+    if tier_concepts:
+        tier_concepts.sort(key=lambda cid: concepts[cid].name)
+        set_dev_override("force_next_concept", tier_concepts[0])
 
     # End current session so a fresh one starts
     from .flow_db import get_active_session, end_session
