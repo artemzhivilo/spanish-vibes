@@ -1,0 +1,63 @@
+{#- Session-end wrap-up card. Context:
+    session_id, user_id, summary, improvements, still_tricky, next_focus,
+    avg_score, score_pct, total_acts, by_type, strongest, hardest -#}
+<div class="tutor-activity-card session-end-card" id="activity-end">
+  <div class="session-end-header">
+    <span class="session-end-icon">🎉</span>
+    <span class="session-end-title">Session Complete</span>
+  </div>
+
+  <div class="session-end-body">
+    <p class="tutor-text session-end-summary">{{ summary }}</p>
+
+    <div class="session-score-row session-score-row-primary">
+      <span class="session-score-label">Overall session score</span>
+      <span class="session-score-value">{{ score_pct }}%</span>
+    </div>
+    <p class="session-meta-line">
+      {{ total_acts }} {{ "activity" if total_acts == 1 else "activities" }} completed
+      {% if strongest %} · strongest: {{ strongest.activity_type|replace("_", " ") }}{% endif %}
+      {% if hardest and total_acts > 1 %} · needs work: {{ hardest.activity_type|replace("_", " ") }}{% endif %}
+    </p>
+
+    {% if by_type %}
+    <div class="session-breakdown">
+      {% for activity_type, count in by_type.items() %}
+      <span class="session-breakdown-pill">{{ activity_type|replace("_", " ") }} ×{{ count }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if improvements %}
+    <p class="session-section-label">Wins today</p>
+    <ul class="session-improvements">
+      {% for item in improvements %}
+      <li>✓ {{ item }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if still_tricky %}
+    <p class="session-section-label">Still tricky</p>
+    <ul class="session-tricky">
+      {% for item in still_tricky %}
+      <li>⚠ {{ item }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if next_focus %}
+    <p class="session-next"><strong>Next focus:</strong> {{ next_focus }}</p>
+    {% endif %}
+
+    <form hx-post="/tutor/new-session"
+          hx-target="#tutor-chat"
+          hx-swap="innerHTML"
+          hx-on::after-request="scrollChat()"
+          class="session-restart-form">
+      <input type="hidden" name="previous_session_id" value="{{ session_id }}">
+      <input type="hidden" name="user_id" value="{{ user_id }}">
+      <button type="submit" class="session-restart-btn">Start New Session</button>
+    </form>
+  </div>
+</div>

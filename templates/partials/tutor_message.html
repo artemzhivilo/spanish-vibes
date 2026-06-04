@@ -1,0 +1,51 @@
+{#- Tutor chat bubble (left-aligned). Context vars:
+    message, is_feedback, plan_preview, duration_min,
+    show_stats, stats, show_input, session_id, input_placeholder -#}
+<div class="tutor-message">
+  <div class="tutor-avatar">🧑‍🏫</div>
+  <div class="tutor-bubble{% if is_feedback %} tutor-bubble-feedback{% endif %}">
+    <p class="tutor-text">{{ message }}</p>
+
+    {% if plan_preview %}
+    <p class="tutor-plan-preview text-xs opacity-70 mt-1">
+      Plan: {{ plan_preview }}{% if duration_min %} (~{{ duration_min }} min){% endif %}
+    </p>
+    {% endif %}
+
+    {% if show_stats and stats %}
+    <div class="feedback-stats">
+      {% if stats.correct_rate is defined and stats.correct_rate is not none %}
+      <span class="stat-rate">{{ "%.0f"|format(stats.correct_rate * 100) }}%</span>
+      {% endif %}
+      {% if stats.focus_concept %}
+      <span class="stat-concept">{{ stats.focus_concept }}</span>
+      {% endif %}
+      {% if stats.highlight %}
+      <p class="stat-highlight">{{ stats.highlight }}</p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if show_input %}
+<div class="learner-input-area" id="plan-response-area">
+  <form hx-post="/tutor/respond"
+        hx-target="#tutor-chat"
+        hx-swap="beforeend"
+        hx-sync="this:drop"
+        hx-disabled-elt="find button"
+        hx-on::after-request="this.reset(); scrollChat()"
+        class="chat-input-form">
+    <input type="hidden" name="activity_type" value="plan_response">
+    <input type="hidden" name="session_id" value="{{ session_id }}">
+    <input type="text"
+           name="message"
+           placeholder="{{ input_placeholder or 'Sounds good! / Actually, I\'d prefer...' }}"
+           class="chat-input"
+           autocomplete="off"
+           autofocus>
+    <button type="submit" class="chat-send-btn">→</button>
+  </form>
+</div>
+{% endif %}

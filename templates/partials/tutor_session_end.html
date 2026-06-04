@@ -1,0 +1,95 @@
+<div id="plan-response-area" hx-swap-oob="delete"></div>
+
+<!-- Session end summary card -->
+<div class="session-end-card bg-gradient-to-br from-[#1a2d35] to-[#0f1f26]
+            rounded-2xl border border-slate-600/40 p-6 max-w-lg mx-auto my-6" id="activity-end">
+
+  <!-- Header with session number -->
+  <div class="text-center mb-4">
+    <span class="text-3xl">🎉</span>
+    <h2 class="text-xl font-bold text-white mt-2">Session Complete!</h2>
+    {% if session_number %}
+    <p class="text-slate-400 text-sm">Session #{{ session_number }}</p>
+    {% endif %}
+  </div>
+
+  <!-- Summary message from tutor -->
+  <p class="text-slate-200 text-center mb-5">{{ summary_message }}</p>
+
+  <!-- Activities completed -->
+  {% if activities_summary %}
+  <div class="mb-4">
+    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Activities</h3>
+    {% for activity in activities_summary %}
+    <div class="py-1.5 border-b border-slate-700/50 last:border-0">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-slate-300">{{ activity.type }}</span>
+        {% if activity.score is not none %}
+        <span class="text-amber-400 font-mono text-sm">{{ (activity.score * 100)|int }}%</span>
+        {% endif %}
+      </div>
+      {% if activity.highlight %}
+      <p class="text-slate-400 text-xs mt-0.5">{{ activity.highlight }}</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Breakthroughs -->
+  {% if breakthroughs %}
+  <div class="mb-4 bg-emerald-900/20 rounded-lg p-3 border border-emerald-700/30">
+    <h3 class="text-sm font-semibold text-emerald-400 mb-1">💪 Breakthroughs</h3>
+    {% for item in breakthroughs %}
+    <p class="text-slate-300 text-sm">• {{ item }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Still working on -->
+  {% if still_working_on %}
+  <div class="mb-4 bg-amber-900/20 rounded-lg p-3 border border-amber-700/30">
+    <h3 class="text-sm font-semibold text-amber-400 mb-1">🎯 Keep Practicing</h3>
+    {% for item in still_working_on %}
+    <p class="text-slate-300 text-sm">• {{ item }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Next session preview -->
+  {% if next_session_preview %}
+  <p class="text-slate-400 text-sm text-center mt-4 italic">
+    Next time: {{ next_session_preview }}
+  </p>
+  {% endif %}
+
+  <!-- Start new session button -->
+  <div class="text-center mt-6">
+    <form hx-post="/tutor/new-session"
+          hx-target="#tutor-chat"
+          hx-swap="innerHTML"
+          hx-on::after-request="scrollChat()"
+          class="inline-block">
+      <input type="hidden" name="previous_session_id" value="{{ session_id }}">
+      <input type="hidden" name="user_id" value="{{ user_id }}">
+      <button class="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white
+                     font-semibold rounded-xl transition-colors">
+        Start New Session →
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var chat = document.getElementById('tutor-chat');
+    if (!chat) return;
+    chat.querySelectorAll('form').forEach(function (form) {
+      if (form.getAttribute('hx-post') === '/tutor/new-session') return;
+      form.querySelectorAll('input, textarea, button, select').forEach(function (field) {
+        field.disabled = true;
+      });
+      form.classList.add('session-ended-disabled');
+    });
+  })();
+</script>

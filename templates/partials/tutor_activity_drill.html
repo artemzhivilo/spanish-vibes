@@ -1,0 +1,56 @@
+{#- Conjugation drill card. Context: session_id, tutor_message, tense_label, items_json, first_person, first_verb, total -#}
+<div class="tutor-message" id="msg-drill-intro">
+  <div class="tutor-avatar">🧑‍🏫</div>
+  <div class="tutor-bubble">
+    <p class="tutor-text">{{ tutor_message }}</p>
+  </div>
+</div>
+
+<div class="tutor-activity-card" id="activity-drill">
+  <div class="drill-progress-bar"><div class="drill-progress-bar-fill" style="width:0%"></div></div>
+  <div class="activity-header">
+    <span class="drill-badge">⚡ {{ tense_label }} Drill</span>
+    <span class="drill-progress" id="drill-progress">1 / {{ total }}</span>
+  </div>
+
+  <div class="drill-item" id="drill-item">
+    <p class="drill-prompt">
+      <span class="drill-person">{{ first_person }}</span>
+      <span class="drill-slash">/</span>
+      <span class="drill-verb">{{ first_verb }}</span>
+      <span class="drill-arrow">→</span>
+    </p>
+    <!-- Feedback area for the *previous* answer (empty on first item) -->
+    <div class="drill-feedback" id="drill-feedback"></div>
+  </div>
+
+  <form hx-post="/tutor/drill/answer"
+        hx-target="#activity-drill"
+        hx-swap="outerHTML"
+        class="drill-input-form"
+        id="drill-form">
+    <input type="hidden" name="session_id"          value="{{ session_id }}">
+    <input type="hidden" name="items_json"           value="{{ items_json }}">
+    <input type="hidden" name="current_index"        value="0">
+    <input type="hidden" name="correct_count"        value="0">
+    <input type="hidden" name="errors_json"          value="[]">
+    <input type="hidden" name="item_started_at"      value="" id="drill-timer">
+    <input type="hidden" name="response_times_json"  value="[]">
+    <input type="text"
+           name="user_answer"
+           placeholder="Type the conjugation..."
+           class="drill-input"
+           autocomplete="off"
+           autocorrect="off"
+           autocapitalize="off"
+           spellcheck="false"
+           autofocus>
+    <button type="submit" class="drill-submit-btn">Check →</button>
+  </form>
+</div>
+<script>
+(function() {
+  var timer = document.getElementById('drill-timer');
+  if (timer) timer.value = Date.now();
+})();
+</script>

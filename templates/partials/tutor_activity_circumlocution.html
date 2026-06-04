@@ -1,0 +1,56 @@
+{#- Circumlocution challenge card.
+    Context: session_id, tutor_message, prompt_en, target_grammar, vocabulary_level,
+    hints, hints_json, worker_briefing -#}
+<div class="tutor-message" id="msg-circ-intro">
+  <div class="tutor-avatar">🧑‍🏫</div>
+  <div class="tutor-bubble">
+    <p class="tutor-text">{{ tutor_message }}</p>
+  </div>
+</div>
+
+<div class="tutor-activity-card" id="activity-circumlocution">
+  <div class="activity-header">
+    <span class="circ-badge">🗣 Express this idea</span>
+  </div>
+
+  <div class="circ-prompt-box">
+    <p class="circ-prompt-text">{{ prompt_en }}</p>
+  </div>
+
+  <p class="circ-instruction">Express this in Spanish using the words you know.
+  No perfect translation needed — just get the idea across.</p>
+
+  {% if hints %}
+  <details class="transl-hints">
+    <summary class="transl-hints-toggle">💡 Show key vocabulary</summary>
+    <ul class="transl-hints-list">
+      {% for h in hints %}
+      <li>{{ h }}</li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+
+  <form hx-post="/tutor/circumlocution/submit"
+        hx-target="#activity-circumlocution"
+        hx-swap="outerHTML"
+        class="circ-form"
+        id="circ-form">
+    <input type="hidden" name="session_id"         value="{{ session_id }}">
+    <input type="hidden" name="prompt_en"          value="{{ prompt_en }}">
+    <input type="hidden" name="target_grammar"     value="{{ target_grammar }}">
+    <input type="hidden" name="vocabulary_level"   value="{{ vocabulary_level }}">
+    <input type="hidden" name="hints_json"         value="{{ hints_json }}">
+    <input type="hidden" name="worker_briefing"    value="{{ worker_briefing }}">
+    <textarea name="learner_response"
+              placeholder="Type your Spanish response here..."
+              class="circ-input"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              rows="4"
+              autofocus></textarea>
+    <button type="submit" class="drill-submit-btn">Submit →</button>
+  </form>
+</div>
