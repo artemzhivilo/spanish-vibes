@@ -1,0 +1,32 @@
+<div class="qs-feedback {{ 'is-correct' if correct else 'is-wrong' }}">
+  <div class="qs-feedback-row">
+    {% if correct %}
+      <span class="qs-feedback-icon">&#10003;</span>
+      <span>{{ selected_answer }}</span>
+    {% else %}
+      <span class="qs-feedback-icon">&#10007;</span>
+      <span class="qs-feedback-wrong">{{ selected_answer }}</span>
+      <span class="fillblank-arrow">&rarr;</span>
+      <span class="qs-feedback-correct">{{ correct_answer }}</span>
+    {% endif %}
+  </div>
+  {% if has_next %}
+    <button
+      type="button"
+      class="qs-next-btn"
+      hx-post="/placement/next"
+      hx-target="#pl-body-{{ card_id }}"
+      hx-swap="innerHTML"
+      hx-vals='{"card_id": "{{ card_id }}"}'
+      hx-on::after-request="updatePlacementProgress('{{ card_id }}')"
+    >Next</button>
+  {% else %}
+    <div
+      hx-post="/placement/next"
+      hx-target="#pl-body-{{ card_id }}"
+      hx-swap="innerHTML"
+      hx-trigger="load delay:400ms"
+      hx-vals='{"card_id": "{{ card_id }}"}'
+    ></div>
+  {% endif %}
+</div>

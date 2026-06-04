@@ -1,0 +1,33 @@
+<div class="pl-result">
+  <div class="pl-result-level">{{ level }}</div>
+  <div class="pl-result-label">Estimated Level</div>
+  <div class="pl-result-breakdown">
+    {% for row in breakdown %}
+      <div class="pl-breakdown-row">
+        <span class="pl-breakdown-level">{{ row.label }}</span>
+        <div class="pl-breakdown-bar-track">
+          <div class="pl-breakdown-bar-fill" style="width: {{ row.pct }}%"></div>
+        </div>
+        <span class="pl-breakdown-score">{{ row.correct }}/{{ row.total }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  {% if gaps %}
+    <div class="pl-gaps">
+      <div class="pl-gaps-title">Areas to work on</div>
+      <div class="pl-gaps-list">
+        {% for gap in gaps %}
+          <span class="pl-gap-tag">{{ gap }}</span>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+  <div
+    hx-post="/placement/complete"
+    hx-vals='{"card_id": "{{ card_id }}"}'
+    hx-trigger="load delay:800ms"
+    hx-target="#chat"
+    hx-swap="beforeend"
+    hx-on::after-request="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})"
+  ></div>
+</div>

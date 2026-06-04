@@ -1,5 +1,6 @@
 # Phase 1 — keep memory writes private until you decide otherwise
 memory/
+data/
 .env
 __pycache__/
 *.pyc

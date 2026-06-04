@@ -143,6 +143,19 @@
       if (bar) bar.style.width = ((current / total) * 100) + '%';
     }
 
+    // --- Placement progress bar ---
+    function updatePlacementProgress(cardId) {
+      const card = document.getElementById('card-' + cardId);
+      if (!card) return;
+      const counter = card.querySelector('.qs-counter');
+      if (!counter) return;
+      const parts = counter.textContent.trim().split('/');
+      const current = parseInt(parts[0]);
+      const total = parseInt(parts[1]);
+      const bar = card.querySelector('.pl-progress-bar');
+      if (bar) bar.style.width = ((current / total) * 100) + '%';
+    }
+
     // --- Tap-to-translate ---
     const tooltip = document.getElementById('translate-tooltip');
     let activeTimeout = null;

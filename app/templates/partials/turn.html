@@ -12,6 +12,8 @@
     {% include "partials/grammar_note.html" %}
   {% elif card.type == "quiz_set" %}
     {% include "partials/quiz_set.html" %}
+  {% elif card.type == "placement" %}
+    {% include "partials/placement.html" %}
   {% endif %}
 {% endfor %}
 

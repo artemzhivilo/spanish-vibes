@@ -16,10 +16,26 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
+import json
+import random
+
 import anthropic
+
+from .database import (
+    get_all_words,
+    get_grammar_status,
+    get_learner_summary,
+    get_or_create_learner,
+    get_words_due,
+    init_db,
+    track_word,
+    update_grammar_status,
+    update_learner_profile,
+)
+from .placement_questions import QUESTION_BANK, PlacementQuestion, level_to_cefr
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -279,6 +295,32 @@ TOOLS = [
         },
     },
     {
+        "name": "run_placement_test",
+        "description": (
+            "Run an adaptive placement test to assess the learner's CEFR level. "
+            "Use this at the start of a first session when you have no learner "
+            "notes yet, or when the learner explicitly asks to find out their "
+            "level (e.g. 'what level am I?', 'test my level', 'placement test'). "
+            "The test is 12 adaptive multiple-choice questions that hone in on "
+            "their level using a binary-search approach. Do NOT use this for "
+            "regular quizzing — use create_quiz_set for that."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string",
+                    "description": (
+                        "Brief explanation of why you're running the placement "
+                        "test, e.g. 'First session, no notes' or 'Learner asked "
+                        "to check their level'."
+                    ),
+                },
+            },
+            "required": ["reason"],
+        },
+    },
+    {
         "name": "save_learner_notes",
         "description": (
             "Save your full markdown notes about this learner to disk. Call "
@@ -306,12 +348,18 @@ TOOLS = [
 
 def build_system_prompt(learner_id: str) -> str:
     notes_path = memory_path(learner_id)
-    notes = (
+    freeform_notes = (
         notes_path.read_text()
         if notes_path.exists()
         else "_(no notes yet — first session)_"
     )
-    framework = FRAMEWORK_PATH.read_text().replace("{learner_notes}", notes)
+    # Build combined learner context: structured DB data + freeform notes
+    structured = get_learner_summary(learner_id)
+    if structured:
+        combined_notes = structured + "\n\n---\n\n## Freeform notes\n" + freeform_notes
+    else:
+        combined_notes = freeform_notes
+    framework = FRAMEWORK_PATH.read_text().replace("{learner_notes}", combined_notes)
     persona = PERSONA_PATH.read_text()
     return framework + "\n\n---\n\n" + persona
 
@@ -334,6 +382,87 @@ QUIZZES: dict[str, dict[str, Any]] = {}
 
 # Translation cache: "word|||context" -> translation string
 _translate_cache: dict[str, str] = {}
+
+
+# ---------------------------------------------------------------------------
+# Placement test helpers
+# ---------------------------------------------------------------------------
+
+PLACEMENT_TOTAL = 12  # number of questions in a placement test
+
+
+def pick_placement_question(
+    difficulty: float, asked_indices: set[int]
+) -> tuple[int, PlacementQuestion] | None:
+    """Pick the closest question to *difficulty* that hasn't been asked yet."""
+    candidates = [(i, q) for i, q in enumerate(QUESTION_BANK) if i not in asked_indices]
+    if not candidates:
+        return None
+    # Sort by distance to target difficulty, break ties randomly
+    candidates.sort(key=lambda pair: (abs(pair[1].level - difficulty), random.random()))
+    return candidates[0]
+
+
+def compute_placement_result(quiz: dict[str, Any]) -> dict[str, Any]:
+    """Compute the final placement result from a completed quiz."""
+    results = quiz["results"]
+    # Group results by level label
+    level_buckets: dict[str, dict[str, int]] = {}
+    for r in results:
+        label = r["level_label"]
+        if label not in level_buckets:
+            level_buckets[label] = {"correct": 0, "total": 0}
+        level_buckets[label]["total"] += 1
+        if r["correct"]:
+            level_buckets[label]["correct"] += 1
+
+    # Estimated level = average difficulty of correctly answered questions
+    correct_levels = [r["level"] for r in results if r["correct"]]
+    if correct_levels:
+        avg_correct = sum(correct_levels) / len(correct_levels)
+    else:
+        avg_correct = 0.0
+    estimated_level = level_to_cefr(avg_correct)
+
+    # Build breakdown for display (ordered by level)
+    level_order = ["A1", "A1-A2", "A2", "A2-B1", "B1", "B1-B2"]
+    breakdown = []
+    for label in level_order:
+        if label in level_buckets:
+            b = level_buckets[label]
+            pct = round(b["correct"] / b["total"] * 100) if b["total"] > 0 else 0
+            breakdown.append(
+                {
+                    "label": label,
+                    "correct": b["correct"],
+                    "total": b["total"],
+                    "pct": pct,
+                }
+            )
+
+    # Identify grammar gaps (topics the learner got wrong)
+    gaps = []
+    for r in results:
+        if not r["correct"] and r["grammar_topic"] not in gaps:
+            gaps.append(r["grammar_topic"])
+
+    # Build text summary for the agent
+    parts = []
+    for b in breakdown:
+        parts.append(f"{b['correct']}/{b['total']} {b['label']} correct")
+    gap_str = ", ".join(gaps) if gaps else "none identified"
+    summary_text = (
+        f"[Placement test complete: estimated level {estimated_level}. "
+        f"Breakdown: {'; '.join(parts)}. "
+        f"Grammar gaps: {gap_str}.]"
+    )
+
+    return {
+        "level": estimated_level,
+        "breakdown": breakdown,
+        "gaps": gaps,
+        "summary_text": summary_text,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -463,6 +592,14 @@ def run_agent_turn(learner_id: str, user_text: str | None) -> dict[str, Any]:
                         "cards": block.input["cards"],
                     }
                 )
+                # Track flashcard words for spaced repetition
+                for fc in block.input["cards"]:
+                    track_word(
+                        learner_id,
+                        word=fc["front"],
+                        translation=fc["back"],
+                        domain=None,
+                    )
                 tool_results.append(
                     {
                         "type": "tool_result",
@@ -495,6 +632,7 @@ def run_agent_turn(learner_id: str, user_text: str | None) -> dict[str, Any]:
                 questions = block.input["questions"]
                 QUIZZES[card_id] = {
                     "type": "quiz_set",
+                    "topic": block.input.get("topic", ""),
                     "questions": list(questions),
                     "current_index": 0,
                     "original_count": len(questions),
@@ -522,13 +660,67 @@ def run_agent_turn(learner_id: str, user_text: str | None) -> dict[str, Any]:
                         ),
                     }
                 )
-            elif block.name == "save_learner_notes":
-                save_notes(learner_id, block.input["notes"])
+            elif block.name == "run_placement_test":
+                card_id = secrets.token_urlsafe(8)
+                difficulty = 2.0  # start at A2
+                first_pick = pick_placement_question(difficulty, set())
+                if first_pick is None:
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": "Error: no questions available.",
+                            "is_error": True,
+                        }
+                    )
+                    continue
+                q_idx, q = first_pick
+                QUIZZES[card_id] = {
+                    "type": "placement",
+                    "difficulty": difficulty,
+                    "asked_indices": [q_idx],
+                    "current_question": q,
+                    "current_index": 0,
+                    "total": PLACEMENT_TOTAL,
+                    "results": [],
+                }
+                rendered_cards.append(
+                    {
+                        "type": "placement",
+                        "id": card_id,
+                        "intro": (
+                            "Let's see where you are! "
+                            "12 quick questions — just pick the best answer."
+                        ),
+                        "question": {
+                            "question": q.question,
+                            "options": q.options,
+                        },
+                        "current": 1,
+                        "total": PLACEMENT_TOTAL,
+                    }
+                )
                 tool_results.append(
                     {
                         "type": "tool_result",
                         "tool_use_id": block.id,
-                        "content": "Notes saved to disk.",
+                        "content": (
+                            f"Placement test started ({PLACEMENT_TOTAL} questions). "
+                            "The learner is working through it now — you'll get "
+                            "the result when they finish."
+                        ),
+                    }
+                )
+            elif block.name == "save_learner_notes":
+                notes_text = block.input["notes"]
+                save_notes(learner_id, notes_text)
+                # Parse structured info from notes and update DB
+                _sync_notes_to_db(learner_id, notes_text)
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": "Notes saved to disk and learner profile updated.",
                     }
                 )
             else:
@@ -559,10 +751,67 @@ def is_correct(user_answer: str, correct_answer: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Database sync helpers
+# ---------------------------------------------------------------------------
+
+
+def _sync_notes_to_db(learner_id: str, notes_md: str) -> None:
+    """Parse structured info from Marta's markdown notes and update the DB."""
+    updates: dict[str, Any] = {"notes_md": notes_md}
+
+    # Extract CEFR level (patterns like "A1", "A2", "B1", "B2")
+    cefr_match = re.search(r"\b(A1|A2|B1|B2)\b", notes_md)
+    if cefr_match:
+        updates["cefr_level"] = cefr_match.group(1)
+
+    # Extract interests from "About them" section if present
+    about_match = re.search(
+        r"##\s*About\s+them\s*\n(.*?)(?=\n##|\Z)",
+        notes_md,
+        re.DOTALL | re.IGNORECASE,
+    )
+    if about_match:
+        about_text = about_match.group(1).strip()
+        interest_match = re.search(
+            r"interests?[:\s]+(.+?)(?:\n|$)",
+            about_text,
+            re.IGNORECASE,
+        )
+        if interest_match:
+            raw = interest_match.group(1)
+            interests = [i.strip().strip(".-*") for i in raw.split(",") if i.strip()]
+            if interests:
+                updates["interests"] = json.dumps(interests)
+
+    update_learner_profile(learner_id, **updates)
+
+
+def _track_quiz_grammar(learner_id: str, topic: str, correct: int, total: int) -> None:
+    """Update grammar_status based on quiz set results."""
+    if total == 0:
+        return
+    ratio = correct / total
+    topic_key = re.sub(r"[^a-z0-9]+", "_", topic.lower()).strip("_")
+    if ratio >= 0.85:
+        status = "solid"
+    elif ratio >= 0.5:
+        status = "shaky"
+    else:
+        status = "gap"
+    evidence = f"{correct}/{total} correct"
+    update_grammar_status(learner_id, topic_key, status, evidence)
+
+
+# ---------------------------------------------------------------------------
 # FastAPI app
 # ---------------------------------------------------------------------------
 
 app = FastAPI()
+
+# Initialize the database on startup
+init_db()
+get_or_create_learner(LEARNER_ID)
+
 app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
 
 # cache_size=0 sidesteps a Jinja2 3.1.6 LRU bug on Python 3.14.
@@ -735,6 +984,10 @@ def quiz_complete(request: Request, card_id: str = Form(...)):
             f"{f', {retries} retry questions needed' if retries else ''}. "
             "React to how they did — brief, in character.]"
         )
+        # Track grammar status based on quiz results
+        topic = quiz.get("topic", "")
+        if topic:
+            _track_quiz_grammar(LEARNER_ID, topic, correct_count, total)
     elif quiz.get("type") == "mcq":
         r = quiz.get("result", {})
         summary = (
@@ -759,6 +1012,127 @@ def quiz_complete(request: Request, card_id: str = Form(...)):
         request,
         "partials/persona_msg.html",
         {"persona_text": result["text"]},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Placement test endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.post("/placement/answer", response_class=HTMLResponse)
+def placement_answer(
+    request: Request,
+    card_id: str = Form(...),
+    selected: int = Form(...),
+):
+    quiz = QUIZZES.get(card_id)
+    if quiz is None:
+        return HTMLResponse("<div>(quiz expired)</div>")
+
+    q: PlacementQuestion = quiz["current_question"]
+    correct = selected == q.correct_index
+
+    # Record result
+    quiz["results"].append(
+        {
+            "correct": correct,
+            "level": q.level,
+            "level_label": q.level_label,
+            "grammar_topic": q.grammar_topic,
+            "question": q.question,
+        }
+    )
+
+    # Adapt difficulty
+    if correct:
+        quiz["difficulty"] = min(quiz["difficulty"] + 0.5, 5.0)
+    else:
+        quiz["difficulty"] = max(quiz["difficulty"] - 0.5, 0.0)
+
+    quiz["current_index"] += 1
+    has_next = quiz["current_index"] < quiz["total"]
+
+    return templates.TemplateResponse(
+        request,
+        "partials/placement_feedback.html",
+        {
+            "card_id": card_id,
+            "correct": correct,
+            "correct_answer": q.options[q.correct_index],
+            "selected_answer": q.options[selected],
+            "has_next": has_next,
+        },
+    )
+
+
+@app.post("/placement/next", response_class=HTMLResponse)
+def placement_next(request: Request, card_id: str = Form(...)):
+    quiz = QUIZZES.get(card_id)
+    if quiz is None:
+        return HTMLResponse("<div>(quiz expired)</div>")
+
+    idx = quiz["current_index"]
+    if idx >= quiz["total"]:
+        # Test complete -- show result
+        result = compute_placement_result(quiz)
+        return templates.TemplateResponse(
+            request,
+            "partials/placement_result.html",
+            {
+                "card_id": card_id,
+                "level": result["level"],
+                "breakdown": result["breakdown"],
+                "gaps": result["gaps"],
+            },
+        )
+
+    # Pick next question adaptively
+    asked = set(quiz["asked_indices"])
+    pick = pick_placement_question(quiz["difficulty"], asked)
+    if pick is None:
+        # Ran out of questions -- finish early
+        result = compute_placement_result(quiz)
+        return templates.TemplateResponse(
+            request,
+            "partials/placement_result.html",
+            {
+                "card_id": card_id,
+                "level": result["level"],
+                "breakdown": result["breakdown"],
+                "gaps": result["gaps"],
+            },
+        )
+
+    q_idx, q = pick
+    quiz["asked_indices"].append(q_idx)
+    quiz["current_question"] = q
+
+    return templates.TemplateResponse(
+        request,
+        "partials/placement_question.html",
+        {
+            "card_id": card_id,
+            "question": {"question": q.question, "options": q.options},
+            "current": idx + 1,
+            "total": quiz["total"],
+        },
+    )
+
+
+@app.post("/placement/complete", response_class=HTMLResponse)
+def placement_complete(request: Request, card_id: str = Form(...)):
+    quiz = QUIZZES.pop(card_id, None)
+    if quiz is None:
+        return HTMLResponse("")
+
+    result = compute_placement_result(quiz)
+    summary = result["summary_text"]
+    agent_result = run_agent_turn(LEARNER_ID, summary)
+    return templates.TemplateResponse(
+        request,
+        "partials/persona_msg.html",
+        {"persona_text": agent_result["text"]},
     )
 
 
@@ -788,6 +1162,64 @@ def translate(text: str = Form(...), context: str = Form("")):
     translation = resp.content[0].text.strip()
     _translate_cache[cache_key] = translation
     return {"translation": translation}
+
+
+@app.get("/learner/stats")
+def learner_stats():
+    """JSON summary of the learner's profile, grammar, and word tracking."""
+    profile = get_or_create_learner(LEARNER_ID)
+    grammar = get_grammar_status(LEARNER_ID)
+    words = get_all_words(LEARNER_ID)
+    due = get_words_due(LEARNER_ID)
+
+    interests = None
+    if profile.get("interests"):
+        try:
+            interests = json.loads(profile["interests"])
+        except (json.JSONDecodeError, TypeError):
+            interests = None
+
+    return JSONResponse(
+        {
+            "learner_id": LEARNER_ID,
+            "profile": {
+                "display_name": profile.get("display_name"),
+                "cefr_level": profile.get("cefr_level"),
+                "interests": interests,
+                "created_at": profile.get("created_at"),
+                "updated_at": profile.get("updated_at"),
+            },
+            "grammar": {
+                topic: {
+                    "status": info["status"],
+                    "last_tested": info["last_tested"],
+                    "evidence_count": len(info["evidence"]),
+                }
+                for topic, info in grammar.items()
+            },
+            "vocabulary": {
+                "total_words": len(words),
+                "words_due": len(due),
+                "due_words": [
+                    {"word": w["word"], "translation": w["translation"]} for w in due
+                ],
+            },
+            "word_details": [
+                {
+                    "word": w["word"],
+                    "translation": w["translation"],
+                    "domain": w["domain"],
+                    "repetitions": w["repetitions"],
+                    "ease_factor": round(w["ease_factor"], 2),
+                    "interval_days": round(w["interval_days"], 1),
+                    "times_correct": w["times_correct"],
+                    "times_wrong": w["times_wrong"],
+                    "next_review": w["next_review"],
+                }
+                for w in words
+            ],
+        }
+    )
 
 
 @app.get("/healthz")
