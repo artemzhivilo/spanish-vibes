@@ -772,6 +772,8 @@ def _sync_notes_to_db(learner_id: str, notes_md: str) -> None:
     )
     if about_match:
         about_text = about_match.group(1).strip()
+        interests: list[str] = []
+        # Try explicit "interests: X, Y" pattern first
         interest_match = re.search(
             r"interests?[:\s]+(.+?)(?:\n|$)",
             about_text,
@@ -780,8 +782,21 @@ def _sync_notes_to_db(learner_id: str, notes_md: str) -> None:
         if interest_match:
             raw = interest_match.group(1)
             interests = [i.strip().strip(".-*") for i in raw.split(",") if i.strip()]
-            if interests:
-                updates["interests"] = json.dumps(interests)
+        else:
+            # Fall back: extract topics from "loves/enjoys/likes X and Y" patterns
+            love_match = re.findall(
+                r"(?:loves?|enjoys?|likes?|interested in|into)\s+(.+?)(?:\n|$)",
+                about_text,
+                re.IGNORECASE,
+            )
+            for raw in love_match:
+                # Split on " and " and commas
+                for part in re.split(r"\s+and\s+|,\s*", raw):
+                    cleaned = part.strip().strip(".-*")
+                    if cleaned and len(cleaned) < 50:
+                        interests.append(cleaned)
+        if interests:
+            updates["interests"] = json.dumps(interests)
 
     update_learner_profile(learner_id, **updates)
 
