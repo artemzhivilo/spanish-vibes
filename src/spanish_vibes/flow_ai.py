@@ -23,8 +23,12 @@ def _get_client() -> Any:
     """Lazy-load the OpenAI client."""
     try:
         from openai import OpenAI
+
         return OpenAI()
-    except Exception:
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).error("OpenAI client init failed: %s", e)
         return None
 
 
@@ -51,7 +55,9 @@ def ensure_cache_populated(concept_id: str, topic: str | None = None) -> int:
     return count + len(converted)
 
 
-def generate_mcq_batch(concept_id: str, count: int = 15, topic: str | None = None) -> list[int]:
+def generate_mcq_batch(
+    concept_id: str, count: int = 15, topic: str | None = None
+) -> list[int]:
     """Generate MCQ batch via GPT-4o-mini. Returns list of saved MCQ IDs."""
     if not ai_available():
         return []
@@ -66,7 +72,11 @@ def generate_mcq_batch(concept_id: str, count: int = 15, topic: str | None = Non
         return []
 
     # Build concept list for misconception mapping
-    all_concept_ids = [c.id for c in concepts.values() if c.difficulty_level <= concept.difficulty_level + 1]
+    all_concept_ids = [
+        c.id
+        for c in concepts.values()
+        if c.difficulty_level <= concept.difficulty_level + 1
+    ]
 
     # Build topic theming instruction
     topic_instruction = ""
@@ -208,14 +218,18 @@ def convert_existing_cards_to_mcq(concept_id: str) -> list[int]:
             continue
 
         content_hash = _mcq_hash(concept_id, f"convert:{prompt}", solution)
-        cards.append({
-            "question": f"What does '{prompt}' mean?",
-            "correct_answer": solution,
-            "distractors": [{"text": d, "misconception": concept_id} for d in distractors],
-            "difficulty": 1,
-            "source": "converted",
-            "content_hash": content_hash,
-        })
+        cards.append(
+            {
+                "question": f"What does '{prompt}' mean?",
+                "correct_answer": solution,
+                "distractors": [
+                    {"text": d, "misconception": concept_id} for d in distractors
+                ],
+                "difficulty": 1,
+                "source": "converted",
+                "content_hash": content_hash,
+            }
+        )
 
         if len(cards) >= 20:
             break
@@ -257,14 +271,32 @@ def _validate_mcq(item: dict[str, Any]) -> bool:
 
     # Reject vague "which is correct?" with no constraining context
     vague_patterns = ["which is correct?", "which one is correct?", "which is right?"]
-    if question in vague_patterns or question.rstrip("?") in [p.rstrip("?") for p in vague_patterns]:
+    if question in vague_patterns or question.rstrip("?") in [
+        p.rstrip("?") for p in vague_patterns
+    ]:
         return False
 
     # Reject if distractors are completely unrelated sentences
     # (i.e., they don't share any significant words with the correct answer)
-    correct_words = set(correct.lower().split()) - {"el", "la", "los", "las", "un", "una", "es", "está", "de", "en", "a", "y", "o"}
+    correct_words = set(correct.lower().split()) - {
+        "el",
+        "la",
+        "los",
+        "las",
+        "un",
+        "una",
+        "es",
+        "está",
+        "de",
+        "en",
+        "a",
+        "y",
+        "o",
+    }
     if correct_words:
-        distractor_texts = [d.get("text", "") if isinstance(d, dict) else str(d) for d in distractors]
+        distractor_texts = [
+            d.get("text", "") if isinstance(d, dict) else str(d) for d in distractors
+        ]
         shared_count = 0
         for dt in distractor_texts:
             dt_words = set(dt.lower().split())
@@ -281,12 +313,15 @@ def _validate_mcq(item: dict[str, Any]) -> bool:
 def _pick_distractors(correct: str, pool: list[str], count: int) -> list[str]:
     """Pick `count` unique distractors from pool that differ from correct."""
     import random
+
     candidates = [s for s in set(pool) if s.lower() != correct.lower()]
     random.shuffle(candidates)
     return candidates[:count]
 
 
-def _mcq_hash(concept_id: str, question: str, answer: str, topic: str | None = None) -> str:
+def _mcq_hash(
+    concept_id: str, question: str, answer: str, topic: str | None = None
+) -> str:
     topic_part = f":{topic}" if topic else ""
     raw = f"mcq:{concept_id}:{question}:{answer}{topic_part}"
     return hashlib.sha256(raw.encode()).hexdigest()[:32]
@@ -345,7 +380,9 @@ def generate_teach_card(concept_id: str, topic: str | None = None) -> str:
         return static_content
 
 
-def generate_conversation_opener(concept_id: str, topic: str, difficulty: int = 1) -> str:
+def generate_conversation_opener(
+    concept_id: str, topic: str, difficulty: int = 1
+) -> str:
     """Generate a 1-2 sentence conversation starter in Spanish themed to topic."""
     if not ai_available():
         return ""

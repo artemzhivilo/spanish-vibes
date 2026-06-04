@@ -901,6 +901,9 @@ def _create_flow_tables(connection: sqlite3.Connection) -> None:
     # Translation/vocabulary tables
     _create_translation_tables(connection)
 
+    # Agent-based tutor tables
+    _create_tutor_tables(connection)
+
 
 def _create_translation_tables(connection: sqlite3.Connection) -> None:
     connection.execute(
@@ -1979,3 +1982,50 @@ __all__ = [
     "record_practice_today",
     "fetch_lesson_mastery",
 ]
+
+
+# ── Tutor tables (delegate to tutor_db to keep schema co-located) ──────────────
+
+
+def _create_tutor_tables(connection: sqlite3.Connection) -> None:
+    """Create agent-based tutor tables.  Schema lives in tutor_db.py."""
+    connection.executescript("""
+        CREATE TABLE IF NOT EXISTS tutor_sessions (
+            id              TEXT PRIMARY KEY,
+            user_id         TEXT NOT NULL,
+            started_at      TEXT NOT NULL,
+            ended_at        TEXT,
+            planner_model   TEXT,
+            session_summary TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS tutor_activities (
+            id               TEXT PRIMARY KEY,
+            session_id       TEXT NOT NULL,
+            activity_type    TEXT NOT NULL,
+            tool_params_json TEXT,
+            result_json      TEXT,
+            started_at       TEXT NOT NULL,
+            completed_at     TEXT,
+            score            REAL,
+            concept_id       TEXT,
+            FOREIGN KEY (session_id) REFERENCES tutor_sessions(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_tutor_activities_session
+            ON tutor_activities(session_id);
+
+        CREATE TABLE IF NOT EXISTS planner_decisions (
+            id               TEXT PRIMARY KEY,
+            session_id       TEXT NOT NULL,
+            context_summary  TEXT,
+            reasoning        TEXT,
+            tool_name        TEXT,
+            tool_params_json TEXT,
+            created_at       TEXT NOT NULL,
+            FOREIGN KEY (session_id) REFERENCES tutor_sessions(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_planner_decisions_session
+            ON planner_decisions(session_id);
+    """)
