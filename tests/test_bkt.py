@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
-
 from spanish_vibes.bkt import (
     MASTERY_THRESHOLD,
     MIN_ATTEMPTS_FOR_MASTERY,
-    P_G,
     P_L0,
-    P_S,
-    P_T,
     bkt_update,
     is_mastered,
 )

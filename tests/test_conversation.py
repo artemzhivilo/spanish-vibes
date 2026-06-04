@@ -13,9 +13,7 @@ from spanish_vibes.conversation import (
     ConversationCard,
     ConversationEngine,
     ConversationMessage,
-    ConversationSummary,
     Correction,
-    EvaluationResult,
     get_random_topic,
     _detect_language,
     _explode_corrections,
@@ -82,9 +80,7 @@ class TestEvaluateResponse:
     def test_returns_no_corrections_without_ai(self):
         engine = ConversationEngine()
         with patch("spanish_vibes.conversation.ai_available", return_value=False):
-            result = engine.evaluate_response(
-                "Yo tengo un gato.", "present_tense", 1
-            )
+            result = engine.evaluate_response("Yo tengo un gato.", "present_tense", 1)
         assert result.is_grammatically_correct is True
         assert result.corrections == []
         assert result.recast == "Yo tengo un gato."
@@ -98,18 +94,20 @@ class TestEvaluateResponse:
         # Simulate AI detecting a ser/estar error
         mock_response = MagicMock()
         mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = json.dumps({
-            "is_correct": False,
-            "recast": "Yo estoy cansado hoy.",
-            "corrections": [
-                {
-                    "original": "Yo soy cansado",
-                    "corrected": "Yo estoy cansado",
-                    "explanation": "Use 'estar' for temporary states like being tired.",
-                    "concept_id": "ser_estar",
-                }
-            ],
-        })
+        mock_response.choices[0].message.content = json.dumps(
+            {
+                "is_correct": False,
+                "recast": "Yo estoy cansado hoy.",
+                "corrections": [
+                    {
+                        "original": "Yo soy cansado",
+                        "corrected": "Yo estoy cansado",
+                        "explanation": "Use 'estar' for temporary states like being tired.",
+                        "concept_id": "ser_estar",
+                    }
+                ],
+            }
+        )
         mock_client.chat.completions.create.return_value = mock_response
 
         engine = ConversationEngine()
@@ -128,16 +126,18 @@ class TestEvaluateResponse:
 class TestRecastTechnique:
     @patch("spanish_vibes.conversation.ai_available", return_value=True)
     @patch("spanish_vibes.conversation._get_client")
-    def test_recast_reformulates_without_explicit_error_language(self, mock_get_client, _mock_ai):
+    def test_recast_reformulates_without_explicit_error_language(
+        self, mock_get_client, _mock_ai
+    ):
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
 
         # AI reply should NOT contain "you made an error" or similar
         mock_response = MagicMock()
         mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = (
-            "¡Sí, yo estoy cansado también! ¿Qué hiciste hoy?"
-        )
+        mock_response.choices[
+            0
+        ].message.content = "¡Sí, yo estoy cansado también! ¿Qué hiciste hoy?"
         mock_client.chat.completions.create.return_value = mock_response
 
         engine = ConversationEngine()
@@ -390,7 +390,9 @@ class TestGenerateSummary:
 
 class TestMessageSerialization:
     def test_round_trip_without_corrections(self):
-        msg = ConversationMessage(role="ai", content="¡Hola!", timestamp="2026-02-13T10:00:00Z")
+        msg = ConversationMessage(
+            role="ai", content="¡Hola!", timestamp="2026-02-13T10:00:00Z"
+        )
         data = msg.to_dict()
         restored = ConversationMessage.from_dict(data)
         assert restored.role == "ai"
@@ -428,24 +430,30 @@ class TestLanguageDetection:
 class TestEnglishFallback:
     @patch("spanish_vibes.conversation.ai_available", return_value=True)
     @patch("spanish_vibes.conversation._get_client")
-    def test_detect_and_handle_english_returns_translation(self, mock_get_client, _mock_ai):
+    def test_detect_and_handle_english_returns_translation(
+        self, mock_get_client, _mock_ai
+    ):
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
 
         mock_response = MagicMock()
         mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = json.dumps({
-            "spanish_translation": "Fui a la tienda",
-            "vocabulary_gaps": [
-                {"english": "store", "spanish": "tienda"},
-                {"english": "yesterday", "spanish": "ayer"},
-            ],
-            "encouragement": "¡Buen recuerdo!",
-        })
+        mock_response.choices[0].message.content = json.dumps(
+            {
+                "spanish_translation": "Fui a la tienda",
+                "vocabulary_gaps": [
+                    {"english": "store", "spanish": "tienda"},
+                    {"english": "yesterday", "spanish": "ayer"},
+                ],
+                "encouragement": "¡Buen recuerdo!",
+            }
+        )
         mock_client.chat.completions.create.return_value = mock_response
 
         engine = ConversationEngine()
-        result = engine.detect_and_handle_english("I went to the store yesterday", "preterite", 2)
+        result = engine.detect_and_handle_english(
+            "I went to the store yesterday", "preterite", 2
+        )
 
         assert result is not None
         assert result.spanish_translation == "Fui a la tienda"
@@ -464,7 +472,9 @@ class TestCorrectionSplitting:
         )
         exploded = _explode_corrections([corr])
         assert any(c.original == "si" and c.corrected == "sí" for c in exploded)
-        assert any(c.original == "cerca el" and c.corrected == "cerca del" for c in exploded)
+        assert any(
+            c.original == "cerca el" and c.corrected == "cerca del" for c in exploded
+        )
 
 
 # ── Route integration ────────────────────────────────────────────────────────
@@ -489,14 +499,21 @@ class TestConversationRoutes:
         client = TestClient(app)
         resp = client.post(
             "/flow/conversation/start",
-            data={"session_id": 1, "concept_id": "greetings", "topic": "deportes", "difficulty": 1},
+            data={
+                "session_id": 1,
+                "concept_id": "greetings",
+                "topic": "deportes",
+                "difficulty": 1,
+            },
         )
         assert resp.status_code == 200
         assert "Conversation" in resp.text or "conversation" in resp.text.lower()
 
         # Check DB record was created
         with _open_connection() as conn:
-            row = conn.execute("SELECT * FROM flow_conversations WHERE session_id = 1").fetchone()
+            row = conn.execute(
+                "SELECT * FROM flow_conversations WHERE session_id = 1"
+            ).fetchone()
         assert row is not None
         assert row["topic"] == "deportes"
         assert row["concept_id"] == "greetings"
@@ -510,19 +527,30 @@ class TestConversationRoutes:
         # Start a conversation first
         client.post(
             "/flow/conversation/start",
-            data={"session_id": 1, "concept_id": "greetings", "topic": "comida", "difficulty": 1},
+            data={
+                "session_id": 1,
+                "concept_id": "greetings",
+                "topic": "comida",
+                "difficulty": 1,
+            },
         )
 
         # Respond
         resp = client.post(
             "/flow/conversation/respond",
-            data={"session_id": 1, "conversation_id": 1, "user_message": "¡Hola! Me gusta la comida."},
+            data={
+                "session_id": 1,
+                "conversation_id": 1,
+                "user_message": "¡Hola! Me gusta la comida.",
+            },
         )
         assert resp.status_code == 200
 
         # Check messages were updated once (AI opener + user + AI reply)
         with _open_connection() as conn:
-            row = conn.execute("SELECT * FROM flow_conversations WHERE id = 1").fetchone()
+            row = conn.execute(
+                "SELECT * FROM flow_conversations WHERE id = 1"
+            ).fetchone()
         messages = json.loads(row["messages_json"])
         assert len(messages) == 3
         assert messages[0]["role"] == "ai"
@@ -538,7 +566,12 @@ class TestConversationRoutes:
         # Start and do one exchange
         client.post(
             "/flow/conversation/start",
-            data={"session_id": 1, "concept_id": "greetings", "topic": "música", "difficulty": 1},
+            data={
+                "session_id": 1,
+                "concept_id": "greetings",
+                "topic": "música",
+                "difficulty": 1,
+            },
         )
 
         resp = client.get(
@@ -546,7 +579,9 @@ class TestConversationRoutes:
             params={"conversation_id": 1, "session_id": 1},
         )
         assert resp.status_code == 200
-        assert "Review" in resp.text or "Summary" in resp.text or "Continue" in resp.text
+        assert (
+            "Review" in resp.text or "Summary" in resp.text or "Continue" in resp.text
+        )
 
 
 # ── Topic selection ─────────────────────────────────────────────────────────
@@ -556,6 +591,7 @@ class TestGetRandomTopic:
     def test_returns_topic_from_seeded_db(self):
         """When interest_topics has data, pick from it."""
         from spanish_vibes.db import seed_interest_topics
+
         seed_interest_topics()
         topic = get_random_topic()
         assert topic != ""
@@ -570,6 +606,7 @@ class TestGetRandomTopic:
     def test_excludes_specified_topic(self):
         """Should never return the excluded topic (given enough trials)."""
         from spanish_vibes.db import seed_interest_topics
+
         seed_interest_topics()
         results = {get_random_topic(exclude="Sports") for _ in range(30)}
         assert "Sports" not in results
@@ -578,5 +615,7 @@ class TestGetRandomTopic:
         """Each difficulty should have multiple openers."""
         engine = ConversationEngine()
         with patch("spanish_vibes.conversation.ai_available", return_value=False):
-            openers = {engine.generate_opener("fútbol", "present_tense", 1) for _ in range(20)}
+            openers = {
+                engine.generate_opener("fútbol", "present_tense", 1) for _ in range(20)
+            }
         assert len(openers) >= 3

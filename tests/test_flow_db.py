@@ -4,11 +4,42 @@ from __future__ import annotations
 
 import pytest
 
+from spanish_vibes.flow_db import (
+    add_conversation_turn,
+    complete_conversation,
+    count_cached_mcqs,
+    create_conversation,
+    create_session,
+    end_session,
+    get_active_session,
+    get_all_concept_knowledge,
+    get_cached_ai_card,
+    get_cached_mcqs,
+    get_concept_knowledge,
+    get_conversation,
+    get_or_create_flow_state,
+    get_recent_card_ids,
+    get_session,
+    get_session_responses,
+    get_weak_lessons,
+    increment_mcq_usage,
+    mark_teach_shown,
+    record_response,
+    save_ai_card,
+    save_mcq_batch,
+    store_vocabulary_gap,
+    update_concept_knowledge,
+    update_flow_state,
+    update_session,
+    update_skill_profile,
+)
+
 
 @pytest.fixture(autouse=True)
 def fresh_db(tmp_path):
     """Use a temp file DB for each test."""
     from spanish_vibes import db
+
     db_path = tmp_path / "test.db"
     db.DB_PATH = db_path
     db.init_db()
@@ -17,40 +48,10 @@ def fresh_db(tmp_path):
         db_path.unlink()
 
 
-from spanish_vibes.flow_db import (
-    create_session,
-    end_session,
-    get_active_session,
-    get_or_create_flow_state,
-    get_session,
-    get_session_responses,
-    get_weak_lessons,
-    record_response,
-    update_flow_state,
-    update_session,
-    update_skill_profile,
-    save_ai_card,
-    get_cached_ai_card,
-    create_conversation,
-    add_conversation_turn,
-    get_conversation,
-    complete_conversation,
-    get_recent_card_ids,
-    get_all_concept_knowledge,
-    get_concept_knowledge,
-    update_concept_knowledge,
-    mark_teach_shown,
-    get_cached_mcqs,
-    save_mcq_batch,
-    increment_mcq_usage,
-    count_cached_mcqs,
-    store_vocabulary_gap,
-)
-
-
 def _seed_concepts():
     """Seed a few concepts for testing."""
     from spanish_vibes.db import _open_connection, now_iso
+
     timestamp = now_iso()
     with _open_connection() as conn:
         for cid in ["greetings", "numbers", "pronouns"]:
@@ -174,7 +175,11 @@ class TestFlowState:
 
     def test_update(self):
         get_or_create_flow_state()
-        update_flow_state(current_flow_score=1100.0, total_sessions_increment=1, total_cards_increment=10)
+        update_flow_state(
+            current_flow_score=1100.0,
+            total_sessions_increment=1,
+            total_cards_increment=10,
+        )
         state = get_or_create_flow_state()
         assert state["current_flow_score"] == 1100.0
         assert state["total_sessions"] == 1
@@ -184,6 +189,7 @@ class TestFlowState:
 class TestSkillProfile:
     def _create_lesson(self) -> int:
         from spanish_vibes.db import get_or_create_lesson
+
         return get_or_create_lesson("ch01-01-test", "Test", 1, "easy")
 
     def test_first_attempt(self):
@@ -222,12 +228,20 @@ class TestAICardCache:
 
     def test_duplicate_hash_increments_usage(self):
         id1 = save_ai_card(
-            card_type="vocab", base_card_id=None, difficulty_score=1000.0,
-            prompt="test", solution="test", content_hash="dup123",
+            card_type="vocab",
+            base_card_id=None,
+            difficulty_score=1000.0,
+            prompt="test",
+            solution="test",
+            content_hash="dup123",
         )
         id2 = save_ai_card(
-            card_type="vocab", base_card_id=None, difficulty_score=1000.0,
-            prompt="test", solution="test", content_hash="dup123",
+            card_type="vocab",
+            base_card_id=None,
+            difficulty_score=1000.0,
+            prompt="test",
+            solution="test",
+            content_hash="dup123",
         )
         assert id1 == id2
 
@@ -315,20 +329,23 @@ class TestConceptKnowledge:
 class TestMCQCache:
     def test_save_and_get(self):
         _seed_concepts()
-        ids = save_mcq_batch("greetings", [
-            {
-                "question": "What does 'hola' mean?",
-                "correct_answer": "hello",
-                "distractors": [
-                    {"text": "goodbye", "misconception": "greetings"},
-                    {"text": "thanks", "misconception": "greetings"},
-                    {"text": "please", "misconception": "greetings"},
-                ],
-                "difficulty": 1,
-                "source": "ai",
-                "content_hash": "mcq_hash_1",
-            },
-        ])
+        ids = save_mcq_batch(
+            "greetings",
+            [
+                {
+                    "question": "What does 'hola' mean?",
+                    "correct_answer": "hello",
+                    "distractors": [
+                        {"text": "goodbye", "misconception": "greetings"},
+                        {"text": "thanks", "misconception": "greetings"},
+                        {"text": "please", "misconception": "greetings"},
+                    ],
+                    "difficulty": 1,
+                    "source": "ai",
+                    "content_hash": "mcq_hash_1",
+                },
+            ],
+        )
         assert len(ids) == 1
 
         mcqs = get_cached_mcqs("greetings")
@@ -351,14 +368,17 @@ class TestMCQCache:
 
     def test_increment_usage(self):
         _seed_concepts()
-        ids = save_mcq_batch("greetings", [
-            {
-                "question": "test",
-                "correct_answer": "test",
-                "distractors": [],
-                "content_hash": "usage_test",
-            },
-        ])
+        ids = save_mcq_batch(
+            "greetings",
+            [
+                {
+                    "question": "test",
+                    "correct_answer": "test",
+                    "distractors": [],
+                    "content_hash": "usage_test",
+                },
+            ],
+        )
         increment_mcq_usage(ids[0])
         mcqs = get_cached_mcqs("greetings")
         assert mcqs[0].times_used == 1
@@ -366,21 +386,48 @@ class TestMCQCache:
     def test_count_cached(self):
         _seed_concepts()
         assert count_cached_mcqs("greetings") == 0
-        save_mcq_batch("greetings", [
-            {"question": "q1", "correct_answer": "a1", "distractors": [], "content_hash": "h1"},
-            {"question": "q2", "correct_answer": "a2", "distractors": [], "content_hash": "h2"},
-        ])
+        save_mcq_batch(
+            "greetings",
+            [
+                {
+                    "question": "q1",
+                    "correct_answer": "a1",
+                    "distractors": [],
+                    "content_hash": "h1",
+                },
+                {
+                    "question": "q2",
+                    "correct_answer": "a2",
+                    "distractors": [],
+                    "content_hash": "h2",
+                },
+            ],
+        )
         assert count_cached_mcqs("greetings") == 2
 
     def test_exclude_ids(self):
         _seed_concepts()
-        ids = save_mcq_batch("greetings", [
-            {"question": "q1", "correct_answer": "a1", "distractors": [], "content_hash": "ex1"},
-            {"question": "q2", "correct_answer": "a2", "distractors": [], "content_hash": "ex2"},
-        ])
+        ids = save_mcq_batch(
+            "greetings",
+            [
+                {
+                    "question": "q1",
+                    "correct_answer": "a1",
+                    "distractors": [],
+                    "content_hash": "ex1",
+                },
+                {
+                    "question": "q2",
+                    "correct_answer": "a2",
+                    "distractors": [],
+                    "content_hash": "ex2",
+                },
+            ],
+        )
         mcqs = get_cached_mcqs("greetings", exclude_ids=[ids[0]])
         assert len(mcqs) == 1
         assert mcqs[0].id == ids[1]
+
 
 class TestVocabularyGapStorage:
     def test_store_gap_upserts(self):
