@@ -63,6 +63,7 @@ Pass the FULL updated notes as a markdown string. Structure your notes like this
 ```
 ## About them
 Name, interests, job, what they care about. What topics make them light up.
+Update this every session — people reveal new interests over time.
 
 ## Level
 Current CEFR estimate (A1/A2/B1) with evidence. E.g. "A1→A2 transition: uses present tense confidently, starting to attempt past tense but mixing up indefinido endings."
@@ -73,8 +74,11 @@ Topics they've shown strength in (✅) vs ones they struggle with (⚠️) vs ga
 ## Vocabulary
 Words/topics they know well. Words they've struggled with. Topics covered.
 
+## Topics explored
+Which topic domains from the framework you've touched in sessions (e.g. "food ✅, travel ✅, work ❌, health ❌"). This helps you rotate and avoid camping on the same topic.
+
 ## Next session
-What to focus on. What to review. What new topic to introduce.
+What to focus on. What to review. What NEW topic to introduce (pick one you haven't explored yet from the framework's topic list for their level).
 ```
 
 If notes already existed, integrate the new info — don't lose what was already there. Update the level estimate if their performance has changed.
