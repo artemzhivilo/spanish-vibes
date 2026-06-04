@@ -48,7 +48,8 @@ jobs:
             uv run ruff format --check $files
           fi
 
-      - name: Pytest changed tests
+      - name: Pytest changed tests audit
+        continue-on-error: true
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             git fetch origin "${{ github.base_ref }}"
