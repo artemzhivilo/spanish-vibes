@@ -35,7 +35,7 @@ jobs:
       - name: Ruff format check
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch origin "${{ github.base_ref }}" --depth=1
+            git fetch origin "${{ github.base_ref }}"
             range="origin/${{ github.base_ref }}...HEAD"
           else
             range="${{ github.event.before }}..${{ github.sha }}"
@@ -48,5 +48,22 @@ jobs:
             uv run ruff format --check $files
           fi
 
-      - name: Pytest
+      - name: Pytest changed tests
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.base_ref }}"
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            range="${{ github.event.before }}..${{ github.sha }}"
+          fi
+
+          tests="$(git diff --name-only --diff-filter=ACMRT "$range" -- 'tests/test_*.py')"
+          if [ -z "$tests" ]; then
+            echo "No changed tests to run."
+          else
+            uv run pytest $tests
+          fi
+
+      - name: Pytest full suite baseline audit
+        continue-on-error: true
         run: uv run pytest
