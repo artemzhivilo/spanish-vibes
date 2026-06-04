@@ -581,6 +581,7 @@ dependencies = [
     { name = "anthropic" },
     { name = "fastapi" },
     { name = "jinja2" },
+    { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -590,6 +591,7 @@ requires-dist = [
     { name = "anthropic", specifier = ">=0.92.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "jinja2", specifier = ">=3.1.4" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "python-multipart", specifier = ">=0.0.20" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },
 ]

@@ -1,0 +1,18 @@
+<div class="mcq-feedback {{ 'is-correct' if correct else 'is-wrong' }}">
+  <div class="mcq-result-row">
+    {% if correct %}
+      <span class="mcq-mark">&#10003;</span> <span>Correct!</span>
+    {% else %}
+      <span class="mcq-mark">&#10007;</span> <span>Not quite</span>
+    {% endif %}
+  </div>
+  <div class="mcq-explanation">{{ explanation }}</div>
+  <div
+    hx-post="/quiz/complete"
+    hx-vals='{"card_id": "{{ card_id }}"}'
+    hx-trigger="load delay:600ms"
+    hx-target="#chat"
+    hx-swap="beforeend"
+    hx-on::after-request="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})"
+  ></div>
+</div>

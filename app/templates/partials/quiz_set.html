@@ -1,0 +1,15 @@
+<div class="card card-quiz-set" id="card-{{ card.id }}">
+  <div class="card-title">{{ card.topic }}</div>
+  <div class="card-intro">{{ card.intro }}</div>
+  <div class="qs-progress">
+    <div class="qs-progress-bar" style="width: {{ (1 / card.total * 100)|round }}%"></div>
+  </div>
+  <div id="qs-body-{{ card.id }}">
+    {% set question = card.question %}
+    {% set current = card.current %}
+    {% set total = card.total %}
+    {% set card_id = card.id %}
+    {% set is_retry = false %}
+    {% include "partials/quiz_set_question.html" %}
+  </div>
+</div>

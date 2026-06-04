@@ -1,0 +1,47 @@
+<div class="card card-flashcards" id="card-{{ card.id }}">
+  <div class="card-title">Vocabulario</div>
+  <div class="card-intro">{{ card.intro }}</div>
+  <div class="flashcard-stack" data-total="{{ card.cards|length }}">
+    {% for fc in card.cards %}
+    <div class="flashcard {{ 'active' if loop.index0 == 0 else '' }}" data-idx="{{ loop.index0 }}">
+      <div class="flashcard-inner" onclick="this.classList.toggle('flipped')">
+        <div class="flashcard-front">
+          <span class="flashcard-word">{{ fc.front }}</span>
+          <span class="flashcard-tap-hint">tap to flip</span>
+        </div>
+        <div class="flashcard-back">
+          <span class="flashcard-translation">{{ fc.back }}</span>
+          {% if fc.example %}
+          <span class="flashcard-example">{{ fc.example }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+    <div class="flashcard-nav">
+      <span class="flashcard-counter">1 / {{ card.cards|length }}</span>
+      <button type="button" class="flashcard-next" onclick="nextFlashcard(this)">Next &rarr;</button>
+    </div>
+  </div>
+</div>
+<script>
+function nextFlashcard(btn) {
+  const stack = btn.closest('.flashcard-stack');
+  const cards = stack.querySelectorAll('.flashcard');
+  const active = stack.querySelector('.flashcard.active');
+  if (!active) return;
+  const idx = parseInt(active.dataset.idx);
+  const total = cards.length;
+  if (idx < total - 1) {
+    active.classList.remove('active');
+    cards[idx + 1].classList.add('active');
+    cards[idx + 1].querySelector('.flashcard-inner').classList.remove('flipped');
+    stack.querySelector('.flashcard-counter').textContent = `${idx + 2} / ${total}`;
+    if (idx + 2 === total) {
+      btn.textContent = 'Done ✓';
+      btn.disabled = true;
+      btn.classList.add('done');
+    }
+  }
+}
+</script>

@@ -14,37 +14,226 @@
         <div class="avatar">M</div>
         <div class="persona-text">
           <div class="persona-name">Marta</div>
-          <div class="persona-region">Sevilla · online</div>
+          <div class="persona-region">Sevilla</div>
         </div>
       </div>
     </div>
   </header>
 
-  <main id="chat" class="chat"></main>
+  <main id="chat" class="chat">
+    <div id="welcome" class="welcome">
+      <div class="welcome-avatar">M</div>
+      <div class="welcome-name">Marta</div>
+      <div class="welcome-sub">Tu profesora de Sevilla</div>
+      <div class="starters">
+        <button
+          type="button"
+          class="starter-btn"
+          hx-post="/chat"
+          hx-target="#chat"
+          hx-swap="beforeend"
+          hx-vals='{"message": "Hola Marta!"}'
+          onclick="dismissWelcome()"
+        >Chat</button>
+        <button
+          type="button"
+          class="starter-btn"
+          hx-post="/chat"
+          hx-target="#chat"
+          hx-swap="beforeend"
+          hx-vals='{"message": "Ponme a prueba con un quiz"}'
+          onclick="dismissWelcome()"
+        >Quiz me</button>
+        <button
+          type="button"
+          class="starter-btn"
+          hx-post="/chat"
+          hx-target="#chat"
+          hx-swap="beforeend"
+          hx-vals='{"message": "Enséñame vocabulario nuevo"}'
+          onclick="dismissWelcome()"
+        >Vocab</button>
+        <button
+          type="button"
+          class="starter-btn"
+          hx-post="/chat"
+          hx-target="#chat"
+          hx-swap="beforeend"
+          hx-vals='{"message": "Explícame algo de gramática"}'
+          onclick="dismissWelcome()"
+        >Grammar</button>
+      </div>
+    </div>
+
+  </main>
 
   <form
     class="composer"
     hx-post="/chat"
     hx-target="#chat"
     hx-swap="beforeend"
-    hx-on::after-request="this.querySelector('textarea').value=''; window.scrollTo(0, document.body.scrollHeight);"
+    hx-on::before-request="dismissWelcome(); showTyping()"
+    hx-on::after-request="this.querySelector('textarea').value=''; hideTyping(); scrollDown();"
   >
     <textarea
       name="message"
       rows="1"
-      placeholder="Escribe a Marta…"
+      placeholder="Escribe algo..."
       autofocus
       required
       onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();this.form.requestSubmit();}"
     ></textarea>
-    <button type="submit" aria-label="Send">→</button>
+    <button type="submit" aria-label="Send">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
   </form>
 
+  <!-- Translation tooltip (positioned via JS) -->
+  <div id="translate-tooltip" class="translate-tooltip"></div>
+
   <script>
-    // Auto-scroll to the bottom whenever new content is appended.
-    document.body.addEventListener('htmx:afterSwap', () => {
-      window.scrollTo(0, document.body.scrollHeight);
+    // --- Welcome & typing ---
+    function dismissWelcome() {
+      const el = document.getElementById('welcome');
+      if (el) {
+        el.classList.add('hiding');
+        setTimeout(() => el.remove(), 300);
+      }
+    }
+
+    function showTyping() {
+      hideTyping();
+      const t = document.createElement('div');
+      t.id = 'typing';
+      t.className = 'typing-dots visible';
+      t.innerHTML = '<span></span><span></span><span></span>';
+      document.getElementById('chat').appendChild(t);
+    }
+
+    function hideTyping() {
+      const t = document.getElementById('typing');
+      if (t) t.remove();
+    }
+
+    function scrollDown() {
+      requestAnimationFrame(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }));
+    }
+
+    // Also show/hide typing for starter buttons
+    document.addEventListener('htmx:beforeRequest', (e) => {
+      if (e.detail.elt.classList.contains('starter-btn')) showTyping();
     });
+    document.addEventListener('htmx:afterRequest', (e) => {
+      if (e.detail.elt.classList.contains('starter-btn')) { hideTyping(); scrollDown(); }
+    });
+
+    // Auto-scroll and hide typing on any swap
+    document.body.addEventListener('htmx:afterSwap', () => { hideTyping(); scrollDown(); });
+
+    // --- Quiz set progress bar ---
+    function updateQuizSetProgress(cardId) {
+      const card = document.getElementById('card-' + cardId);
+      if (!card) return;
+      const counter = card.querySelector('.qs-counter');
+      if (!counter) return;
+      const parts = counter.textContent.trim().split('/');
+      const current = parseInt(parts[0]);
+      const total = parseInt(parts[1]);
+      const bar = card.querySelector('.qs-progress-bar');
+      if (bar) bar.style.width = ((current / total) * 100) + '%';
+    }
+
+    // --- Tap-to-translate ---
+    const tooltip = document.getElementById('translate-tooltip');
+    let activeTimeout = null;
+
+    document.addEventListener('click', async (e) => {
+      // Clicking the tooltip itself — ignore
+      if (tooltip.contains(e.target)) return;
+
+      // Translate works on persona messages and card text (not buttons/inputs)
+      if (e.target.closest('button, input, .mcq-option, .starter-btn, .flashcard-nav')) return;
+      const body = e.target.closest('.msg-persona-body, .card-intro, .mcq-question, .grammar-spanish, .grammar-explanation, .flashcard-word, .fillblank-text, .qs-counter, .qs-feedback-row');
+      if (!body) {
+        hideTooltip();
+        return;
+      }
+
+      // Check for text selection first (phrase translate)
+      const sel = window.getSelection();
+      const selectedText = sel.toString().trim();
+      if (selectedText && selectedText.length > 1 && body.contains(sel.anchorNode)) {
+        await translateAndShow(selectedText, body.textContent, e.clientX, e.clientY);
+        return;
+      }
+
+      // Single word: find word at click point
+      const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+      if (!range || !body.contains(range.startContainer)) {
+        hideTooltip();
+        return;
+      }
+
+      // Expand to word boundaries
+      const textNode = range.startContainer;
+      if (textNode.nodeType !== Node.TEXT_NODE) return;
+      const text = textNode.textContent;
+      let start = range.startOffset;
+      let end = range.startOffset;
+      const isWordChar = (c) => c && /[\p{L}\p{M}'-]/u.test(c);
+      while (start > 0 && isWordChar(text[start - 1])) start--;
+      while (end < text.length && isWordChar(text[end])) end++;
+      const word = text.slice(start, end).trim();
+      if (!word || word.length < 2) return;
+
+      await translateAndShow(word, body.textContent, e.clientX, e.clientY);
+    });
+
+    async function translateAndShow(word, context, x, y) {
+      // Show loading state
+      tooltip.innerHTML = '...';
+      tooltip.className = 'translate-tooltip visible loading';
+      positionTooltip(x, y);
+
+      try {
+        const form = new FormData();
+        form.append('text', word);
+        form.append('context', context.slice(0, 200));
+        const resp = await fetch('/translate', { method: 'POST', body: form });
+        const data = await resp.json();
+        tooltip.innerHTML = `${data.translation}<span class="tt-word">${word}</span>`;
+        tooltip.className = 'translate-tooltip visible';
+        positionTooltip(x, y);
+      } catch {
+        hideTooltip();
+      }
+
+      // Auto-hide after 4 seconds
+      clearTimeout(activeTimeout);
+      activeTimeout = setTimeout(hideTooltip, 4000);
+    }
+
+    function positionTooltip(x, y) {
+      const pad = 12;
+      tooltip.style.left = `${Math.min(x, window.innerWidth - 140)}px`;
+      tooltip.style.transform = 'translateX(-50%)';
+      // Show above click by default
+      if (y > 80) {
+        tooltip.style.top = `${y - 44}px`;
+        tooltip.classList.remove('below');
+      } else {
+        tooltip.style.top = `${y + 24}px`;
+        tooltip.classList.add('below');
+      }
+    }
+
+    function hideTooltip() {
+      tooltip.className = 'translate-tooltip';
+      clearTimeout(activeTimeout);
+    }
+
+    // Hide tooltip on scroll
+    window.addEventListener('scroll', hideTooltip, { passive: true });
   </script>
 </body>
 </html>

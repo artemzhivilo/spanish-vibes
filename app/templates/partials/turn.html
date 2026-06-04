@@ -4,6 +4,14 @@
 {% for card in cards %}
   {% if card.type == "fill_blank" %}
     {% include "partials/fill_blank_card.html" %}
+  {% elif card.type == "mcq" %}
+    {% include "partials/mcq_card.html" %}
+  {% elif card.type == "flashcard_set" %}
+    {% include "partials/flashcard_set.html" %}
+  {% elif card.type == "grammar_note" %}
+    {% include "partials/grammar_note.html" %}
+  {% elif card.type == "quiz_set" %}
+    {% include "partials/quiz_set.html" %}
   {% endif %}
 {% endfor %}
 
