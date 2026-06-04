@@ -73,7 +73,7 @@ genius model. We chain calls strategically.
 
 ### Tier 1: The Planner (Smart, Slow)
 
-**Model:** Claude Sonnet 4.5 / GPT-4o / OpenAI o3-mini (configurable)
+**Model:** `gpt-5.2` (OpenAI flagship)
 **When it runs:** Once per "decision point" — when the agent needs to decide
 what to do next (session start, after user completes an activity, after N turns
 of conversation, when user seems stuck).
@@ -96,7 +96,7 @@ to every keystroke.
 
 ### Tier 2: Workers (Fast, Cheap)
 
-**Model:** GPT-4o-mini / Claude Haiku / similar
+**Model:** `gpt-5.2-mini` (conversation, evaluation, content gen) / `gpt-5.2-nano` (classification, simple grammar checks)
 **When they run:** During activities — generating MCQs, evaluating grammar,
 generating conversation responses, creating image descriptions, translating.
 
@@ -244,8 +244,31 @@ cheap models perform like expensive ones. See "Tier 1→2 Context Handoff" above
   "worker_briefing": "Learner keeps saying 'teno' instead of 'tuve'. They just got it right in a drill — this conversation is the transfer test. If they get tuve right, react with excitement. Use tuve/tuvo in your own replies so they hear it repeatedly. They like music and humor."
 }
 ```
+**Visual format:**
+```
+┌─────────────────────────────────────────────────┐
+│  💬 Marta                                        │
+│                                                   │
+│  "¡Oye! ¿Qué tal el finde? Yo fui a ver a       │
+│   Rosalía el sábado. ¡Fue increíble!"            │
+│                                                   │
+│  ┌─────────────────────────────────────────┐     │
+│  │  [Your message...]              [Send]  │     │
+│  └─────────────────────────────────────────┘     │
+│                                                   │
+│  Turn 1 of 4                   💡 Tap any word   │
+└─────────────────────────────────────────────────┘
+```
+Conversation messages stack vertically. Persona messages left-aligned with avatar,
+learner messages right-aligned. Clickable words show translation popover on tap.
+Turn counter shows progress but doesn't feel like a countdown.
+
+**Completed state:** Card collapses to a one-line summary:
+`💬 Conversation with Marta — preterite practice (3/4 correct)`
+
 **Returns to planner:** Conversation summary (corrections, concepts demonstrated,
-score, engagement quality).
+score, engagement quality). On early exit via distress signal, includes the signal
+details and partial results.
 
 ### Tool 2: `show_mcq`
 
@@ -277,6 +300,27 @@ learner types the conjugated form. Immediate feedback.
   "time_pressure": false
 }
 ```
+
+**Visual format:**
+```
+┌─────────────────────────────────────────────────┐
+│  ⚡ Conjugation Drill — Pretérito               │
+│                                                   │
+│  yo / tener  →  [________]                        │
+│                                                   │
+│  ✅ tú / ir → fuiste                             │
+│  ❌ él / hacer → hació  (hizo)                   │
+│                                                   │
+│  3 of 8                          ⏱ no time limit  │
+└─────────────────────────────────────────────────┘
+```
+Current item shows the subject pronoun and infinitive. Learner types the conjugated
+form and hits Enter. Immediate feedback: green check or red X with the correct form.
+Previous items stack above in a scrollable list so the learner sees their progress.
+
+**Completed state:** Card collapses to:
+`⚡ Conjugation Drill — 6/8 correct (missed: tener yo, poder él)`
+
 **Returns:** Score, average response time, specific verb/person combos that failed.
 
 ### Tool 4: `show_translation_challenge`
@@ -340,17 +384,45 @@ or writes a reply. DELE A2 Task 1 style.
 
 ### Tool 7: `show_teach_card`
 
-**What it does:** Shows a mini-lesson explaining a grammar concept.
-**Reuses:** Existing teach card system from `flow_ai.py`.
+**What it does:** The planner writes a natural explanation directly in the chat.
+No special UI card, no structured template — just the tutor talking. The planner
+has the narrative context to explain exactly what the learner is struggling with,
+using examples and language that match the learner's interests and level.
+
+**This tool is reactive as well as proactive.** The planner can call it mid-session
+when the learner is struggling (triggered by a distress signal from a conversation or
+drill), not just as a planned lesson. Example: learner keeps saying "teno" → planner
+fires a teach moment specifically about tener irregular stem before retrying.
+
+**Phase 1 implementation:** The planner simply writes the explanation as a tutor
+chat message. This is the fastest path to testing whether the pedagogical flow
+works (distress signal → explanation → retry). No extra templates needed.
+
 **Parameters:**
 ```json
 {
   "concept": "preterite_irregular",
-  "focus": "ir/hacer/tener irregular stems",
-  "style": "brief"
+  "focus": "tener → tuve/tuvo/tuvieron — the irregular stem change",
+  "context": "Learner keeps defaulting to 'teno'. Has gotten it right in drills but not in free speech.",
+  "explanation": "Hey, let's pause for a sec. So tener is sneaky in the past tense — the stem completely changes. Instead of ten-, it becomes tuv-. So: yo tuve, tú tuviste, él tuvo. Think of it like ten- gets kicked out and tuv- takes over, but the endings stay normal (-e, -iste, -o). Same thing happens with poder → pud- and estar → estuv-. Try saying 'yo tuve' a couple times — tuve, tuve, tuve. Got it? Let's try using it."
 }
 ```
-**Returns:** Acknowledged (learner saw it).
+
+The `explanation` field IS the tutor message. It renders as a normal chat bubble
+from the tutor — warm, conversational, targeted. The planner writes it because
+only the planner knows:
+- What specifically the learner is getting wrong ("teno" not "tuve")
+- What they've already been told (don't repeat the same explanation)
+- What tone works for this learner (direct, with a touch of humor)
+- What examples will land (music/travel references, not abstract grammar)
+
+**Phase 2 enhancement:** Upgrade to a formatted card with conjugation table,
+mnemonic, examples — visually scannable and referenceable. The planner would
+pass structured params and a Jinja template would render it. But test the
+pedagogical flow with plain chat first.
+
+**Returns:** Acknowledged (learner saw it). The planner uses this to know the
+learner has been shown the explanation before retrying the concept in an activity.
 
 ### Tool 8: `give_feedback`
 
@@ -777,6 +849,98 @@ Both exist, serving different purposes.
 
 ---
 
+## Hybrid Mastery: BKT + Narrative Assessment
+
+The system uses two complementary mastery tracking approaches. Neither
+replaces the other — they serve different purposes and together give a
+richer picture than either alone.
+
+### Layer 1: BKT (Mechanical Accuracy)
+
+Bayesian Knowledge Tracing gives a single number (0.0–1.0) per concept,
+updated deterministically on each right/wrong answer. It's great for:
+
+- **Progress bars and unlock thresholds** — needs a number
+- **Concept graph traversal** — "prerequisites met" requires p_mastery >= 0.90
+- **Drill-type activities** — clear right/wrong, maps cleanly to BKT
+- **Consistency** — same inputs always produce same outputs
+
+But BKT is blind to context. It can't distinguish "got tuve right in a
+fill-the-blank drill" from "spontaneously used tuve mid-conversation."
+The second is far more impressive pedagogically.
+
+### Layer 2: Planner's Narrative Assessment (Communicative Competence)
+
+The planner's grammar_notes.md captures qualitative mastery through
+dated evidence entries with statuses (WEAK / IN_PROGRESS / SOLID /
+AVOIDANCE / NOT_YET_INTRODUCED). The planner can write things like:
+
+> "Used ser/estar correctly in free conversation twice, but still
+> confuses them in translation exercises. Avoids estar entirely when
+> talking about feelings."
+
+This captures what BKT cannot: transfer ability, avoidance patterns,
+contextual competence, self-correction behavior.
+
+### How They Work Together
+
+The planner sees **both** layers in its context:
+
+1. **CURRICULUM STATUS** section — BKT numbers from concept_knowledge table
+2. **GRAMMAR STATUS** section — narrative notes from grammar_notes.md
+
+The planner uses BKT as the "floor" (minimum evidence threshold) and its
+own narrative assessment as the decision-maker:
+
+- If BKT says 0.92 mastery on ser/estar but grammar_notes say "avoids
+  estar in free speech, only gets it right in drills" → keep working on it
+- If BKT says 0.45 on colors but grammar_notes say "gets colors right
+  in conversation, bombed the drill due to spelling" → less urgent
+- If BKT says 0.0 (never attempted) and grammar_notes say nothing →
+  check prerequisites, consider introducing it
+
+**BKT tracks mechanical accuracy. The planner tracks communicative
+competence. You want both.**
+
+### Write-Back: Activities → BKT
+
+When tutor activities complete, results flow back to BKT automatically:
+
+- **Translation challenge**: each sentence → one BKT attempt
+  (correct = communicated_successfully)
+- **Conjugation drill**: each item → one BKT attempt (exact match)
+- **Conversation**: no direct BKT write-back — too fuzzy for binary
+  scoring. The planner updates grammar_notes instead.
+- **Circumlocution**: communication_score > 0.5 → correct attempt
+
+This keeps BKT numbers fresh even when the learner only uses the tutor
+(not the original flow system). The concept graph, tier unlocks, and
+progress views all stay accurate.
+
+### The CURRICULUM STATUS Section
+
+Injected into the planner's context alongside the three markdown files.
+Built from the concept graph + BKT data at session start:
+
+```
+## CURRICULUM STATUS
+
+Current tier: 2 (Basic Grammar) — 60% complete
+Tier 1 (Foundations): 5/5 mastered ✅
+Tier 2 (Basic Grammar): 3/5 mastered, 2 in progress
+  🔄 articles_definite — 0.65 mastery (8 attempts)
+  🔄 present_tense_regular — 0.72 mastery (12 attempts)
+
+Next available: adjective_agreement, present_tense_irregular
+Avoidance alert: articles_definite (8 attempts, 0.65 mastery)
+```
+
+Compact (~300-500 tokens). Focuses on in-progress and stuck concepts.
+Mastered concepts shown as counts only. The planner uses this to pick
+the right concept, then uses grammar_notes to decide the approach.
+
+---
+
 ## The Planner System Prompt
 
 This is the "brain" of the system. It needs to be carefully crafted.
@@ -994,6 +1158,168 @@ Rules the planner follows to maintain good session flow:
 5. **Session plan is invisible** — the learner doesn't see "Activity 3 of 7".
    It feels organic.
 
+### Distress Signal — Worker-Level Early Escape
+
+Activities like conversations and drills run independently from the planner for
+multiple turns. But sometimes the learner is struggling badly and the activity
+should end early rather than grinding through to completion. The worker detects
+this and sends a **distress signal** back to the planner.
+
+**How it works:**
+
+Every worker response (conversation turn, drill answer evaluation) returns a
+`status` field alongside its normal output:
+
+```python
+@dataclass
+class WorkerTurnResult:
+    """What the worker returns after each turn within an activity."""
+    response: str               # The normal output (AI message, evaluation, etc.)
+    should_continue: bool       # Can we keep going?
+    distress_signal: DistressSignal | None  # Set when the learner is struggling
+
+@dataclass
+class DistressSignal:
+    """Worker flags that the learner needs help beyond what it can provide."""
+    reason: str                 # What triggered it
+    severity: str               # "mild" | "moderate" | "severe"
+    evidence: list[str]         # Specific observations
+    suggested_pivot: str | None # Worker's best guess at what might help
+```
+
+**Trigger conditions** (worker monitors these each turn):
+
+```
+MILD (worker handles itself, logs for planner):
+  - Learner takes >30 seconds to respond (hesitation)
+  - One turn mostly in English
+  - Minor grammar pattern repeating (same error 2x)
+
+MODERATE (early exit, return to planner):
+  - 2+ consecutive turns mostly in English
+  - Learner responses getting shorter (disengagement)
+  - Same grammar error 3+ times despite worker recasting
+  - Learner explicitly says "I don't understand" / "no sé"
+
+SEVERE (immediate exit, planner gets full context):
+  - 3+ consecutive English turns
+  - Learner says "this is too hard" or similar frustration
+  - Learner stops responding (>60 second gap)
+  - Conversation has devolved into single-word answers
+```
+
+**What happens on a moderate/severe signal:**
+
+```
+Conversation turn 3 of 4:
+  Learner: "I don't know how to say it... I went? yo fue?"
+  Worker detects: 3rd preterite error, learner expressing frustration
+       │
+       ▼
+  Worker returns:
+    response: "No te preocupes — ¡estás muy cerca!" (encouraging)
+    should_continue: false  ← EARLY EXIT
+    distress_signal:
+      reason: "repeated_grammar_failure"
+      severity: "moderate"
+      evidence: ["said 'yo fue' (ir→fui error)", "3rd preterite error",
+                 "expressed frustration: 'I don't know how to say it'"]
+      suggested_pivot: "teach_card for ir preterite conjugation"
+       │
+       ▼
+  Planner receives distress signal + conversation history
+  Planner decides:
+       │
+       ├──▶ show_teach_card(concept="preterite_irregular",
+       │    focus="ir → fui — the full conjugation",
+       │    context="Learner just struggled with this in conversation.
+       │             Keeps saying 'yo fue' instead of 'yo fui'.
+       │             Show the pattern clearly.")
+       │
+       └──▶ Tutor message: "Hey, let's pause for a sec. The ir forms
+            are tricky — here's how they work..."
+       │
+       ▼
+  After teach card:
+  Planner decides: retry conversation at lower difficulty?
+  Or switch to a conjugation drill to build the form in isolation first?
+  (The planner has the intelligence to choose the right recovery path.)
+```
+
+**The key insight:** The worker doesn't decide what to do about the struggle —
+it just reports it. The planner decides the recovery strategy because it has the
+full learner context (memory files, session history, what's been tried before).
+Maybe this learner has already seen a teach card for this concept today, so the
+planner tries a drill instead. Maybe the learner's energy is low and the planner
+switches to something lighter entirely. The worker just raises the flag.
+
+**Implementation in conversation worker:**
+
+```python
+async def respond_to_user(message: str, session: ConversationSession,
+                          worker_briefing: str) -> WorkerTurnResult:
+    # Normal conversation response
+    response = await generate_response(message, session, worker_briefing)
+
+    # Distress detection (runs on every turn)
+    signal = detect_distress(
+        current_message=message,
+        turn_history=session.turns,
+        target_concept=session.concept,
+    )
+
+    return WorkerTurnResult(
+        response=response,
+        should_continue=signal is None or signal.severity == "mild",
+        distress_signal=signal,
+    )
+```
+
+---
+
+## Visual Design Specifications for Tool Cards
+
+Every tool that renders a UI card in the chat needs a clear visual specification
+in its tool definition. The worker generates structured JSON, and a Jinja template
+renders it into a visually consistent card. This section defines the shared design
+language across all cards.
+
+### Shared Card Design Principles
+
+1. **Cards live inside the chat.** They appear inline between tutor messages,
+   not as separate screens. They should feel like rich messages, not app pages.
+
+2. **Consistent structure.** Every card has:
+   - A type icon + title bar (e.g., "💬 Conversation with Marta", "⚡ Conjugation Drill")
+   - A content area (varies by card type)
+   - An input area (text field, buttons, etc.)
+   - A subtle border/background that distinguishes it from tutor messages
+
+3. **Mobile-first sizing.** Cards should work on a phone screen. No horizontal
+   scrolling, no tiny text. Max width ~600px, centered in the chat.
+
+4. **Tailwind styling.** All cards use Tailwind utility classes. Consistent
+   color palette: primary actions in indigo, success in green, errors in red,
+   card backgrounds in slate-50, borders in slate-200.
+
+5. **State transitions.** Cards have states:
+   - Active (learner is working on it)
+   - Completed (shows results, greyed out slightly)
+   - Collapsed (after moving to next activity, shows just the title + score)
+
+### Card-Specific Visual Formats
+
+Each tool's parameters section now includes a `Visual Format` block showing
+what the rendered card looks like. The worker returns structured JSON and the
+Jinja template handles the rendering. See individual tool definitions for their
+specific visual formats.
+
+**When building new tools**, always define:
+- What the card looks like in its active state
+- What structured JSON the worker returns
+- How the card transitions to its completed state
+- What the collapsed summary looks like in the chat history
+
 ---
 
 ## Integration with Existing Code
@@ -1090,17 +1416,137 @@ latency). The planner only runs at **transition points** between activities.
 
 | Operation | Model | Expected Latency | When |
 |---|---|---|---|
-| Planner decision | Sonnet 4.5 / GPT-4o | 1-3 sec | Between activities (~5-10x/session) |
-| Conversation response | GPT-4o | 0.5-1.5 sec | Each user turn |
+| Planner decision | gpt-5.2 | 1-3 sec | Between activities (~5-10x/session) |
+| Conversation response | gpt-5.2-mini | 0.3-1 sec | Each user turn |
+| Worker evaluation | gpt-5.2-mini | 0.3-1 sec | After activity completes |
 | MCQ evaluation | Local (no LLM) | <50ms | Each MCQ answer |
-| Conjugation drill eval | Local (no LLM) | <50ms | Each drill answer |
-| Translation evaluation | GPT-4o-mini | 0.5-1 sec | Each sentence |
-| Image description eval | GPT-4o-mini | 0.5-1 sec | After submission |
-| WhatsApp task eval | GPT-4o-mini | 0.5-1 sec | After submission |
+| Conjugation drill eval | Local / gpt-5.2-nano | <100ms | Each drill answer |
+| Translation evaluation | gpt-5.2-mini | 0.3-1 sec | Each sentence |
+| Image description eval | gpt-5.2-mini | 0.3-1 sec | After submission |
+| Grammar classification | gpt-5.2-nano | <200ms | Lightweight checks |
 
-The 1-3 second planner latency is acceptable because it happens during
-transition screens (feedback card, progress animation). The user never
-stares at a spinner during an activity.
+### Prefetch Strategy — Hiding Planner Latency
+
+The planner's 1-3 second latency should be **invisible** to the learner.
+The trick is to start the planner call BEFORE the current activity finishes,
+so the next activity is already decided by the time the learner is ready.
+
+**Principle: the planner should always be one step ahead.**
+
+#### Strategy 1: Speculative prefetch on final turn
+
+When a conversation hits its last turn (turn 4 of 4), the server knows it's
+about to end. Fire the worker evaluation AND the planner call **in parallel**
+while the final AI response is being generated.
+
+```
+Turn 4 (final):
+  User sends message
+       │
+       ├──▶ WORKER: generate AI response (0.3-1s)
+       │
+       └──▶ Async: WORKER eval (partial, based on turns 1-3)
+                 │
+                 └──▶ PLANNER: decide next activity (1-3s)
+                      (uses partial eval — 3/4 turns is enough signal)
+
+  By the time learner reads the final AI response... planner is done.
+  Conversation "complete" → feedback + next activity renders INSTANTLY.
+```
+
+#### Strategy 2: Prefetch during drill tail end
+
+During a conjugation drill, by item 5 of 6 you have enough signal. Fire
+the planner with partial results. If item 6 changes the picture, you can
+invalidate and re-call (rare), but 90% of the time 5/6 is the same story
+as 6/6.
+
+```
+Drill item 5 answered:
+  Score so far: 4/5
+       │
+       └──▶ Async: PLANNER(partial_results="4/5, missed tener")
+                   (runs while learner does item 6)
+
+  Item 6 answered → drill complete
+  Planner result already waiting → instant transition
+```
+
+#### Strategy 3: Feedback card as a buffer
+
+The planner returns TWO things in one call: the feedback message AND the
+next tool call. Render the feedback immediately. While the learner reads
+"Nice, 5/6! You got tuve right this time" (2-4 seconds of reading time),
+the next activity's template and content are loading in the background.
+
+```
+Planner returns:
+  {
+    "tutor_message": "Nice! 5/6...",     ← render immediately
+    "next_tool": "start_conversation",    ← begin loading
+    "next_params": {...}                  ← generate opener async
+  }
+
+  Learner reads feedback (2-4 sec)
+       │
+       └──▶ Async: WORKER: generate_opener() for next conversation
+
+  Learner scrolls down → conversation card already rendered with opener
+```
+
+#### Strategy 4: Optimistic background precomputation
+
+At session start, after the opening check-in, the planner can return a
+**tentative session plan** — not just the next activity, but the next 2-3
+activities as a ranked list. The server pre-generates content for activity #2
+while activity #1 is running. If activity #1 results change the plan, the
+pre-generated content may get discarded, but the hit rate should be high
+(~80%+ of the time, the plan holds).
+
+```
+Session start:
+  PLANNER returns:
+    1. start_conversation(marta, preterite)  ← DO THIS NOW
+    2. show_conjugation_drill(tener, poder)  ← LIKELY NEXT
+    3. show_image_description(vacation)      ← MAYBE AFTER
+
+  While activity 1 runs:
+    └──▶ Async: pre-generate drill items for activity 2
+    └──▶ Async: pre-select image for activity 3
+```
+
+#### Implementation
+
+Use Python's `asyncio.create_task()` in FastAPI to fire planner calls
+without blocking the response. Store the prefetched result in the
+TutorSession object (in-memory) or a short-lived cache.
+
+```python
+# In tutor_routes.py, during final conversation turn:
+async def conversation_respond(...):
+    # Normal response
+    result = engine.respond_to_user(...)
+
+    # If this is the last turn, fire planner prefetch
+    if turn_number >= max_turns:
+        session.prefetch_task = asyncio.create_task(
+            session.plan_next_action(activity_result=partial_eval)
+        )
+
+    return render_message(result)
+
+async def conversation_complete(...):
+    # Planner result may already be ready
+    if session.prefetch_task:
+        planner_result = await session.prefetch_task  # instant or near-instant
+    else:
+        planner_result = await session.plan_next_action(...)  # fallback
+
+    return render_feedback_and_activity(planner_result)
+```
+
+**Target: zero perceived latency between activities.** The learner should
+feel like the tutor always knows what's next, without ever seeing a spinner.
 
 ---
 
@@ -1147,37 +1593,34 @@ CREATE TABLE planner_decisions (
 
 ---
 
-## Multi-Provider Support
+## Model Strategy — GPT-5.2 Family
 
-The system should support multiple AI providers from day one:
+Single provider (OpenAI), single SDK, three tiers:
 
 ```yaml
-# In prompts.yaml or a new tutor_config.yaml
+# In data/prompts.yaml
 tutor:
   planner:
-    provider: "anthropic"        # or "openai"
-    model: "claude-sonnet-4-5-20250929"
+    model: "gpt-5.2"          # Flagship. The brain.
     temperature: 0.3
-    max_tokens: 1000
+    max_tokens: 1500
 
-  workers:
-    conversation:
-      provider: "openai"
-      model: "gpt-4o"
-      temperature: 0.7
-    evaluation:
-      provider: "openai"
-      model: "gpt-4o-mini"
-      temperature: 0.2
-    content_generation:
-      provider: "openai"
-      model: "gpt-4o-mini"
-      temperature: 0.7
+models:
+  respond: "gpt-5.2-mini"     # Conversation, content gen
+  evaluation: "gpt-5.2-mini"  # Structured eval after activities
+  grammar_check: "gpt-5.2-nano"  # Ultra-cheap classification
+  classification: "gpt-5.2-nano" # Intent detection, routing
 ```
 
-This lets you experiment: maybe Claude Sonnet is a better planner but GPT-4o
-is faster for conversation. Or maybe you swap the planner to o3-mini for
-cheaper reasoning. The architecture doesn't care.
+**Why single provider:** No Anthropic SDK dependency, no provider-switching
+logic, one API key, one billing dashboard. The existing `_get_client()` from
+`flow_ai.py` works for everything — planner and workers alike. If OpenAI
+ships something better, swap one string in the YAML.
+
+**Cost structure:**
+- gpt-5.2 (planner): ~5-10 calls/session, 1-2K tokens each. The expensive one.
+- gpt-5.2-mini (workers): ~20-40 calls/session, 200-500 tokens each. Cheap.
+- gpt-5.2-nano (classification): ~10-20 calls/session, tiny. Almost free.
 
 ---
 
@@ -1227,12 +1670,11 @@ scheduler.
    → **Recommendation:** Use OpenAI function calling format as the internal standard,
    translate to Anthropic format when needed. Most examples/docs use this format.
 
-2. **Conversation handoff**: When the planner calls `start_conversation`, the
-   conversation runs for N turns independently. How does the planner get notified
-   of mid-conversation issues (user completely stuck, switched to English)?
-   → **Recommendation:** Worker-level escape hatch. If `respond_to_user()` detects
-   3 consecutive English messages or very low scores, it triggers an early exit
-   back to the planner.
+2. **Conversation handoff**: ~~How does the planner get notified of mid-conversation
+   issues?~~ **RESOLVED** — See "Distress Signal — Worker-Level Early Escape" section.
+   Workers return a `DistressSignal` on each turn. Mild signals are logged, moderate/
+   severe signals trigger early exit back to the planner with full context. The planner
+   decides recovery strategy (teach card, drill, lower difficulty, activity switch).
 
 3. **Image generation**: Stock images vs AI-generated? Stock is faster and cheaper.
    AI-generated is more flexible and can be themed.
