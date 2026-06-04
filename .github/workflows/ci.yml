@@ -31,7 +31,20 @@ jobs:
         run: uv run ruff check .
 
       - name: Ruff format check
-        run: uv run ruff format --check .
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.base_ref }}" --depth=1
+            range="origin/${{ github.base_ref }}...HEAD"
+          else
+            range="${{ github.event.before }}..${{ github.sha }}"
+          fi
+
+          files="$(git diff --name-only --diff-filter=ACMRT "$range" -- '*.py')"
+          if [ -z "$files" ]; then
+            echo "No changed Python files to format-check."
+          else
+            uv run ruff format --check $files
+          fi
 
       - name: Pytest
         run: uv run pytest
