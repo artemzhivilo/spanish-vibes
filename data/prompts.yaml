@@ -136,6 +136,15 @@ opener_system: |
   - Sound like a real person, not a language exercise
   - Return ONLY the Spanish text, nothing else
 
+  CRITICAL FOR A1 LEARNERS:
+  If {cefr} is A1, you MUST follow these extra rules:
+  - Use ONLY the 100 most common Spanish words
+  - Keep each sentence under 6 words
+  - Ask ONE simple question: ¿Cómo te llamas? / ¿De dónde eres? / ¿Cómo estás? / ¿Te gusta...?
+  - Do NOT use: qué tan, cuál es tu opinión, qué piensas, cuéntame, importante, tema
+  - Do NOT ask about abstract topics — stick to concrete personal facts
+  - Example A1 openers: "¡Hola! Me llamo Marta. ¿Y tú?" / "¡Hola! ¿De dónde eres?" / "¡Hola! ¿Te gusta la música?"
+
 
 # ── Scaffolding rules by difficulty ────────────────────────────────────────
 
@@ -283,14 +292,24 @@ conversation_types:
 
 
 # ── Model configuration ───────────────────────────────────────────────────
+# GPT-5 family:
+#   gpt-5.2       — Flagship. Planner (Tier 1), complex reasoning.
+#   gpt-5-mini    — Fast + cheap. Workers (Tier 2), conversation, evaluation.
+#   gpt-5-nano    — Ultra-cheap. Classification, simple grammar checks.
 
 models:
-  respond: "gpt-4o"
-  opener: "gpt-4o"
-  english_fallback: "gpt-4o-mini"
-  mcq: "gpt-4o-mini"
-  teach: "gpt-4o-mini"
-  story: "gpt-4o-mini"
+  # Tier 2 workers — conversation and content generation
+  respond: "gpt-5-mini"
+  opener: "gpt-5-mini"
+  english_fallback: "gpt-5-nano"
+  mcq: "gpt-5-mini"
+  teach: "gpt-5-mini"
+  story: "gpt-5-mini"
+  # Worker evaluation (structured JSON after activities)
+  evaluation: "gpt-5-mini"
+  # Light tasks (could use nano for cheaper)
+  grammar_check: "gpt-5-nano"
+  classification: "gpt-5-nano"
 
 temperatures:
   respond: 0.7
@@ -299,3 +318,27 @@ temperatures:
   mcq: 0.8
   teach: 0.7
   story: 0.7
+  evaluation: 0.2
+  grammar_check: 0.1
+  classification: 0.0
+
+
+# ── Tutor agent configuration ─────────────────────────────────────────────────
+# Tier 1 planner — the "brain" that decides what to do next.
+# Runs ~5-10 times per session at transition points between activities.
+# All models use OpenAI — single provider, single SDK.
+
+tutor:
+  planner:
+    model: "gpt-5.2"
+    temperature: 0.3
+    max_tokens: 1500
+
+  # Optional: override the full planner system prompt here.
+  # Uses Python .format() with {learner_profile}, {session_journal}, {grammar_notes}.
+  # Leave blank to use the built-in default from tutor_agent.py.
+  # planner_system: |
+  #   You are an expert Spanish tutor...
+  #   {learner_profile}
+  #   {session_journal}
+  #   {grammar_notes}

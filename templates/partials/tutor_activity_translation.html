@@ -1,0 +1,60 @@
+{#- Translation challenge card.
+    Context: session_id, tutor_message, sentence, sentences_json, current_index,
+    total, hints, hints_json, target_grammar, difficulty, worker_briefing,
+    correct_count, scores_json, corrections_json -#}
+<div class="tutor-message" id="msg-transl-intro">
+  <div class="tutor-avatar">🧑‍🏫</div>
+  <div class="tutor-bubble">
+    <p class="tutor-text">{{ tutor_message }}</p>
+  </div>
+</div>
+
+<div class="tutor-activity-card" id="activity-translation">
+  <div class="drill-progress-bar"><div class="drill-progress-bar-fill" style="width:0%"></div></div>
+  <div class="activity-header">
+    <span class="transl-badge">📝 Translation</span>
+    <span class="drill-progress">1 / {{ total }}</span>
+  </div>
+
+  <div class="transl-item" id="transl-item">
+    <p class="transl-prompt">{{ sentence }}</p>
+    {% if hints %}
+    <details class="transl-hints">
+      <summary class="transl-hints-toggle">💡 Show hints</summary>
+      <ul class="transl-hints-list">
+        {% for h in hints %}
+        <li>{{ h }}</li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+  </div>
+
+  <form hx-post="/tutor/translation/answer"
+        hx-target="#activity-translation"
+        hx-swap="outerHTML"
+        hx-disabled-elt="find button"
+        class="transl-input-form"
+        id="transl-form">
+    <input type="hidden" name="session_id"        value="{{ session_id }}">
+    <input type="hidden" name="sentences_json"    value="{{ sentences_json }}">
+    <input type="hidden" name="current_index"     value="0">
+    <input type="hidden" name="correct_count"     value="0">
+    <input type="hidden" name="scores_json"       value="[]">
+    <input type="hidden" name="corrections_json"  value="[]">
+    <input type="hidden" name="target_grammar"    value="{{ target_grammar }}">
+    <input type="hidden" name="difficulty"        value="{{ difficulty }}">
+    <input type="hidden" name="hints_json"        value="{{ hints_json }}">
+    <input type="hidden" name="worker_briefing"   value="{{ worker_briefing }}">
+    <textarea name="user_translation"
+              placeholder="Type your Spanish translation..."
+              class="transl-input"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              rows="2"
+              autofocus></textarea>
+    <button type="submit" class="drill-submit-btn">Check →</button>
+  </form>
+</div>

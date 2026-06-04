@@ -1,0 +1,12 @@
+<div class="card card-grammar" id="card-{{ card.id }}">
+  <div class="card-title">{{ card.title }}</div>
+  <div class="grammar-explanation">{{ card.explanation }}</div>
+  <div class="grammar-examples">
+    {% for ex in card.examples %}
+    <div class="grammar-example">
+      <div class="grammar-spanish">{{ ex.spanish }}</div>
+      <div class="grammar-english">{{ ex.english }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>

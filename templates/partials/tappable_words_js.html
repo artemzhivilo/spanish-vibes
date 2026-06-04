@@ -1,0 +1,218 @@
+<style>
+  #word-tooltip {
+    position: fixed;
+    z-index: 50;
+    max-width: 240px;
+    background: #0f172a;
+    color: #86efac;
+    font-size: 0.875rem;
+    line-height: 1.3;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    border: 1px solid #1e293b;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 150ms ease;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+</style>
+
+<script>
+  (function () {
+    if (window.__tappableWordsInit) return;
+    window.__tappableWordsInit = true;
+
+    var tooltip = document.getElementById('word-tooltip');
+    if (!tooltip) {
+      tooltip = document.createElement('div');
+      tooltip.id = 'word-tooltip';
+      document.body.appendChild(tooltip);
+    }
+
+    var inner = document.createElement('div');
+    tooltip.innerHTML = '';
+    tooltip.appendChild(inner);
+
+    var caret = document.createElement('div');
+    caret.style.position = 'absolute';
+    caret.style.width = '0';
+    caret.style.height = '0';
+    caret.style.borderLeft = '6px solid transparent';
+    caret.style.borderRight = '6px solid transparent';
+    caret.style.pointerEvents = 'none';
+    tooltip.appendChild(caret);
+
+    var activeText = null;
+
+    function hideTooltip() {
+      tooltip.style.opacity = '0';
+      tooltip.style.visibility = 'hidden';
+      activeText = null;
+    }
+
+    function positionTooltip(targetRect) {
+      tooltip.style.visibility = 'hidden';
+      tooltip.style.opacity = '1';
+      requestAnimationFrame(function() {
+        var tooltipRect = tooltip.getBoundingClientRect();
+        var left = targetRect.left;
+        var top = targetRect.bottom + 8;
+        var showAbove = false;
+
+        if (left + tooltipRect.width > window.innerWidth - 12) {
+          left = window.innerWidth - tooltipRect.width - 12;
+        }
+        if (left < 12) left = 12;
+
+        if (top + tooltipRect.height > window.innerHeight - 12) {
+          top = targetRect.top - tooltipRect.height - 12;
+          showAbove = true;
+        }
+
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
+        tooltip.style.visibility = 'visible';
+
+        caret.style.borderBottom = showAbove ? '6px solid #0f172a' : '0 solid transparent';
+        caret.style.borderTop = showAbove ? '0 solid transparent' : '6px solid #0f172a';
+        caret.style.top = showAbove ? (tooltipRect.height - 2) + 'px' : '-6px';
+
+        var center = targetRect.left + targetRect.width / 2;
+        var caretLeft = Math.min(Math.max(center - 6, left + 8), left + tooltipRect.width - 14);
+        caret.style.left = (caretLeft - left) + 'px';
+      });
+    }
+
+    function getConversationId(target) {
+      var host = target.closest('[data-dev-conversation-id]');
+      if (!host) return '';
+      return host.dataset.devConversationId || '';
+    }
+
+    function requestTranslation(text, context, rect, convId) {
+      if (!text) return;
+      activeText = text;
+      inner.textContent = '...';
+      tooltip.style.opacity = '1';
+      positionTooltip(rect);
+
+      var url = '/translate-word?word=' + encodeURIComponent(text) +
+        '&context=' + encodeURIComponent(context || '');
+      if (convId) {
+        url += '&conversation_id=' + encodeURIComponent(convId);
+      }
+
+      fetch(url)
+        .then(function(resp) { return resp.text(); })
+        .then(function(html) {
+          if (activeText !== text) return;
+          inner.innerHTML = html;
+          positionTooltip(rect);
+        })
+        .catch(function() {
+          if (activeText !== text) return;
+          inner.textContent = '(translation unavailable)';
+        });
+    }
+
+    function getWordSpan(node) {
+      if (!node) return null;
+      if (node.nodeType === 3) node = node.parentElement;
+      if (!node) return null;
+      if (node.classList && node.classList.contains('tappable-word')) return node;
+      return node.closest ? node.closest('.tappable-word') : null;
+    }
+
+    function collectSpanRange(bubble, startSpan, endSpan) {
+      var spans = Array.from(bubble.querySelectorAll('.tappable-word'));
+      var startIndex = spans.indexOf(startSpan);
+      var endIndex = spans.indexOf(endSpan);
+      if (startIndex === -1 || endIndex === -1) return null;
+      if (startIndex > endIndex) {
+        var t = startIndex;
+        startIndex = endIndex;
+        endIndex = t;
+      }
+      var slice = spans.slice(startIndex, endIndex + 1);
+      if (!slice.length) return null;
+      var phrase = slice.map(function(span) {
+        return span.dataset.word || span.textContent;
+      }).join(' ').trim();
+      if (!phrase) return null;
+      var range = document.createRange();
+      range.setStartBefore(slice[0]);
+      range.setEndAfter(slice[slice.length - 1]);
+      var rect = range.getBoundingClientRect();
+      if (!rect || rect.width === 0 || rect.height === 0) return null;
+      return { text: phrase, rect: rect };
+    }
+
+    document.addEventListener('scroll', hideTooltip, true);
+    document.addEventListener('click', function(event) {
+      var target = event.target;
+      var wordNode = target.closest ? target.closest('.tappable-word') : null;
+      if (!wordNode) {
+        var selection = window.getSelection();
+        if (!selection || selection.isCollapsed) hideTooltip();
+        return;
+      }
+
+      var bubble = wordNode.closest('[data-chat-role="ai"]');
+      if (!bubble) return;
+
+      var word = wordNode.dataset.word || wordNode.textContent;
+      if (!word) {
+        hideTooltip();
+        return;
+      }
+
+      if (activeText === word && tooltip.style.opacity === '1') {
+        hideTooltip();
+        return;
+      }
+
+      var context = bubble.textContent.trim().slice(0, 200);
+      var rect = wordNode.getBoundingClientRect();
+      var convId = getConversationId(wordNode);
+      requestTranslation(word, context, rect, convId);
+    });
+
+    function handleSelectionTranslation() {
+      var selection = window.getSelection();
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
+      var range = selection.getRangeAt(0);
+      var container = range.commonAncestorContainer;
+      var element = container.nodeType === 1 ? container : container.parentElement;
+      if (!element) return;
+
+      var bubble = element.closest('[data-chat-role="ai"]');
+      if (!bubble) return;
+
+      var startWord = getWordSpan(range.startContainer);
+      var endWord = getWordSpan(range.endContainer);
+      if (!startWord || !endWord) return;
+
+      var startBubble = startWord.closest('[data-chat-role="ai"]');
+      var endBubble = endWord.closest('[data-chat-role="ai"]');
+      if (!startBubble || startBubble !== endBubble) return;
+
+      var phraseInfo = collectSpanRange(bubble, startWord, endWord);
+      if (!phraseInfo || phraseInfo.text.split(/\s+/).length < 2) return;
+
+      var context = bubble.textContent.trim().slice(0, 200);
+      var convId = getConversationId(startWord);
+      requestTranslation(phraseInfo.text, context, phraseInfo.rect, convId);
+    }
+
+    document.addEventListener('mouseup', function() {
+      setTimeout(handleSelectionTranslation, 0);
+    });
+    document.addEventListener('touchend', function() {
+      setTimeout(handleSelectionTranslation, 0);
+    });
+  })();
+</script>

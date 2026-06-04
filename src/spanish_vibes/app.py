@@ -57,6 +57,8 @@ from .srs import (
 )
 from .flow_routes import router as flow_router
 from .template_helpers import register_template_filters
+from .translate_tooltip import build_translate_tooltip_response
+from .tutor_routes import router as tutor_router
 from .web import router as lesson_router
 from .words import seed_words
 
@@ -107,6 +109,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Spanish Vibes", lifespan=lifespan)
 app.include_router(lesson_router)
 app.include_router(flow_router)
+app.include_router(tutor_router)
 
 
 def _safe_next_path(candidate: str | None) -> str:
@@ -144,6 +147,22 @@ async def auth_context_middleware(request: Request, call_next):
     token = ensure_csrf_cookie(request, response)
     request.state.csrf_token = token
     return response
+
+
+@app.get("/translate-word", response_class=HTMLResponse)
+@app.get("/api/translate-word", response_class=HTMLResponse)
+async def translate_word_api(
+    request: Request,
+    word: str = Query(...),
+    context: str = Query(""),
+    conversation_id: int | None = Query(default=None),
+) -> Response:
+    _ = request
+    return build_translate_tooltip_response(
+        word=word,
+        context=context,
+        conversation_id=conversation_id,
+    )
 
 
 @dataclass(slots=True)

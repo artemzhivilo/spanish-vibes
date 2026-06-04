@@ -1,0 +1,20 @@
+<div class="card card-mcq" id="card-{{ card.id }}">
+  <div class="card-title">Quiz</div>
+  <div class="card-intro">{{ card.intro }}</div>
+  <div class="mcq-question">{{ card.question }}</div>
+  <div class="mcq-options" id="mcq-{{ card.id }}">
+    {% for option in card.options %}
+    <button
+      type="button"
+      class="mcq-option"
+      hx-post="/quiz/mcq"
+      hx-target="#mcq-{{ card.id }}"
+      hx-swap="innerHTML"
+      hx-vals='{"card_id": "{{ card.id }}", "selected": {{ loop.index0 }}}'
+    >
+      <span class="mcq-letter">{{ ['A', 'B', 'C', 'D'][loop.index0] }}</span>
+      <span>{{ option }}</span>
+    </button>
+    {% endfor %}
+  </div>
+</div>

@@ -56,7 +56,6 @@ from .db import (
 )
 from .concepts import load_concepts, prerequisites_met
 from .bkt import is_mastered, bkt_update
-from .lexicon import translate_spanish_word
 from .personas import (
     get_persona_prompt,
     load_all_personas,
@@ -74,7 +73,6 @@ from .template_helpers import register_template_filters
 from .words import (
     mark_word_introduced,
     mark_word_practice_result,
-    record_word_tap,
 )
 from .memory import (
     get_persona_memories,
@@ -222,11 +220,7 @@ async def start_placement(
     invalidate_user_level_cache()
 
     tier_concepts = sorted(
-        [
-            cid
-            for cid, concept in concepts.items()
-            if concept.difficulty_level == tier
-        ],
+        [cid for cid, concept in concepts.items() if concept.difficulty_level == tier],
         key=lambda cid: concepts[cid].name,
     )
     if tier_concepts:
@@ -528,7 +522,9 @@ async def flow_answer(
                 card_type=card_context.card_type,
                 chosen_option=chosen_option,
                 correct_answer=result.correct_answer,
-                misconception_hint=_get_misconception_hint(result.misconception_concept),
+                misconception_hint=_get_misconception_hint(
+                    result.misconception_concept
+                ),
             )
             if not result.is_correct
             else ""
@@ -645,7 +641,9 @@ async def flow_word_match_submit(
             correct_answer="All pairs matched",
             difficulty=1,
         ),
-        chosen_option="All pairs matched" if all_correct else f"{correct_pairs}/{count} pairs",
+        chosen_option="All pairs matched"
+        if all_correct
+        else f"{correct_pairs}/{count} pairs",
         response_time_ms=None,
     )
 
@@ -1040,51 +1038,6 @@ async def words_dashboard(request: Request) -> Response:
 
 
 # ── Conversation card routes ─────────────────────────────────────────────────
-
-
-@router.get("/flow/translate-word", response_class=HTMLResponse)
-async def translate_word_endpoint(
-    request: Request,
-    word: str = Query(...),
-    context: str = Query(""),
-    conversation_id: int | None = Query(default=None),
-) -> Response:
-    """Return a lightweight tooltip with a Spanish→English translation.
-
-    Also records the tap so the system knows which words the user is looking up.
-    """
-
-    try:
-        result = translate_spanish_word(word, context)
-    except Exception:
-        result = None
-    english = result["translation"] if result else None
-    spanish_clean = result["word"] if result else word
-
-    # Record that the user tapped this word
-    try:
-        record_word_tap(
-            spanish=spanish_clean,
-            english=english,
-            conversation_id=conversation_id,
-            source="conversation" if conversation_id else "general",
-        )
-    except Exception:
-        pass
-
-    if result is None:
-        body = '<div class="text-slate-400">(translation unavailable)</div>'
-    else:
-        word_html = escape(result["word"])
-        translation_html = escape(result["translation"])
-        body = (
-            '<div class="flex flex-col gap-1">'
-            f'<div><span class="font-bold text-emerald-300">{word_html}</span>'
-            '<span class="text-slate-500 mx-1">→</span>'
-            f'<span class="text-slate-100">{translation_html}</span></div>'
-            "</div>"
-        )
-    return HTMLResponse(body)
 
 
 @router.post("/flow/conversation/start", response_class=HTMLResponse)
@@ -2827,7 +2780,7 @@ def _build_wrong_explanation(
         if chosen_option:
             return (
                 f"{misconception_hint}. "
-                f"\"{chosen_option}\" does not match the concept required by this question."
+                f'"{chosen_option}" does not match the concept required by this question.'
             )
         return misconception_hint
 
@@ -2837,14 +2790,12 @@ def _build_wrong_explanation(
             "Build the exact Spanish sentence in the right order."
         )
     if card_type == "fill_blank":
-        return (
-            f"This blank needs \"{correct_answer}\" based on the sentence context."
-        )
+        return f'This blank needs "{correct_answer}" based on the sentence context.'
     if card_type in {"word_practice", "emoji_association", "mcq"}:
         if chosen_option:
             return (
-                f"\"{chosen_option}\" is not the correct choice for this prompt. "
-                f"The correct answer is \"{correct_answer}\"."
+                f'"{chosen_option}" is not the correct choice for this prompt. '
+                f'The correct answer is "{correct_answer}".'
             )
-        return f"The correct answer is \"{correct_answer}\"."
-    return f"The correct answer is \"{correct_answer}\"."
+        return f'The correct answer is "{correct_answer}".'
+    return f'The correct answer is "{correct_answer}".'

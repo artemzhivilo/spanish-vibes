@@ -1,0 +1,24 @@
+<div class="fillblank-row fillblank-row-done {{ 'is-correct' if correct else 'is-wrong' }}">
+  <span class="fillblank-text">
+    {% if correct %}
+      <span class="fillblank-mark">✓</span>
+      <span>{{ user_answer }}</span>
+    {% else %}
+      <span class="fillblank-mark">✗</span>
+      <span class="fillblank-attempt">{{ user_answer }}</span>
+      <span class="fillblank-arrow">→</span>
+      <span class="fillblank-correct">{{ correct_answer }}</span>
+    {% endif %}
+  </span>
+  {% if last %}
+    {# Auto-fire the agent's reaction once all blanks are answered. #}
+    <div
+      hx-post="/quiz/complete"
+      hx-vals='{"card_id": "{{ card_id }}"}'
+      hx-trigger="load delay:300ms"
+      hx-target="#chat"
+      hx-swap="beforeend"
+      hx-on::after-request="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})"
+    ></div>
+  {% endif %}
+</div>

@@ -1,0 +1,45 @@
+{#- Conversation activity card. Context: session_id, tutor_message, persona_name, opener, max_turns, conv_state_json -#}
+<div class="tutor-message" id="msg-conv-intro">
+  <div class="tutor-avatar">🧑‍🏫</div>
+  <div class="tutor-bubble">
+    <p class="tutor-text">{{ tutor_message }}</p>
+  </div>
+</div>
+
+<div class="tutor-activity-card" id="activity-conversation">
+  <div class="activity-header">
+    <span class="persona-badge">💬 {{ persona_name }}</span>
+    <span class="turn-counter" id="turn-counter">0 / {{ max_turns }}</span>
+  </div>
+
+  <!-- Message thread — conversation turns append here via HTMX -->
+  <div class="conversation-messages" id="conv-messages">
+    <div class="conv-message ai-message" data-chat-role="ai">
+      <span class="conv-speaker">{{ persona_name }}</span>
+      <p class="conv-text">{{ opener_html | safe }}</p>
+    </div>
+  </div>
+
+  <!-- First user reply form -->
+  <div id="conv-input-slot">
+    <form hx-post="/tutor/conversation/respond"
+          hx-target="#conv-messages"
+          hx-swap="beforeend"
+          hx-sync="this:drop"
+          hx-disabled-elt="find button"
+          hx-on::after-request="this.reset(); scrollConv()"
+          class="conv-input-form">
+      <input type="hidden" name="session_id"  value="{{ session_id }}">
+      <input type="hidden" name="conv_state"  value="{{ conv_state_json }}">
+      <input type="hidden" name="turns_done"  value="0">
+      <input type="hidden" name="max_turns"   value="{{ max_turns }}">
+      <input type="text"
+             name="user_message"
+             placeholder="Reply in Spanish..."
+             class="conv-input"
+             autocomplete="off"
+             autofocus>
+      <button type="submit" class="conv-send-btn">→</button>
+    </form>
+  </div>
+</div>

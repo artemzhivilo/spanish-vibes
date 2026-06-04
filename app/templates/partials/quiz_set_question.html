@@ -1,0 +1,22 @@
+<div class="qs-question-wrap">
+  {% if is_retry %}
+    <div class="qs-retry-badge">Retry</div>
+  {% endif %}
+  <div class="qs-counter">{{ current }} / {{ total }}</div>
+  <div class="mcq-question">{{ question.question }}</div>
+  <div class="mcq-options">
+    {% for option in question.options %}
+    <button
+      type="button"
+      class="mcq-option"
+      hx-post="/quiz/set/answer"
+      hx-target="#qs-body-{{ card_id }}"
+      hx-swap="innerHTML"
+      hx-vals='{"card_id": "{{ card_id }}", "selected": {{ loop.index0 }}}'
+    >
+      <span class="mcq-letter">{{ ['A', 'B', 'C', 'D'][loop.index0] }}</span>
+      <span>{{ option }}</span>
+    </button>
+    {% endfor %}
+  </div>
+</div>

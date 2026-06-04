@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Literal, NotRequired, Tuple, TypedDict, cast
+import sys
+
+if sys.version_info >= (3, 11):
+    from typing import Any, Iterable, Literal, NotRequired, Tuple, TypedDict, cast
+else:
+    from typing import Any, Iterable, Literal, Tuple, TypedDict, cast
+    from typing_extensions import NotRequired
 
 CardKind = Literal["vocab", "fillblank", "verbs"]
 CardDirection = Literal["es_to_en", "en_to_es"]

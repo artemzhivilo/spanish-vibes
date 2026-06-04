@@ -1,0 +1,14 @@
+<div class="card card-placement" id="card-{{ card.id }}">
+  <div class="card-title placement-title">Level Check</div>
+  <div class="card-intro">{{ card.intro }}</div>
+  <div class="pl-progress">
+    <div class="pl-progress-bar" style="width: {{ (1 / card.total * 100)|round }}%"></div>
+  </div>
+  <div id="pl-body-{{ card.id }}">
+    {% set question = card.question %}
+    {% set current = card.current %}
+    {% set total = card.total %}
+    {% set card_id = card.id %}
+    {% include "partials/placement_question.html" %}
+  </div>
+</div>

@@ -1,0 +1,24 @@
+<div class="qs-summary">
+  <div class="qs-summary-score">
+    <span class="qs-summary-num">{{ correct_count }}</span>
+    <span class="qs-summary-sep">/</span>
+    <span class="qs-summary-den">{{ total }}</span>
+  </div>
+  <div class="qs-summary-label">
+    {% if correct_count == total %}
+      Perfect!
+    {% elif correct_count >= total * 0.7 %}
+      Nice work!
+    {% else %}
+      Keep practicing!
+    {% endif %}
+  </div>
+  <div
+    hx-post="/quiz/complete"
+    hx-vals='{"card_id": "{{ card_id }}"}'
+    hx-trigger="load delay:600ms"
+    hx-target="#chat"
+    hx-swap="beforeend"
+    hx-on::after-request="window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})"
+  ></div>
+</div>

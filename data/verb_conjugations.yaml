@@ -1,0 +1,291 @@
+# Verb conjugation table for the tutor conjugation drill.
+# Organized by tense → verb → person → correct form.
+# Persons: yo, tú, él/ella, nosotros, ellos/ellas
+
+preterite:
+  ir:
+    yo: fui
+    tú: fuiste
+    él/ella: fue
+    nosotros: fuimos
+    ellos/ellas: fueron
+  ser:
+    yo: fui
+    tú: fuiste
+    él/ella: fue
+    nosotros: fuimos
+    ellos/ellas: fueron
+  hacer:
+    yo: hice
+    tú: hiciste
+    él/ella: hizo
+    nosotros: hicimos
+    ellos/ellas: hicieron
+  tener:
+    yo: tuve
+    tú: tuviste
+    él/ella: tuvo
+    nosotros: tuvimos
+    ellos/ellas: tuvieron
+  poder:
+    yo: pude
+    tú: pudiste
+    él/ella: pudo
+    nosotros: pudimos
+    ellos/ellas: pudieron
+  estar:
+    yo: estuve
+    tú: estuviste
+    él/ella: estuvo
+    nosotros: estuvimos
+    ellos/ellas: estuvieron
+  querer:
+    yo: quise
+    tú: quisiste
+    él/ella: quiso
+    nosotros: quisimos
+    ellos/ellas: quisieron
+  venir:
+    yo: vine
+    tú: viniste
+    él/ella: vino
+    nosotros: vinimos
+    ellos/ellas: vinieron
+  decir:
+    yo: dije
+    tú: dijiste
+    él/ella: dijo
+    nosotros: dijimos
+    ellos/ellas: dijeron
+  poner:
+    yo: puse
+    tú: pusiste
+    él/ella: puso
+    nosotros: pusimos
+    ellos/ellas: pusieron
+  saber:
+    yo: supe
+    tú: supiste
+    él/ella: supo
+    nosotros: supimos
+    ellos/ellas: supieron
+  dar:
+    yo: di
+    tú: diste
+    él/ella: dio
+    nosotros: dimos
+    ellos/ellas: dieron
+  ver:
+    yo: vi
+    tú: viste
+    él/ella: vio
+    nosotros: vimos
+    ellos/ellas: vieron
+  hablar:
+    yo: hablé
+    tú: hablaste
+    él/ella: habló
+    nosotros: hablamos
+    ellos/ellas: hablaron
+  comer:
+    yo: comí
+    tú: comiste
+    él/ella: comió
+    nosotros: comimos
+    ellos/ellas: comieron
+  vivir:
+    yo: viví
+    tú: viviste
+    él/ella: vivió
+    nosotros: vivimos
+    ellos/ellas: vivieron
+
+present:
+  ser:
+    yo: soy
+    tú: eres
+    él/ella: es
+    nosotros: somos
+    ellos/ellas: son
+  estar:
+    yo: estoy
+    tú: estás
+    él/ella: está
+    nosotros: estamos
+    ellos/ellas: están
+  tener:
+    yo: tengo
+    tú: tienes
+    él/ella: tiene
+    nosotros: tenemos
+    ellos/ellas: tienen
+  ir:
+    yo: voy
+    tú: vas
+    él/ella: va
+    nosotros: vamos
+    ellos/ellas: van
+  hacer:
+    yo: hago
+    tú: haces
+    él/ella: hace
+    nosotros: hacemos
+    ellos/ellas: hacen
+  poder:
+    yo: puedo
+    tú: puedes
+    él/ella: puede
+    nosotros: podemos
+    ellos/ellas: pueden
+  querer:
+    yo: quiero
+    tú: quieres
+    él/ella: quiere
+    nosotros: queremos
+    ellos/ellas: quieren
+  venir:
+    yo: vengo
+    tú: vienes
+    él/ella: viene
+    nosotros: venimos
+    ellos/ellas: vienen
+  decir:
+    yo: digo
+    tú: dices
+    él/ella: dice
+    nosotros: decimos
+    ellos/ellas: dicen
+  poner:
+    yo: pongo
+    tú: pones
+    él/ella: pone
+    nosotros: ponemos
+    ellos/ellas: ponen
+  saber:
+    yo: sé
+    tú: sabes
+    él/ella: sabe
+    nosotros: sabemos
+    ellos/ellas: saben
+  dar:
+    yo: doy
+    tú: das
+    él/ella: da
+    nosotros: damos
+    ellos/ellas: dan
+  hablar:
+    yo: hablo
+    tú: hablas
+    él/ella: habla
+    nosotros: hablamos
+    ellos/ellas: hablan
+  comer:
+    yo: como
+    tú: comes
+    él/ella: come
+    nosotros: comemos
+    ellos/ellas: comen
+  vivir:
+    yo: vivo
+    tú: vives
+    él/ella: vive
+    nosotros: vivimos
+    ellos/ellas: viven
+
+imperfect:
+  ser:
+    yo: era
+    tú: eras
+    él/ella: era
+    nosotros: éramos
+    ellos/ellas: eran
+  estar:
+    yo: estaba
+    tú: estabas
+    él/ella: estaba
+    nosotros: estábamos
+    ellos/ellas: estaban
+  tener:
+    yo: tenía
+    tú: tenías
+    él/ella: tenía
+    nosotros: teníamos
+    ellos/ellas: tenían
+  ir:
+    yo: iba
+    tú: ibas
+    él/ella: iba
+    nosotros: íbamos
+    ellos/ellas: iban
+  hacer:
+    yo: hacía
+    tú: hacías
+    él/ella: hacía
+    nosotros: hacíamos
+    ellos/ellas: hacían
+  poder:
+    yo: podía
+    tú: podías
+    él/ella: podía
+    nosotros: podíamos
+    ellos/ellas: podían
+  hablar:
+    yo: hablaba
+    tú: hablabas
+    él/ella: hablaba
+    nosotros: hablábamos
+    ellos/ellas: hablaban
+  comer:
+    yo: comía
+    tú: comías
+    él/ella: comía
+    nosotros: comíamos
+    ellos/ellas: comían
+  vivir:
+    yo: vivía
+    tú: vivías
+    él/ella: vivía
+    nosotros: vivíamos
+    ellos/ellas: vivían
+  querer:
+    yo: quería
+    tú: querías
+    él/ella: quería
+    nosotros: queríamos
+    ellos/ellas: querían
+  venir:
+    yo: venía
+    tú: venías
+    él/ella: venía
+    nosotros: veníamos
+    ellos/ellas: venían
+  decir:
+    yo: decía
+    tú: decías
+    él/ella: decía
+    nosotros: decíamos
+    ellos/ellas: decían
+  poner:
+    yo: ponía
+    tú: ponías
+    él/ella: ponía
+    nosotros: poníamos
+    ellos/ellas: ponían
+  saber:
+    yo: sabía
+    tú: sabías
+    él/ella: sabía
+    nosotros: sabíamos
+    ellos/ellas: sabían
+  ver:
+    yo: veía
+    tú: veías
+    él/ella: veía
+    nosotros: veíamos
+    ellos/ellas: veían
+  dar:
+    yo: daba
+    tú: dabas
+    él/ella: daba
+    nosotros: dábamos
+    ellos/ellas: daban
