@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Spanish Vibes</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="persona-pill">
+        <div class="avatar">M</div>
+        <div class="persona-text">
+          <div class="persona-name">Marta</div>
+          <div class="persona-region">Sevilla · online</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="chat" class="chat"></main>
+
+  <form
+    class="composer"
+    hx-post="/chat"
+    hx-target="#chat"
+    hx-swap="beforeend"
+    hx-on::after-request="this.querySelector('textarea').value=''; window.scrollTo(0, document.body.scrollHeight);"
+  >
+    <textarea
+      name="message"
+      rows="1"
+      placeholder="Escribe a Marta…"
+      autofocus
+      required
+      onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();this.form.requestSubmit();}"
+    ></textarea>
+    <button type="submit" aria-label="Send">→</button>
+  </form>
+
+  <script>
+    // Auto-scroll to the bottom whenever new content is appended.
+    document.body.addEventListener('htmx:afterSwap', () => {
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+  </script>
+</body>
+</html>

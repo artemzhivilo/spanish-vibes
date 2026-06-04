@@ -1,0 +1,12 @@
+{# One full turn: user bubble, optional inline cards, persona reply #}
+<div class="msg msg-user">{{ user_text }}</div>
+
+{% for card in cards %}
+  {% if card.type == "fill_blank" %}
+    {% include "partials/fill_blank_card.html" %}
+  {% endif %}
+{% endfor %}
+
+{% if persona_text %}
+  {% include "partials/persona_msg.html" %}
+{% endif %}

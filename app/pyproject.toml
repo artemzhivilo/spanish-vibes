@@ -1,0 +1,13 @@
+[project]
+name = "spanish-vibes-app"
+version = "0.1.0"
+description = "Spanish Vibes — chat-first Spanish tutor (Phase 1 walking skeleton)"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.92.0",
+    "fastapi>=0.115.0",
+    "jinja2>=3.1.4",
+    "python-dotenv>=1.0.0",
+    "python-multipart>=0.0.20",
+    "uvicorn[standard]>=0.32.0",
+]

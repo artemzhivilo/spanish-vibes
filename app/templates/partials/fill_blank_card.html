@@ -1,0 +1,32 @@
+<div class="card card-fillblank" id="card-{{ card.id }}">
+  <div class="card-title">Práctica rápida</div>
+  <div class="card-intro">{{ card.intro }}</div>
+  {% for sentence in card.sentences %}
+    <form
+      class="fillblank-row"
+      hx-post="/quiz/answer"
+      hx-target="this"
+      hx-swap="outerHTML"
+    >
+      <input type="hidden" name="card_id" value="{{ card.id }}">
+      <input type="hidden" name="blank_idx" value="{{ sentence.idx }}">
+      {# Split the sentence at ___ so the input renders inline. #}
+      {% set parts = sentence.text_with_blank.split("___") %}
+      <span class="fillblank-text">
+        <span>{{ parts[0] }}</span><input
+          type="text"
+          name="user_answer"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          required
+        ><span>{{ parts[1] if parts|length > 1 else "" }}</span>
+      </span>
+      {% if sentence.hint %}
+        <span class="fillblank-hint">{{ sentence.hint }}</span>
+      {% endif %}
+      <button type="submit" class="fillblank-check">Check</button>
+    </form>
+  {% endfor %}
+</div>
