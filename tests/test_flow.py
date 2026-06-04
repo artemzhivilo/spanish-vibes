@@ -5,10 +5,7 @@ from __future__ import annotations
 import pytest
 
 from spanish_vibes.flow import (
-    FlowAnswerResult,
-    FlowSessionState,
     _pick_concept,
-    build_session_state,
     end_flow_session,
     process_mcq_answer,
     select_next_card,
@@ -20,9 +17,11 @@ from spanish_vibes.models import ConceptKnowledge, FlowCardContext
 @pytest.fixture(autouse=True)
 def fresh_db(tmp_path):
     from spanish_vibes import db
+
     db.DB_PATH = tmp_path / "test.db"
     db.init_db()
     from spanish_vibes.concepts import clear_cache
+
     clear_cache()
     yield
 
@@ -36,30 +35,33 @@ def _seed_concepts_and_mcqs():
         seed_concepts_to_db()
 
     # Add MCQ cards for greetings
-    save_mcq_batch("greetings", [
-        {
-            "question": "What does 'hola' mean?",
-            "correct_answer": "hello",
-            "distractors": [
-                {"text": "goodbye", "misconception": "greetings"},
-                {"text": "thanks", "misconception": "greetings"},
-                {"text": "please", "misconception": "greetings"},
-            ],
-            "difficulty": 1,
-            "content_hash": "test_mcq_1",
-        },
-        {
-            "question": "What does 'adiós' mean?",
-            "correct_answer": "goodbye",
-            "distractors": [
-                {"text": "hello", "misconception": "greetings"},
-                {"text": "thanks", "misconception": "greetings"},
-                {"text": "please", "misconception": "greetings"},
-            ],
-            "difficulty": 1,
-            "content_hash": "test_mcq_2",
-        },
-    ])
+    save_mcq_batch(
+        "greetings",
+        [
+            {
+                "question": "What does 'hola' mean?",
+                "correct_answer": "hello",
+                "distractors": [
+                    {"text": "goodbye", "misconception": "greetings"},
+                    {"text": "thanks", "misconception": "greetings"},
+                    {"text": "please", "misconception": "greetings"},
+                ],
+                "difficulty": 1,
+                "content_hash": "test_mcq_1",
+            },
+            {
+                "question": "What does 'adiós' mean?",
+                "correct_answer": "goodbye",
+                "distractors": [
+                    {"text": "hello", "misconception": "greetings"},
+                    {"text": "thanks", "misconception": "greetings"},
+                    {"text": "please", "misconception": "greetings"},
+                ],
+                "difficulty": 1,
+                "content_hash": "test_mcq_2",
+            },
+        ],
+    )
 
 
 class TestPickConcept:
@@ -73,8 +75,13 @@ class TestPickConcept:
     def test_returns_from_learning_when_only_bucket(self):
         knowledge = {
             "greetings": ConceptKnowledge(
-                concept_id="greetings", p_mastery=0.3, n_attempts=3,
-                n_correct=2, n_wrong=1, teach_shown=True, last_seen_at=None,
+                concept_id="greetings",
+                p_mastery=0.3,
+                n_attempts=3,
+                n_correct=2,
+                n_wrong=1,
+                teach_shown=True,
+                last_seen_at=None,
             ),
         }
         result = _pick_concept([], ["greetings"], [], knowledge)
@@ -83,8 +90,13 @@ class TestPickConcept:
     def test_returns_from_some_bucket(self):
         knowledge = {
             "greetings": ConceptKnowledge(
-                concept_id="greetings", p_mastery=0.95, n_attempts=10,
-                n_correct=9, n_wrong=1, teach_shown=True, last_seen_at=None,
+                concept_id="greetings",
+                p_mastery=0.95,
+                n_attempts=10,
+                n_correct=9,
+                n_wrong=1,
+                teach_shown=True,
+                last_seen_at=None,
             ),
         }
         result = _pick_concept(["greetings"], ["numbers"], ["colors"], knowledge)
@@ -105,6 +117,7 @@ class TestSelectNextCard:
         _seed_concepts_and_mcqs()
         # Mark teach as shown and add an attempt
         from spanish_vibes.flow_db import mark_teach_shown, update_concept_knowledge
+
         mark_teach_shown("greetings")
         update_concept_knowledge("greetings", 0.15, True)
 
@@ -125,6 +138,7 @@ class TestProcessMCQAnswer:
         _seed_concepts_and_mcqs()
         # Mark teach shown and add attempt so we get MCQ
         from spanish_vibes.flow_db import mark_teach_shown, update_concept_knowledge
+
         mark_teach_shown("greetings")
         update_concept_knowledge("greetings", 0.15, True)
 
@@ -152,6 +166,7 @@ class TestProcessMCQAnswer:
     def test_wrong_answer(self):
         _seed_concepts_and_mcqs()
         from spanish_vibes.flow_db import mark_teach_shown, update_concept_knowledge
+
         mark_teach_shown("greetings")
         update_concept_knowledge("greetings", 0.15, True)
 
@@ -179,7 +194,12 @@ class TestProcessMCQAnswer:
 
     def test_mastery_tracking(self):
         _seed_concepts_and_mcqs()
-        from spanish_vibes.flow_db import mark_teach_shown, update_concept_knowledge, get_concept_knowledge
+        from spanish_vibes.flow_db import (
+            mark_teach_shown,
+            update_concept_knowledge,
+            get_concept_knowledge,
+        )
+
         mark_teach_shown("greetings")
         update_concept_knowledge("greetings", 0.15, True)
 

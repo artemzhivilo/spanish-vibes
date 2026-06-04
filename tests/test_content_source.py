@@ -6,8 +6,6 @@ import json
 import time
 from unittest.mock import patch
 
-import pytest
-
 from spanish_vibes.content_source import (
     CACHE_TTL_SECONDS,
     TopicSummary,
@@ -116,7 +114,10 @@ class TestFetchTrending:
     @patch("spanish_vibes.content_source._feedparser")
     def test_respects_count_limit(self, mock_feedparser):
         mock_feedparser.parse.return_value = {
-            "entries": [{"title": f"Item {i}", "summary": "", "link": "", "published": ""} for i in range(20)]
+            "entries": [
+                {"title": f"Item {i}", "summary": "", "link": "", "published": ""}
+                for i in range(20)
+            ]
         }
         fetcher = TrendingTopics()
         topics = fetcher.fetch_trending(count=5)
@@ -132,6 +133,7 @@ class TestFetchTrending:
 class TestCacheTTL:
     def test_uses_cache_when_fresh(self, tmp_path):
         import spanish_vibes.content_source as cs
+
         original_cache = cs.CACHE_FILE
         cs.CACHE_FILE = tmp_path / "trending_cache.json"
 
@@ -158,6 +160,7 @@ class TestCacheTTL:
 
     def test_refreshes_stale_cache(self, tmp_path):
         import spanish_vibes.content_source as cs
+
         original_cache = cs.CACHE_FILE
         cs.CACHE_FILE = tmp_path / "trending_cache.json"
 
@@ -176,9 +179,13 @@ class TestCacheTTL:
         }
         cs.CACHE_FILE.write_text(json.dumps(cache_data))
 
-        with patch.object(TrendingTopics, "fetch_trending", return_value=[
-            TopicSummary(title="Fresh topic", summary="New", keywords=["fresh"]),
-        ]):
+        with patch.object(
+            TrendingTopics,
+            "fetch_trending",
+            return_value=[
+                TopicSummary(title="Fresh topic", summary="New", keywords=["fresh"]),
+            ],
+        ):
             with patch("spanish_vibes.db.get_all_interest_topics", return_value=[]):
                 topics = refresh_trending_cache()
 
