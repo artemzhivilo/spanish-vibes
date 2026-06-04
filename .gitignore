@@ -5,12 +5,18 @@ build/
 dist/
 wheels/
 *.egg-info
+.pytest_cache/
+.ruff_cache/
 
 # Virtual environments
 .venv
 
+# OS/editor files
+.DS_Store
+
 # Environment files
 .env
 
-# SQLite database (generated at runtime)
+# Runtime data
 data/spanish_vibes.db
+data/learners/
