@@ -1127,6 +1127,12 @@ def placement_complete(request: Request, card_id: str = Form(...)):
         return HTMLResponse("")
 
     result = compute_placement_result(quiz)
+
+    # Persist the placement level and grammar gaps to the DB
+    update_learner_profile(LEARNER_ID, cefr_level=result["level"])
+    for gap in result.get("gaps", []):
+        update_grammar_status(LEARNER_ID, gap, "gap")
+
     summary = result["summary_text"]
     agent_result = run_agent_turn(LEARNER_ID, summary)
     return templates.TemplateResponse(
