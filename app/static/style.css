@@ -983,9 +983,10 @@ body {
   flex-shrink: 0;
   border: 1.5px solid var(--marta-border);
 }
-.persona-row-avatar.placeholder {
-  border-color: var(--hairline);
-}
+.persona-row-avatar.diego { border-color: rgba(40, 90, 60, 0.18); }
+.persona-row-avatar.rosa { border-color: rgba(160, 80, 40, 0.18); }
+.persona-row-avatar.luis { border-color: rgba(40, 60, 100, 0.18); }
+.persona-row-avatar.placeholder { border-color: var(--hairline); }
 .persona-row-avatar svg {
   width: 100%; height: 100%;
   display: block;
