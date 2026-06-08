@@ -2,8 +2,6 @@
 	import { onMount } from 'svelte';
 	import { getWords } from '$lib/api/flow';
 	import type { WordInfo } from '$lib/api/types';
-	import { Card } from '$lib/components/ui/card';
-	import { Badge } from '$lib/components/ui/badge';
 
 	let words = $state<WordInfo[]>([]);
 	let loading = $state(true);
@@ -32,54 +30,53 @@
 
 {#if loading}
 	<div class="flex items-center justify-center py-20">
-		<div class="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+		<div class="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" style="border-color: rgba(200,85,61,0.2); border-top-color: transparent;"></div>
 	</div>
 {:else}
 	<div class="space-y-4">
 		<div class="flex items-center justify-between">
-			<h2 class="text-2xl font-black text-slate-50">Vocabulary</h2>
-			<span class="text-sm text-slate-400 font-bold">{words.length} words</span>
+			<h2 class="text-2xl font-black" style="color: #1a1410; font-family: var(--font-serif);">Vocabulary</h2>
+			<span class="text-sm font-bold" style="color: rgba(60,45,30,0.55);">{words.length} words</span>
 		</div>
 
-		<!-- Search -->
 		<input
 			type="text"
 			placeholder="Search words..."
 			bind:value={search}
-			class="w-full rounded-xl bg-[#0f1a1f] border-2 border-[#1e3a47] px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-emerald-500 transition"
+			class="w-full rounded-xl px-4 py-2.5 text-sm outline-none transition"
+			style="background: white; border: 1px solid rgba(0,0,0,0.08); color: #1a1410;"
 		/>
 
-		<!-- Word list -->
 		<div class="grid gap-2">
 			{#each filtered as word}
-				<Card class="p-3 flex items-center justify-between">
+				<div class="rounded-2xl p-3 flex items-center justify-between" style="background: white; box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 4px 14px rgba(0,0,0,0.04);">
 					<div class="flex items-center gap-3">
 						{#if word.emoji}
 							<span class="text-xl">{word.emoji}</span>
 						{/if}
 						<div>
-							<span class="text-sm font-bold text-amber-400">{word.spanish}</span>
-							<span class="text-sm text-slate-400 mx-1.5">&rarr;</span>
-							<span class="text-sm text-slate-300">{word.english}</span>
+							<span class="text-sm font-bold" style="color: #C8553D;">{word.spanish}</span>
+							<span class="text-sm mx-1.5" style="color: rgba(60,45,30,0.35);">&rarr;</span>
+							<span class="text-sm" style="color: #1a1410;">{word.english}</span>
 						</div>
 					</div>
 					<div class="flex items-center gap-2">
 						{#if word.times_seen > 0}
-							<span class="text-[10px] font-bold text-slate-500">
+							<span class="text-[10px] font-bold" style="color: rgba(60,45,30,0.45);">
 								{word.times_correct}/{word.times_seen}
 							</span>
 						{/if}
 						{#if word.status === 'mastered'}
-							<Badge color="emerald">Mastered</Badge>
+							<span class="rounded-full px-2 py-0.5 text-[10px] font-bold" style="background: rgba(45,90,61,0.1); color: #2D5A3D;">Mastered</span>
 						{:else if word.status === 'learning'}
-							<Badge color="amber">Learning</Badge>
+							<span class="rounded-full px-2 py-0.5 text-[10px] font-bold" style="background: rgba(200,85,61,0.1); color: #C8553D;">Learning</span>
 						{:else}
-							<Badge color="slate">New</Badge>
+							<span class="rounded-full px-2 py-0.5 text-[10px] font-bold" style="background: rgba(0,0,0,0.05); color: rgba(60,45,30,0.55);">New</span>
 						{/if}
 					</div>
-				</Card>
+				</div>
 			{:else}
-				<p class="text-center text-slate-500 py-8">
+				<p class="text-center py-8" style="color: rgba(60,45,30,0.45);">
 					{search ? 'No words match your search' : 'No words tracked yet'}
 				</p>
 			{/each}
