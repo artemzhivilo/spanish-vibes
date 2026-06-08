@@ -17,12 +17,12 @@
           </svg>
         </button>
         <button class="persona-pill" onclick="togglePersonaSwitcher()">
-          <div class="avatar">
-            {% include "partials/avatar_marta.html" %}
+          <div class="avatar" style="border-color: {{ persona.bubble_border }};">
+            {% include persona.avatar_template %}
           </div>
           <div class="persona-text">
-            <div class="persona-name">Marta</div>
-            <div class="persona-region">Sevilla · online</div>
+            <div class="persona-name">{{ persona.name }}</div>
+            <div class="persona-region">{{ persona.region }} · online</div>
           </div>
           <svg class="persona-chevron" width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l4 4 4-4"/></svg>
         </button>
@@ -35,51 +35,67 @@
     </header>
 
     <main id="chat" class="chat">
-      <div id="welcome" class="welcome">
-        <div class="welcome-avatar">
-          {% include "partials/avatar_marta.html" %}
+      {% if chat_log %}
+        {# Replay previous messages for this persona #}
+        {% for msg in chat_log %}
+          {% if msg.role == "user" %}
+            <div class="msg msg-user">{{ msg.text }}</div>
+          {% elif msg.role == "persona" %}
+            <div class="msg msg-persona"
+              style="background: {{ persona.bubble_bg }}; border-color: {{ persona.bubble_border }};"
+            >
+              <div class="msg-persona-name" style="color: {{ persona.bubble_name_color }};">{{ persona.name }}</div>
+              <div class="msg-persona-body">{{ msg.text }}</div>
+            </div>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <div id="welcome" class="welcome">
+          <div class="welcome-avatar" style="--ring-color: {{ persona.bubble_border }};">
+            {% include persona.avatar_template %}
+          </div>
+          <div class="welcome-name">{{ persona.name }}</div>
+          <div class="welcome-sub">{{ persona.region }} · {{ persona.welcome_sub }}</div>
+          <div class="starters">
+            <button
+              type="button"
+              class="starter-btn"
+              hx-post="/chat"
+              hx-target="#chat"
+              hx-swap="beforeend"
+              hx-vals='{"message": "Hola {{ persona.name }}!"}'
+              onclick="dismissWelcome()"
+            >Chat</button>
+            <button
+              type="button"
+              class="starter-btn"
+              hx-post="/chat"
+              hx-target="#chat"
+              hx-swap="beforeend"
+              hx-vals='{"message": "Ponme a prueba con un quiz"}'
+              onclick="dismissWelcome()"
+            >Quiz me</button>
+            <button
+              type="button"
+              class="starter-btn"
+              hx-post="/chat"
+              hx-target="#chat"
+              hx-swap="beforeend"
+              hx-vals='{"message": "Enséñame vocabulario nuevo"}'
+              onclick="dismissWelcome()"
+            >Vocab</button>
+            <button
+              type="button"
+              class="starter-btn"
+              hx-post="/chat"
+              hx-target="#chat"
+              hx-swap="beforeend"
+              hx-vals='{"message": "Explícame algo de gramática"}'
+              onclick="dismissWelcome()"
+            >Grammar</button>
+          </div>
         </div>
-        <div class="welcome-name">Marta</div>
-        <div class="welcome-sub">Sevilla · Tu profesora de espa&ntilde;ol</div>
-        <div class="starters">
-          <button
-            type="button"
-            class="starter-btn"
-            hx-post="/chat"
-            hx-target="#chat"
-            hx-swap="beforeend"
-            hx-vals='{"message": "Hola Marta!"}'
-            onclick="dismissWelcome()"
-          >Chat</button>
-          <button
-            type="button"
-            class="starter-btn"
-            hx-post="/chat"
-            hx-target="#chat"
-            hx-swap="beforeend"
-            hx-vals='{"message": "Ponme a prueba con un quiz"}'
-            onclick="dismissWelcome()"
-          >Quiz me</button>
-          <button
-            type="button"
-            class="starter-btn"
-            hx-post="/chat"
-            hx-target="#chat"
-            hx-swap="beforeend"
-            hx-vals='{"message": "Enséñame vocabulario nuevo"}'
-            onclick="dismissWelcome()"
-          >Vocab</button>
-          <button
-            type="button"
-            class="starter-btn"
-            hx-post="/chat"
-            hx-target="#chat"
-            hx-swap="beforeend"
-            hx-vals='{"message": "Explícame algo de gramática"}'
-            onclick="dismissWelcome()"
-          >Grammar</button>
-        </div>
-      </div>
+      {% endif %}
     </main>
 
     <form
@@ -120,55 +136,32 @@
         <div class="bottom-sheet-handle"></div>
         <h2 class="sheet-title">Who do you want to talk to?</h2>
         <div class="persona-list">
-          <button class="persona-row active" data-persona="marta" onclick="togglePersonaSwitcher()">
-            <div class="persona-row-avatar">
-              {% include "partials/avatar_marta.html" %}
+          {% for pid, p in all_personas.items() %}
+          {% set is_active = (pid == persona_id) %}
+          <button
+            class="persona-row {{ 'active' if is_active else '' }}"
+            data-persona="{{ pid }}"
+            {% if is_active %}
+            onclick="togglePersonaSwitcher()"
+            {% else %}
+            hx-post="/persona/switch"
+            hx-vals='{"persona_id": "{{ pid }}"}'
+            {% endif %}
+          >
+            <div class="persona-row-avatar {{ pid }}">
+              {% include p.avatar_template %}
             </div>
             <div class="persona-row-info">
-              <div class="persona-row-name">Marta</div>
-              <div class="persona-row-bio">Spanish teacher. Warm, teasing, loves hiking and slow mornings.</div>
+              <div class="persona-row-name">{{ p.name }}</div>
+              <div class="persona-row-bio">{{ p.bio }}</div>
             </div>
             <div class="persona-row-meta">
+              {% if is_active %}
               <span class="persona-row-seen">online</span>
-              <div class="affinity-bar"><div class="affinity-fill" style="width: 75%"></div></div>
+              {% endif %}
             </div>
           </button>
-          <button class="persona-row locked" disabled>
-            <div class="persona-row-avatar diego">
-              {% include "partials/avatar_diego.html" %}
-            </div>
-            <div class="persona-row-info">
-              <div class="persona-row-name">Diego</div>
-              <div class="persona-row-bio">22, engineering student in Madrid. Football-obsessed.</div>
-            </div>
-            <div class="persona-row-meta">
-              <span class="persona-row-locked">Coming soon</span>
-            </div>
-          </button>
-          <button class="persona-row locked" disabled>
-            <div class="persona-row-avatar rosa">
-              {% include "partials/avatar_rosa.html" %}
-            </div>
-            <div class="persona-row-info">
-              <div class="persona-row-name">Abuela Rosa</div>
-              <div class="persona-row-bio">Grandmother from Granada. Always asking if you've eaten.</div>
-            </div>
-            <div class="persona-row-meta">
-              <span class="persona-row-locked">Coming soon</span>
-            </div>
-          </button>
-          <button class="persona-row locked" disabled>
-            <div class="persona-row-avatar luis">
-              {% include "partials/avatar_luis.html" %}
-            </div>
-            <div class="persona-row-info">
-              <div class="persona-row-name">Luis</div>
-              <div class="persona-row-bio">PM at a Madrid fintech. Drops English loanwords constantly.</div>
-            </div>
-            <div class="persona-row-meta">
-              <span class="persona-row-locked">Coming soon</span>
-            </div>
-          </button>
+          {% endfor %}
         </div>
       </div>
     </div>
@@ -199,7 +192,7 @@
         </div>
         <div class="today-section">
           <p class="today-placeholder">Session summaries coming in Phase 4.</p>
-          <p class="today-placeholder">For now, just chat with Marta.</p>
+          <p class="today-placeholder">For now, just chat with {{ persona.name }}.</p>
         </div>
         <button class="today-continue" onclick="toggleTodaySheet()">Continue chatting</button>
       </div>
@@ -224,6 +217,8 @@
       const t = document.createElement('div');
       t.id = 'typing';
       t.className = 'typing-dots visible';
+      t.style.background = '{{ persona.bubble_bg }}';
+      t.style.borderColor = '{{ persona.bubble_border }}';
       t.innerHTML = '<span></span><span></span><span></span>';
       document.getElementById('chat').appendChild(t);
       scrollDown();
@@ -405,6 +400,13 @@
 
     // Hide tooltip on scroll
     window.addEventListener('scroll', hideTooltip, { passive: true });
+
+    // Scroll to bottom on load if there's chat history
+    {% if chat_log %}
+    document.addEventListener('DOMContentLoaded', () => {
+      requestAnimationFrame(() => scrollDown());
+    });
+    {% endif %}
   </script>
 </body>
 </html>

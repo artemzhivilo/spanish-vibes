@@ -2,23 +2,26 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Install system deps for psycopg2
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev gcc \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy dependency definition first (better layer caching)
 COPY pyproject.toml ./
 
-# Install dependencies only (not the project itself)
-RUN pip install --no-cache-dir fastapi uvicorn jinja2 python-multipart PyYAML markdown openai feedparser
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    fastapi uvicorn[standard] jinja2 python-multipart \
+    python-dotenv anthropic psycopg2-binary
 
-# Copy the full project
-COPY . .
-
-# Ensure data directory exists and is writable
-RUN mkdir -p /app/data
+# Copy the app
+COPY app/ ./app/
 
 # Production defaults
-ENV HOST=0.0.0.0
 ENV PORT=8000
-ENV PYTHONPATH=/app/src
+ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-CMD ["python", "-m", "spanish_vibes"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

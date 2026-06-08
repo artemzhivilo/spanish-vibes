@@ -1,4 +1,10 @@
-<div class="msg msg-persona">
-  <div class="msg-persona-name">Marta</div>
+<div class="msg msg-persona"
+  {% if persona %}
+  style="background: {{ persona.bubble_bg }}; border-color: {{ persona.bubble_border }};"
+  {% endif %}
+>
+  <div class="msg-persona-name"
+    {% if persona %}style="color: {{ persona.bubble_name_color }};"{% endif %}
+  >{{ persona.name if persona else 'Marta' }}</div>
   <div class="msg-persona-body">{{ persona_text }}</div>
 </div>
