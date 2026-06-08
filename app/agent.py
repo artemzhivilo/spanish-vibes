@@ -30,7 +30,7 @@ from .database import (
 )
 from .placement_questions import QUESTION_BANK, PlacementQuestion, level_to_cefr
 from .state import ACTIVE_PERSONA, QUIZZES, get_history
-from .tools import TOOLS
+from .tools import TUTOR_TOOLS, CHAT_TOOLS
 
 client = anthropic.Anthropic()  # picks up ANTHROPIC_API_KEY
 
@@ -207,6 +207,9 @@ def run_agent_turn(
     rendered_cards: list[dict[str, Any]] = []
     system = build_system_prompt(learner_id, persona_id)
 
+    # Tutor gets all teaching tools; chat personas get none
+    active_tools = TUTOR_TOOLS if persona_id == "tutor" else CHAT_TOOLS
+
     while True:
         response = client.messages.create(
             model=MODEL,
@@ -214,7 +217,7 @@ def run_agent_turn(
             system=[
                 {"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}
             ],
-            tools=TOOLS,
+            tools=active_tools,
             thinking={"type": "adaptive"},
             messages=history,
         )
