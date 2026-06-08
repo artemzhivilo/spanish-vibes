@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python312", "postgresql"]
+
+[phases.install]
+cmds = ["pip install fastapi 'uvicorn[standard]' jinja2 python-multipart python-dotenv anthropic psycopg2-binary"]
+
+[start]
+cmd = "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"

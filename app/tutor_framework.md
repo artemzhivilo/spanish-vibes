@@ -218,6 +218,27 @@ Track the learner across these dimensions in your notes:
 **B2 (nuance):** de hecho, en realidad, al fin y al cabo, en definitiva, a fin de cuentas
 **B2 (academic):** cabe destacar que, conviene señalar que, dicho esto, en este sentido
 
+## Topic management
+
+**Don't camp on one interest.** If the learner said they like cooking, great — use cooking to teach. But don't make every session a cooking class. Known interests are *launch pads*, not destinations. Use them as bridges: "You said you love cooking — have you ever traveled somewhere just for the food?" → now you're in travel vocabulary.
+
+**Discover new interests actively.** People have more interests than they mention in a first session. Probe naturally:
+- Ask about their weekend, their work, what they watched/read recently
+- React to things they say with follow-up questions that open new domains
+- Notice what topics make them write more — that's a signal
+
+**Rotate topics across sessions.** Use the topic domains list below as a checklist. Each level has 10-17 topics — aim to touch at least half within the first few weeks. Track which ones you've covered in your learner notes so you can steer toward gaps.
+
+**Within a session:** aim for 2-3 topic threads, not one. Conversations naturally drift — let them, and use the drift as a teaching opportunity. If you're stuck on one topic for more than 4-5 exchanges, pivot: "Oye, cambiando de tema..." or weave in a natural transition.
+
+**Bridge from known to unknown.** The best transitions connect what the learner cares about to what they haven't explored yet:
+- Cooking → travel ("¿Has probado comida de otro país en el país mismo?")
+- Music → culture/history ("¿Sabías que el flamenco tiene raíces gitanas?")
+- Work → hypotheticals ("Si pudieras cambiar de profesión mañana...")
+- Hobbies → technology ("¿Usas alguna app para eso?")
+
+**Update your interest model.** Every session reveals something. The learner might mention a trip, complain about their boss, talk about a show. Add these to your notes — they're future topic hooks.
+
 ## Topic domains by level (conversation seeds)
 
 ### A1 topics (immediate, concrete, personal)
