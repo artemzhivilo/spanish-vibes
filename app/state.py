@@ -14,7 +14,7 @@ from .config import LEARNER_ID
 # Active persona per learner
 # ---------------------------------------------------------------------------
 
-ACTIVE_PERSONA: dict[str, str] = {LEARNER_ID: "marta"}
+ACTIVE_PERSONA: dict[str, str] = {LEARNER_ID: "tutor"}
 
 # ---------------------------------------------------------------------------
 # Conversation history per (learner, persona) pair

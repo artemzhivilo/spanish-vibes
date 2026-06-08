@@ -23,6 +23,16 @@ PERSONAS_DIR = APP_DIR / "personas"
 # ---------------------------------------------------------------------------
 
 PERSONA_REGISTRY: dict[str, dict[str, Any]] = {
+    "tutor": {
+        "name": "Tutor",
+        "region": "Your Spanish tutor",
+        "bio": "Structured lessons, quizzes, vocab drills, and grammar. Manages your learning path.",
+        "welcome_sub": "Lessons, quizzes & progress",
+        "bubble_bg": "#EDE8F5",
+        "bubble_border": "rgba(90, 60, 140, 0.16)",
+        "bubble_name_color": "#5A3C8C",
+        "avatar_template": "partials/avatar_tutor.html",
+    },
     "marta": {
         "name": "Marta",
         "region": "Sevilla",

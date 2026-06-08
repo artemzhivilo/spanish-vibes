@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -27,6 +28,15 @@ load_dotenv(APP_DIR / ".env", override=True)
 # ---------------------------------------------------------------------------
 
 app = FastAPI(title="Spanish Vibes", version="0.2.0")
+
+# CORS for SvelteKit dev server
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:4173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Initialize the database
 init_db()
@@ -47,12 +57,14 @@ templates = Jinja2Templates(env=_jinja_env)
 # Include route modules
 # ---------------------------------------------------------------------------
 
+from .routes.api import router as api_router  # noqa: E402
 from .routes.chat import router as chat_router  # noqa: E402
 from .routes.learner import router as learner_router  # noqa: E402
 from .routes.persona import router as persona_router  # noqa: E402
 from .routes.placement import router as placement_router  # noqa: E402
 from .routes.quiz import router as quiz_router  # noqa: E402
 
+app.include_router(api_router)
 app.include_router(chat_router)
 app.include_router(quiz_router)
 app.include_router(placement_router)

@@ -1,6 +1,10 @@
 """Tool definitions for the Claude agent.
 
 Each tool is a dict matching the Anthropic tool-use schema.
+
+TUTOR_TOOLS — full set, used by the Tutor persona for structured teaching.
+CHAT_TOOLS  — minimal set, used by conversation personas (no teaching tools).
+TOOLS       — alias for TUTOR_TOOLS (backward compat).
 """
 
 TOOLS = [
@@ -245,3 +249,9 @@ TOOLS = [
         },
     },
 ]
+
+# Tutor gets all tools — structured teaching, quizzes, vocab, grammar, placement
+TUTOR_TOOLS = TOOLS
+
+# Chat personas get only save_learner_notes — no teaching tools
+CHAT_TOOLS = [t for t in TOOLS if t["name"] == "save_learner_notes"]

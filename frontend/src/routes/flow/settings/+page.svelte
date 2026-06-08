@@ -11,7 +11,7 @@
 			return;
 		}
 		resetting = true;
-		await api.post('/dev/reset-progress', {});
+		await api.post('/reset-progress', {});
 		resetting = false;
 		resetDone = true;
 		confirmReset = false;
@@ -32,7 +32,7 @@
 	<div class="rounded-2xl p-5" style="background: white; box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 4px 14px rgba(0,0,0,0.04);">
 		<h3 class="text-sm font-bold mb-1" style="color: #1a1410;">Reset Progress</h3>
 		<p class="text-xs mb-4" style="color: rgba(60,45,30,0.55);">
-			Clear all learning data — XP, streaks, concept mastery, conversation history. Starts you fresh from scratch.
+			Clear all learning data — vocabulary, grammar status, conversation history, CEFR level. Starts you fresh.
 		</p>
 
 		{#if resetDone}
@@ -75,9 +75,8 @@
 		<h3 class="text-sm font-bold mb-1" style="color: #1a1410;">Navigation</h3>
 		<p class="text-xs mb-3" style="color: rgba(60,45,30,0.55);">Quick links to all sections.</p>
 		<div class="flex flex-wrap gap-2">
-			<a href="/flow" class="rounded-full px-3 py-1.5 text-xs font-bold text-white" style="background: #C8553D;">Learn</a>
+			<a href="/flow" class="rounded-full px-3 py-1.5 text-xs font-bold text-white" style="background: #C8553D;">Chat</a>
 			<a href="/flow/stats" class="rounded-full px-3 py-1.5 text-xs font-bold" style="background: rgba(0,0,0,0.05); color: #1a1410;">Stats</a>
-			<a href="/flow/concepts" class="rounded-full px-3 py-1.5 text-xs font-bold" style="background: rgba(0,0,0,0.05); color: #1a1410;">Concepts</a>
 			<a href="/flow/words" class="rounded-full px-3 py-1.5 text-xs font-bold" style="background: rgba(0,0,0,0.05); color: #1a1410;">Words</a>
 			<a href="/" class="rounded-full px-3 py-1.5 text-xs font-bold" style="color: rgba(60,45,30,0.55);">Home</a>
 		</div>
