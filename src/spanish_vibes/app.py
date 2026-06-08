@@ -12,6 +12,7 @@ from urllib.parse import quote
 from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse, Response
 
 from .auth import (
@@ -108,6 +109,15 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Spanish Vibes", lifespan=lifespan)
+
+_frontend_origin = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[_frontend_origin],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(api_router)
 app.include_router(lesson_router)
 app.include_router(flow_router)
