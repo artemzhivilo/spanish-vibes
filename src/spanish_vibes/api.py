@@ -37,6 +37,7 @@ from .flow_db import (
     update_concept_knowledge,
 )
 from .interest import CardSignal, InterestTracker, seed_interest_scores
+from .personas import load_persona, select_persona
 from .words import mark_word_practice_result
 
 router = APIRouter(prefix="/api")
@@ -443,3 +444,289 @@ def api_words():
             for r in rows
         ]
     }
+
+
+# ── Conversations ───────────────────────────────────────────────
+
+
+class ConversationStartBody(BaseModel):
+    session_id: int
+    concept_id: str = ""
+    topic: str = ""
+    difficulty: int = 1
+    conversation_type: str = ""
+
+
+@router.post("/flow/conversation/start")
+def api_conversation_start(body: ConversationStartBody):
+    """Start a conversation and return opener + metadata."""
+    import json
+
+    from .conversation import ConversationEngine, ConversationMessage
+    from .conversation_types import get_type_instruction, select_conversation_type
+    from .db import _open_connection, consume_dev_override, now_iso
+    from .flow_db import get_last_conversation_info
+
+    engine = ConversationEngine()
+
+    concept_id = body.concept_id or "greetings"
+    topic = body.topic
+    if not topic:
+        from .conversation import get_random_topic
+
+        topic = get_random_topic()
+
+    if body.conversation_type:
+        selected_type = body.conversation_type
+        target_concept_id = concept_id
+    else:
+        forced = consume_dev_override("force_next_conversation_type")
+        if forced:
+            selected_type = forced
+            target_concept_id = concept_id
+        else:
+            selected_type, target_concept_id = select_conversation_type(
+                concept_id, body.session_id
+            )
+    effective_concept_id = target_concept_id or concept_id
+
+    from .flow_routes import (
+        _build_conversation_guardrails,
+        _compose_persona_prompt,
+        _get_seen_and_mastered_concepts,
+    )
+
+    seen_concepts, mastered_concepts = _get_seen_and_mastered_concepts()
+    last_conv = get_last_conversation_info(body.session_id)
+    exclude_persona_id = last_conv.get("persona_id") if last_conv else None
+    persona = select_persona(
+        exclude_id=exclude_persona_id,
+        difficulty=body.difficulty,
+        seen_concepts=seen_concepts,
+        mastered_concepts=mastered_concepts,
+    )
+    type_instruction = get_type_instruction(
+        selected_type,
+        concept_id=effective_concept_id,
+        topic=topic,
+        persona_id=persona.id,
+    )
+    persona_prompt = _compose_persona_prompt(persona, type_instruction=type_instruction)
+    user_level_info = get_user_level()
+    effective_difficulty = int(
+        user_level_info.get("session_difficulty", body.difficulty)
+    )
+    conversation_guardrails = _build_conversation_guardrails(
+        concept_id=effective_concept_id,
+        difficulty=effective_difficulty,
+        seen_concepts=seen_concepts,
+        mastered_concepts=mastered_concepts,
+    )
+
+    opener = engine.generate_opener(
+        topic,
+        effective_concept_id,
+        effective_difficulty,
+        persona_prompt=persona_prompt,
+        persona_name=persona.name,
+        conversation_guardrails=conversation_guardrails,
+    )
+
+    timestamp = now_iso()
+    opener_msg = ConversationMessage(role="ai", content=opener, timestamp=timestamp)
+    messages_json = json.dumps([opener_msg.to_dict()])
+
+    uid = get_current_user_id()
+    with _open_connection() as conn:
+        cursor = conn.execute(
+            """INSERT INTO flow_conversations
+                (user_id, session_id, topic, messages_json, turn_count,
+                 completed, created_at, concept_id, difficulty,
+                 persona_id, conversation_type)
+            VALUES (?, ?, ?, ?, 1, 0, ?, ?, ?, ?, ?)""",
+            (
+                uid,
+                body.session_id,
+                topic,
+                messages_json,
+                timestamp,
+                effective_concept_id,
+                effective_difficulty,
+                persona.id,
+                selected_type,
+            ),
+        )
+        conn.commit()
+        conversation_id = int(cursor.lastrowid)
+
+    return {
+        "conversation_id": conversation_id,
+        "persona_id": persona.id,
+        "persona_name": persona.name,
+        "topic": topic,
+        "concept_id": effective_concept_id,
+        "conversation_type": selected_type,
+        "messages": [
+            {"role": "ai", "content": opener},
+        ],
+    }
+
+
+class ConversationRespondBody(BaseModel):
+    session_id: int
+    conversation_id: int
+    message: str
+
+
+@router.post("/flow/conversation/respond")
+def api_conversation_respond(body: ConversationRespondBody):
+    """Send a message, get tutor response + corrections."""
+    import json
+
+    from .conversation import (
+        ConversationCard,
+        ConversationEngine,
+        ConversationMessage,
+    )
+    from .conversation_types import get_type_instruction
+    from .db import _open_connection, now_iso
+    from .flow_routes import _build_conversation_guardrails, _compose_persona_prompt
+
+    engine = ConversationEngine()
+    timestamp = now_iso()
+    uid = get_current_user_id()
+
+    with _open_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM flow_conversations WHERE user_id = ? AND id = ?",
+            (uid, body.conversation_id),
+        ).fetchone()
+
+    if row is None:
+        return {"error": "Conversation not found"}
+
+    topic = str(row["topic"])
+    concept_id = str(row["concept_id"] or "")
+    difficulty = int(row["difficulty"])
+    conversation_type = str(row["conversation_type"] or "general_chat")
+    persona = load_persona(row["persona_id"])
+    type_instruction = get_type_instruction(
+        conversation_type,
+        concept_id=concept_id,
+        topic=topic,
+        persona_id=persona.id,
+    )
+    persona_prompt = _compose_persona_prompt(persona, type_instruction=type_instruction)
+    existing_messages = json.loads(row["messages_json"])
+    messages = [ConversationMessage.from_dict(m) for m in existing_messages]
+
+    clean_message = body.message.strip()
+    english_result = engine.detect_and_handle_english(
+        clean_message, concept_id, difficulty
+    )
+    user_text = english_result.spanish_translation if english_result else clean_message
+
+    conversation_guardrails = _build_conversation_guardrails(
+        concept_id=concept_id, difficulty=difficulty
+    )
+    result = engine.respond_to_user(
+        messages=messages,
+        user_text=user_text,
+        topic=topic,
+        concept=concept_id,
+        difficulty=difficulty,
+        persona_prompt=persona_prompt,
+        persona_name=persona.name,
+        conversation_guardrails=conversation_guardrails,
+    )
+
+    corrections = (
+        None if english_result else (result.corrections if result.corrections else None)
+    )
+    user_msg = ConversationMessage(
+        role="user",
+        content=clean_message,
+        corrections=corrections,
+        timestamp=timestamp,
+    )
+    messages.append(user_msg)
+
+    translation_info = None
+    if english_result:
+        system_msg = ConversationMessage(
+            role="system",
+            content=english_result.display_message,
+            timestamp=timestamp,
+        )
+        messages.append(system_msg)
+        translation_info = {
+            "display_message": english_result.display_message,
+            "spanish_translation": english_result.spanish_translation,
+            "original_english": english_result.original_english,
+        }
+
+    card = ConversationCard(
+        topic=topic,
+        concept=concept_id,
+        difficulty=difficulty,
+        opener=messages[0].content if messages else "",
+        messages=messages,
+        max_turns=4,
+        persona_name=persona.name,
+    )
+
+    hard_cap = engine.should_end(card)
+    is_ended = hard_cap or not result.should_continue
+
+    if not is_ended:
+        ai_msg = ConversationMessage(
+            role="ai", content=result.ai_reply, timestamp=now_iso()
+        )
+        messages.append(ai_msg)
+
+    messages_json = json.dumps([m.to_dict() for m in messages])
+    with _open_connection() as conn:
+        conn.execute(
+            """UPDATE flow_conversations
+            SET messages_json = ?, turn_count = ?, completed = ?
+            WHERE user_id = ? AND id = ?""",
+            (messages_json, len(messages), int(is_ended), uid, body.conversation_id),
+        )
+        conn.commit()
+
+    corrections_out = []
+    if corrections:
+        corrections_out = [
+            {
+                "original": c.original,
+                "corrected": c.corrected,
+                "explanation": c.explanation,
+            }
+            for c in corrections
+        ]
+
+    return {
+        "ai_reply": result.ai_reply if not is_ended else None,
+        "is_ended": is_ended,
+        "corrections": corrections_out,
+        "hint": result.hint,
+        "translation": translation_info,
+        "persona_name": persona.name,
+    }
+
+
+@router.post("/flow/conversation/skip")
+def api_conversation_skip(
+    session_id: int = Query(...), conversation_id: int = Query(...)
+):
+    """Skip/end a conversation."""
+    from .db import _open_connection
+
+    uid = get_current_user_id()
+    with _open_connection() as conn:
+        conn.execute(
+            "UPDATE flow_conversations SET completed = 1 WHERE user_id = ? AND id = ?",
+            (uid, conversation_id),
+        )
+        conn.commit()
+    return {"ok": True}
