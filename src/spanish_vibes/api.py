@@ -1,0 +1,445 @@
+"""JSON API routes for the SvelteKit frontend.
+
+Mirrors the flow routes but returns JSON instead of HTML partials.
+Mounted under /api/ prefix.
+"""
+
+from __future__ import annotations
+
+import time
+from typing import Any
+
+from fastapi import APIRouter, BackgroundTasks, Query
+from pydantic import BaseModel
+
+from .bkt import is_mastered
+from .concepts import load_concepts
+from .db import (
+    get_all_interest_topics,
+    get_current_user_id,
+    is_user_onboarded,
+    set_dev_override,
+    set_user_onboarded,
+)
+from .flow import (
+    FlowCardContext,
+    build_session_state,
+    get_user_level,
+    invalidate_user_level_cache,
+    process_mcq_answer,
+    select_next_card,
+    start_or_resume_session,
+)
+from .flow_ai import prefetch_next_concepts
+from .flow_db import (
+    get_all_concept_knowledge,
+    mark_teach_shown,
+    update_concept_knowledge,
+)
+from .interest import CardSignal, InterestTracker, seed_interest_scores
+from .words import mark_word_practice_result
+
+router = APIRouter(prefix="/api")
+
+
+def _count_mastered() -> tuple[int, int]:
+    concepts = load_concepts()
+    knowledge = get_all_concept_knowledge()
+    mastered = sum(
+        1
+        for cid, ck in knowledge.items()
+        if cid in concepts and is_mastered(ck.p_mastery, ck.n_attempts)
+    )
+    return mastered, len(concepts)
+
+
+def _card_context_to_dict(cc: FlowCardContext) -> dict[str, Any]:
+    return {
+        "card_type": cc.card_type,
+        "concept_id": cc.concept_id,
+        "question": cc.question,
+        "correct_answer": cc.correct_answer,
+        "options": cc.options,
+        "option_misconceptions": cc.option_misconceptions,
+        "difficulty": cc.difficulty,
+        "mcq_card_id": cc.mcq_card_id,
+        "teach_content": cc.teach_content,
+        "interest_topics": cc.interest_topics,
+        "word_id": cc.word_id,
+        "word_spanish": cc.word_spanish,
+        "word_english": cc.word_english,
+        "word_emoji": cc.word_emoji,
+        "word_sentence": cc.word_sentence,
+        "word_pairs": cc.word_pairs,
+        "scrambled_words": cc.scrambled_words,
+        "correct_sentence": cc.correct_sentence,
+        "english_prompt": cc.english_prompt,
+        "conversation_type": cc.conversation_type,
+        "target_concept_id": cc.target_concept_id,
+    }
+
+
+# ── Session & Progress ──────────────────────────────────────────
+
+
+@router.get("/progress")
+def api_progress():
+    """Current user progress: level, XP, streak, mastery."""
+    from .app import _get_player_progress
+
+    progress = _get_player_progress()
+    mastered, total = _count_mastered()
+    concepts = load_concepts()
+    knowledge = get_all_concept_knowledge()
+    user_level = get_user_level(knowledge, concepts)
+
+    return {
+        "progress": {
+            "xp": progress.xp if progress else 0,
+            "level": progress.level if progress else 1,
+            "level_pct": progress.level_pct if progress else 0,
+            "xp_into_level": progress.xp_into_level if progress else 0,
+            "xp_for_next_level": progress.xp_for_next_level if progress else 100,
+            "streak": progress.streak if progress else 0,
+        }
+        if progress
+        else None,
+        "concepts_mastered": mastered,
+        "total_concepts": total,
+        "cefr": user_level["cefr"],
+        "user_level": user_level["level"],
+        "tier_mastery": user_level["tier_mastery"],
+        "onboarded": is_user_onboarded(),
+    }
+
+
+@router.post("/flow/session")
+def api_start_session():
+    """Start or resume a flow session."""
+    session = start_or_resume_session()
+    state = build_session_state(session.id)
+    mastered, total = _count_mastered()
+    concepts = load_concepts()
+    knowledge = get_all_concept_knowledge()
+    user_level = get_user_level(knowledge, concepts)
+
+    return {
+        "session_id": session.id,
+        "cards_answered": session.cards_answered,
+        "correct_count": session.correct_count,
+        "streak": state.current_streak if state else 0,
+        "concepts_mastered": mastered,
+        "total_concepts": total,
+        "cefr": user_level["cefr"],
+    }
+
+
+# ── Cards ────────────────────────────────────────────────────────
+
+
+@router.get("/flow/card")
+async def api_flow_card(
+    session_id: int = Query(...),
+    retry: int = Query(0),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+):
+    """Get next card as JSON."""
+    card_context = select_next_card(session_id)
+
+    if card_context is None:
+        if retry < 3:
+            return {"status": "loading", "retry": retry + 1}
+        return {"status": "empty"}
+
+    background_tasks.add_task(prefetch_next_concepts)
+
+    concept_name = ""
+    concepts = load_concepts()
+    if card_context.concept_id in concepts:
+        concept_name = concepts[card_context.concept_id].name
+
+    return {
+        "status": "ok",
+        "card": _card_context_to_dict(card_context),
+        "concept_name": concept_name,
+        "session_id": session_id,
+    }
+
+
+class AnswerBody(BaseModel):
+    session_id: int
+    chosen_option: str = ""
+    card_data: dict[str, Any] = {}
+    start_time: int = 0
+
+
+@router.post("/flow/answer")
+async def api_flow_answer(
+    body: AnswerBody,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+):
+    """Submit answer, get feedback as JSON."""
+    now_ms = int(time.time() * 1000)
+    response_time_ms = (now_ms - body.start_time) if body.start_time > 0 else None
+
+    card_context = FlowCardContext(
+        card_type=body.card_data.get("card_type", "mcq"),
+        concept_id=body.card_data.get("concept_id", ""),
+        question=body.card_data.get("question", ""),
+        correct_answer=body.card_data.get("correct_answer", ""),
+        options=body.card_data.get("options", []),
+        option_misconceptions=body.card_data.get("option_misconceptions", {}),
+        difficulty=int(body.card_data.get("difficulty", 1)),
+        mcq_card_id=body.card_data.get("mcq_card_id"),
+        word_id=body.card_data.get("word_id"),
+        word_spanish=body.card_data.get("word_spanish", ""),
+        word_emoji=body.card_data.get("word_emoji"),
+        word_english=body.card_data.get("word_english", ""),
+        word_sentence=body.card_data.get("word_sentence", ""),
+        scrambled_words=body.card_data.get("scrambled_words", []),
+        correct_sentence=body.card_data.get("correct_sentence", ""),
+        english_prompt=body.card_data.get("english_prompt", ""),
+    )
+
+    result = process_mcq_answer(
+        session_id=body.session_id,
+        card_context=card_context,
+        chosen_option=body.chosen_option,
+        response_time_ms=response_time_ms,
+    )
+
+    if (
+        card_context.card_type in {"word_practice", "emoji_association"}
+        and card_context.word_id
+    ):
+        mark_word_practice_result(card_context.word_id, result.is_correct)
+
+    signal = CardSignal(
+        topic_id=None,
+        was_correct=result.is_correct,
+        dwell_time_ms=response_time_ms,
+        response_time_ms=response_time_ms,
+        card_id=card_context.mcq_card_id,
+        session_id=body.session_id,
+        concept_id=card_context.concept_id,
+        card_type=card_context.card_type,
+    )
+    InterestTracker().update_from_card_signal(signal)
+    background_tasks.add_task(prefetch_next_concepts)
+
+    concept_name = ""
+    concepts = load_concepts()
+    if result.concept_id in concepts:
+        concept_name = concepts[result.concept_id].name
+
+    return {
+        "is_correct": result.is_correct,
+        "correct_answer": result.correct_answer,
+        "concept_id": result.concept_id,
+        "concept_name": concept_name,
+        "xp_earned": result.xp_earned,
+        "streak": result.streak,
+        "cards_answered": result.cards_answered,
+        "concepts_mastered": result.concepts_mastered,
+        "total_concepts": result.total_concepts,
+        "misconception_concept": result.misconception_concept,
+    }
+
+
+@router.post("/flow/teach-seen")
+async def api_teach_seen(
+    session_id: int = Query(...),
+    concept_id: str = Query(...),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+):
+    """Mark teach card as seen, return next card."""
+    mark_teach_shown(concept_id)
+    update_concept_knowledge(concept_id, 0.3, True)
+    background_tasks.add_task(prefetch_next_concepts)
+    return {"ok": True}
+
+
+# ── Onboarding ───────────────────────────────────────────────────
+
+
+@router.get("/onboarding")
+def api_onboarding():
+    """Onboarding state and available topics/tiers."""
+    if is_user_onboarded():
+        return {"onboarded": True}
+
+    topics = get_all_interest_topics()
+    concepts = load_concepts()
+    tiers: dict[int, list[dict[str, str]]] = {}
+    for concept_id, concept in sorted(
+        concepts.items(), key=lambda item: (item[1].difficulty_level, item[1].name)
+    ):
+        tiers.setdefault(concept.difficulty_level, []).append(
+            {"id": concept_id, "name": concept.name}
+        )
+
+    return {
+        "onboarded": False,
+        "topics": [{"id": t["id"], "name": t["name"]} for t in topics],
+        "tiers": [
+            {"tier": tier, "concepts": entries}
+            for tier, entries in sorted(tiers.items())
+        ],
+    }
+
+
+class OnboardingBody(BaseModel):
+    start_tier: int = 1
+    interest_topic_ids: list[int] = []
+
+
+@router.post("/onboarding/complete")
+def api_complete_onboarding(body: OnboardingBody):
+    """Complete onboarding with tier selection."""
+    if is_user_onboarded():
+        return {"ok": True}
+
+    if body.interest_topic_ids:
+        try:
+            seed_interest_scores(body.interest_topic_ids, initial_score=0.35)
+        except Exception:
+            pass
+
+    concepts = load_concepts()
+    if not concepts:
+        set_user_onboarded(True)
+        return {"ok": True}
+
+    max_tier = max(c.difficulty_level for c in concepts.values())
+    tier = max(1, min(max_tier, int(body.start_tier)))
+
+    for concept_id, concept in concepts.items():
+        if concept.difficulty_level < tier:
+            mark_teach_shown(concept_id)
+            update_concept_knowledge(concept_id, 0.95, True)
+
+    invalidate_user_level_cache()
+
+    tier_concepts = sorted(
+        [cid for cid, concept in concepts.items() if concept.difficulty_level == tier],
+        key=lambda cid: concepts[cid].name,
+    )
+    if tier_concepts:
+        set_dev_override("force_next_concept", tier_concepts[0])
+
+    from .flow_db import get_active_session, end_session
+
+    active = get_active_session()
+    if active:
+        end_session(active.id)
+
+    set_user_onboarded(True)
+    return {"ok": True}
+
+
+# ── Concepts / Stats / Words ────────────────────────────────────
+
+
+@router.get("/concepts")
+def api_concepts():
+    """All concepts with mastery status."""
+    concepts = load_concepts()
+    knowledge = get_all_concept_knowledge()
+
+    result = []
+    for concept_id, concept in sorted(
+        concepts.items(), key=lambda x: (x[1].difficulty_level, x[1].name)
+    ):
+        ck = knowledge.get(concept_id)
+        result.append(
+            {
+                "id": concept_id,
+                "name": concept.name,
+                "description": concept.description,
+                "difficulty_level": concept.difficulty_level,
+                "mastery": round(ck.p_mastery, 2) if ck else 0.0,
+                "attempts": ck.n_attempts if ck else 0,
+                "correct": ck.n_correct if ck else 0,
+                "is_mastered": is_mastered(ck.p_mastery, ck.n_attempts)
+                if ck
+                else False,
+                "teach_shown": ck.teach_shown if ck else False,
+            }
+        )
+    return {"concepts": result}
+
+
+@router.get("/stats")
+def api_stats():
+    """Learning stats summary."""
+    from .app import _get_player_progress
+
+    progress = _get_player_progress()
+    mastered, total = _count_mastered()
+    concepts = load_concepts()
+    knowledge = get_all_concept_knowledge()
+    user_level = get_user_level(knowledge, concepts)
+
+    tiers: dict[int, dict[str, Any]] = {}
+    for concept_id, concept in concepts.items():
+        tier = concept.difficulty_level
+        if tier not in tiers:
+            tiers[tier] = {"total": 0, "mastered": 0, "concepts": []}
+        tiers[tier]["total"] += 1
+        ck = knowledge.get(concept_id)
+        mastered_flag = is_mastered(ck.p_mastery, ck.n_attempts) if ck else False
+        if mastered_flag:
+            tiers[tier]["mastered"] += 1
+        tiers[tier]["concepts"].append(
+            {
+                "id": concept_id,
+                "name": concept.name,
+                "mastery": round(ck.p_mastery, 2) if ck else 0.0,
+                "is_mastered": mastered_flag,
+            }
+        )
+
+    return {
+        "progress": {
+            "xp": progress.xp if progress else 0,
+            "level": progress.level if progress else 1,
+            "streak": progress.streak if progress else 0,
+        }
+        if progress
+        else None,
+        "concepts_mastered": mastered,
+        "total_concepts": total,
+        "cefr": user_level["cefr"],
+        "tiers": {str(k): v for k, v in sorted(tiers.items())},
+    }
+
+
+@router.get("/words")
+def api_words():
+    """Vocabulary list with practice state."""
+    from .db import _open_connection
+
+    uid = get_current_user_id()
+    with _open_connection() as conn:
+        rows = conn.execute(
+            """SELECT id, spanish, english, emoji, concept_id, status,
+                      times_seen, times_correct
+               FROM words WHERE user_id = ? ORDER BY spanish""",
+            (uid,),
+        ).fetchall()
+
+    return {
+        "words": [
+            {
+                "id": r["id"],
+                "spanish": r["spanish"],
+                "english": r["english"],
+                "emoji": r["emoji"],
+                "concept_id": r["concept_id"],
+                "status": r["status"],
+                "times_seen": r["times_seen"],
+                "times_correct": r["times_correct"],
+            }
+            for r in rows
+        ]
+    }
