@@ -105,18 +105,19 @@
 		<div class="flex items-center gap-3">
 			<div class="flex items-center gap-1" title="Streak">
 				<span class="text-lg" class:opacity-30={streak === 0}>🔥</span>
-				<span class="text-base font-black text-amber-400">{streak}</span>
+				<span class="text-base font-black" style="color: #C8553D;">{streak}</span>
 			</div>
-			<span class="text-xs text-slate-500 font-bold">{conceptsMastered}/{totalConcepts}</span>
-			<span class="hidden sm:inline rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+			<span class="text-xs font-bold" style="color: rgba(60,45,30,0.55);">{conceptsMastered}/{totalConcepts}</span>
+			<span class="hidden sm:inline rounded-full px-2 py-0.5 text-[10px] font-bold" style="background: rgba(200,85,61,0.1); color: #C8553D;">
 				{cefr}
 			</span>
 		</div>
 		<div class="flex items-center gap-2">
-			<span class="text-xs text-slate-500">{cardsAnswered} cards</span>
+			<span class="text-xs" style="color: rgba(60,45,30,0.45);">{cardsAnswered} cards</span>
 			<a
 				href="/"
-				class="rounded-full bg-slate-500/15 w-7 h-7 flex items-center justify-center text-xs font-bold text-slate-400 transition hover:bg-slate-500/25 hover:text-slate-200"
+				class="rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold transition hover:opacity-70"
+				style="background: rgba(0,0,0,0.06); color: rgba(60,45,30,0.55);"
 				title="Exit"
 			>
 				&times;
@@ -148,7 +149,6 @@
 				onNext={loadNextCard}
 			/>
 		{:else if currentCard}
-			<!-- Fallback for unrecognized card types — treat as quiz -->
 			<McqCard
 				card={currentCard}
 				{conceptName}
@@ -156,10 +156,10 @@
 				onNext={loadNextCard}
 			/>
 		{:else}
-			<div class="rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 text-center">
-				<p class="text-slate-400 mb-2">No more cards right now</p>
-				<p class="text-sm text-slate-500">Come back later for more practice</p>
-				<a href="/" class="mt-4 inline-block rounded-xl bg-emerald-500 px-6 py-2.5 font-bold text-emerald-950">
+			<div class="rounded-2xl p-6 text-center" style="background: white; box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 4px 14px rgba(0,0,0,0.04);">
+				<p class="mb-2" style="color: rgba(60,45,30,0.7);">No more cards right now</p>
+				<p class="text-sm" style="color: rgba(60,45,30,0.45);">Come back later for more practice</p>
+				<a href="/" class="mt-4 inline-block rounded-xl px-6 py-2.5 font-bold text-white" style="background: #C8553D;">
 					Back Home
 				</a>
 			</div>
@@ -168,10 +168,10 @@
 
 	<!-- Celebration overlay -->
 	{#if showCelebration}
-		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
 			<div class="text-center animate-bounce">
 				<p class="text-6xl">🔥</p>
-				<p class="mt-4 text-3xl font-black text-amber-400">{celebrationText}</p>
+				<p class="mt-4 text-3xl font-black" style="color: #C8553D;">{celebrationText}</p>
 			</div>
 		</div>
 	{/if}

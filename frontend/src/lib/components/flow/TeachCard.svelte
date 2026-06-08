@@ -10,19 +10,20 @@
 	let { card, conceptName, onContinue }: Props = $props();
 </script>
 
-<div class="rounded-2xl bg-[#1a2d35] shadow-lg shadow-black/20 overflow-hidden">
-	<div class="flex items-center gap-2 px-5 py-3 bg-[#0f1a1f]">
-		<span class="text-xs font-bold uppercase tracking-wider text-amber-400">New Concept</span>
-		<span class="text-xs font-bold text-slate-400">{conceptName}</span>
+<div class="rounded-2xl overflow-hidden" style="background: white; box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 4px 14px rgba(0,0,0,0.04);">
+	<div class="flex items-center gap-2 px-5 py-3" style="border-bottom: 1px solid rgba(0,0,0,0.06);">
+		<span class="text-xs font-bold uppercase tracking-wider" style="color: #C8553D; font-family: var(--font-serif);">New Concept</span>
+		<span class="text-xs font-bold" style="color: rgba(60,45,30,0.55);">{conceptName}</span>
 	</div>
 
-	<div class="px-5 py-4 lesson-prose text-slate-300 leading-relaxed">
+	<div class="px-5 py-4 lesson-prose leading-relaxed" style="color: rgba(60,45,30,0.7);">
 		{@html card.teach_content}
 	</div>
 
 	<div class="px-5 pb-4">
 		<button
-			class="w-full rounded-xl bg-emerald-500 py-3 text-center font-black text-emerald-950 transition hover:bg-emerald-400 active:scale-[0.98]"
+			class="w-full rounded-xl py-3 text-center font-bold text-white transition active:scale-[0.98]"
+			style="background: #C8553D;"
 			onclick={onContinue}
 		>
 			Got it — Let's practice!

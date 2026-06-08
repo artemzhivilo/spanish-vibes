@@ -27,36 +27,36 @@
 		answering = false;
 	}
 
-	function optionClass(option: string): string {
+	function optionStyle(option: string): string {
 		if (result === null) {
 			return selected === option
-				? 'border-emerald-500 bg-[#162028] text-slate-50'
-				: 'border-[#1e3a47] bg-[#0f1a1f] text-slate-300 hover:border-emerald-500 hover:text-slate-50 hover:bg-[#162028] cursor-pointer';
+				? 'border-color: #C8553D; background: rgba(200,85,61,0.05); color: #1a1410;'
+				: 'border-color: rgba(0,0,0,0.08); background: white; color: #1a1410;';
 		}
 		if (option === result.correct_answer) {
-			return 'border-emerald-500 bg-emerald-500/10 text-emerald-300';
+			return 'border-color: #2D5A3D; background: rgba(45,90,61,0.08); color: #2D5A3D;';
 		}
 		if (option === selected && !result.is_correct) {
-			return 'border-red-500 bg-red-500/10 text-red-300';
+			return 'border-color: #C8553D; background: rgba(200,85,61,0.08); color: #C8553D;';
 		}
-		return 'border-[#1e3a47] bg-[#0f1a1f] text-slate-500 opacity-40';
+		return 'border-color: rgba(0,0,0,0.04); background: rgba(0,0,0,0.02); color: rgba(60,45,30,0.35);';
 	}
 </script>
 
-<div class={cn('rounded-2xl bg-[#1a2d35] shadow-lg shadow-black/20 overflow-hidden', animClass)}>
+<div class={cn('rounded-2xl overflow-hidden', animClass)} style="background: white; box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 4px 14px rgba(0,0,0,0.04);">
 	<!-- Header -->
-	<div class="flex items-center gap-2 px-5 py-3 bg-[#0f1a1f]">
-		<span class="text-xs font-bold uppercase tracking-wider text-emerald-400">{conceptName}</span>
+	<div class="flex items-center gap-2 px-5 py-3" style="border-bottom: 1px solid rgba(0,0,0,0.06);">
+		<span class="text-xs font-bold uppercase tracking-wider" style="color: #C8553D; font-family: var(--font-serif);">{conceptName}</span>
 		{#if card.difficulty > 1}
-			<span class="text-[10px] font-bold text-amber-400/60">Lv{card.difficulty}</span>
+			<span class="text-[10px] font-bold" style="color: rgba(60,45,30,0.45);">Lv{card.difficulty}</span>
 		{/if}
 	</div>
 
 	<!-- Question -->
 	<div class="px-5 pt-4 pb-2">
-		<p class="text-lg font-semibold text-slate-100 leading-relaxed">{card.question}</p>
+		<p class="text-lg font-semibold leading-relaxed" style="color: #1a1410;">{card.question}</p>
 		{#if card.english_prompt}
-			<p class="mt-1 text-sm text-slate-400">{card.english_prompt}</p>
+			<p class="mt-1 text-sm" style="color: rgba(60,45,30,0.55);">{card.english_prompt}</p>
 		{/if}
 	</div>
 
@@ -64,10 +64,9 @@
 	<div class="px-5 pb-4 grid gap-2.5">
 		{#each card.options as option}
 			<button
-				class={cn(
-					'w-full text-left px-4 py-3 rounded-xl border-2 font-semibold text-[0.95rem] transition-all duration-150',
-					optionClass(option),
-				)}
+				class="w-full text-left px-4 py-3 rounded-xl border-2 font-semibold text-[0.95rem] transition-all duration-150"
+				class:cursor-pointer={result === null}
+				style={optionStyle(option)}
 				disabled={result !== null}
 				onclick={() => handleSelect(option)}
 			>
@@ -79,21 +78,22 @@
 	<!-- Feedback -->
 	{#if result}
 		<div class="px-5 pb-4">
-			<div class={cn(
-				'rounded-xl p-3 text-sm font-semibold',
-				result.is_correct
-					? 'bg-emerald-500/10 border border-emerald-500/25 text-emerald-300'
-					: 'bg-red-500/10 border border-red-500/20 text-red-300'
-			)}>
+			<div
+				class="rounded-xl p-3 text-sm font-semibold"
+				style={result.is_correct
+					? 'background: rgba(45,90,61,0.08); border: 1px solid rgba(45,90,61,0.15); color: #2D5A3D;'
+					: 'background: rgba(200,85,61,0.08); border: 1px solid rgba(200,85,61,0.15); color: #C8553D;'}
+			>
 				{#if result.is_correct}
 					Correct! +{result.xp_earned} XP
 				{:else}
-					<p>The answer is <strong class="text-slate-100">{result.correct_answer}</strong></p>
+					<p>The answer is <strong style="color: #1a1410;">{result.correct_answer}</strong></p>
 				{/if}
 			</div>
 
 			<button
-				class="mt-3 w-full rounded-xl bg-emerald-500 py-3 text-center font-black text-emerald-950 transition hover:bg-emerald-400 active:scale-[0.98]"
+				class="mt-3 w-full rounded-xl py-3 text-center font-bold text-white transition active:scale-[0.98]"
+				style="background: #C8553D;"
 				onclick={onNext}
 			>
 				Continue

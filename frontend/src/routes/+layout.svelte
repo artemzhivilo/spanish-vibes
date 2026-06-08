@@ -8,7 +8,7 @@
 	let isFlowPage = $derived($page.url.pathname.startsWith('/flow'));
 </script>
 
-<div class="bg-[#131F24] text-slate-50 min-h-screen">
+<div class="min-h-screen" style="background: #FBF7F0;">
 	<main class="mx-auto flex min-h-screen max-w-4xl flex-col px-4 py-8 sm:px-6">
 		{#if !isFlowPage}
 			<Nav />
