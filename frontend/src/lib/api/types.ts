@@ -47,6 +47,8 @@ export interface FlowCard {
 	correct_sentence: string;
 	english_prompt: string;
 	conversation_type: string;
+	interest_topics: string[];
+	target_concept_id: string | null;
 }
 
 export interface CardResponse {

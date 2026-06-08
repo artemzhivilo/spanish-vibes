@@ -4,6 +4,7 @@
 	import type { FlowCard, AnswerResponse } from '$lib/api/types';
 	import McqCard from '$lib/components/flow/McqCard.svelte';
 	import TeachCard from '$lib/components/flow/TeachCard.svelte';
+	import ChatCard from '$lib/components/flow/ChatCard.svelte';
 	import LoadingCard from '$lib/components/flow/LoadingCard.svelte';
 
 	let loading = $state(true);
@@ -22,6 +23,12 @@
 	let celebrationText = $state('');
 
 	const CELEBRATION_MILESTONES = [5, 10, 15, 20, 25, 50];
+
+	const CHAT_CARD_TYPES = new Set(['conversation', 'story_comprehension']);
+	const QUIZ_CARD_TYPES = new Set([
+		'mcq', 'word_practice', 'word_intro', 'word_match',
+		'sentence_builder', 'emoji_association', 'fill_blank',
+	]);
 
 	onMount(async () => {
 		try {
@@ -123,7 +130,25 @@
 			<LoadingCard />
 		{:else if currentCard?.card_type === 'teach'}
 			<TeachCard card={currentCard} {conceptName} onContinue={handleTeachSeen} />
+		{:else if currentCard && CHAT_CARD_TYPES.has(currentCard.card_type)}
+			<ChatCard
+				{sessionId}
+				conceptId={currentCard.concept_id}
+				{conceptName}
+				topic={currentCard.interest_topics?.[0] ?? ''}
+				difficulty={currentCard.difficulty}
+				conversationType={currentCard.conversation_type}
+				onComplete={loadNextCard}
+			/>
+		{:else if currentCard && (QUIZ_CARD_TYPES.has(currentCard.card_type) || currentCard.options?.length)}
+			<McqCard
+				card={currentCard}
+				{conceptName}
+				onAnswer={handleAnswer}
+				onNext={loadNextCard}
+			/>
 		{:else if currentCard}
+			<!-- Fallback for unrecognized card types — treat as quiz -->
 			<McqCard
 				card={currentCard}
 				{conceptName}
