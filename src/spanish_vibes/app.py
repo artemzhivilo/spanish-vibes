@@ -55,6 +55,7 @@ from .srs import (
     level_from_xp,
     person_label,
 )
+from .api import router as api_router
 from .flow_routes import router as flow_router
 from .template_helpers import register_template_filters
 from .translate_tooltip import build_translate_tooltip_response
@@ -107,6 +108,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Spanish Vibes", lifespan=lifespan)
+app.include_router(api_router)
 app.include_router(lesson_router)
 app.include_router(flow_router)
 app.include_router(tutor_router)

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+	import { getProgress } from '$lib/api/flow';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { ProgressBar } from '$lib/components/ui/progress';
@@ -9,9 +11,22 @@
 		level: number;
 		level_pct: number;
 		streak: number;
-		concepts_mastered: number;
-		total_concepts: number;
 	} | null>(null);
+	let conceptsMastered = $state(0);
+	let totalConcepts = $state(0);
+	let loaded = $state(false);
+
+	onMount(async () => {
+		try {
+			const res = await getProgress();
+			progress = res.progress;
+			conceptsMastered = res.concepts_mastered;
+			totalConcepts = res.total_concepts;
+		} catch {
+			// API not available — show new-user state
+		}
+		loaded = true;
+	});
 </script>
 
 <svelte:head>
@@ -51,7 +66,7 @@
 			</div>
 			<ProgressBar value={progress.level_pct} />
 			<p class="mt-2 text-xs text-slate-500 text-center">
-				{progress.concepts_mastered}/{progress.total_concepts} concepts mastered
+				{conceptsMastered}/{totalConcepts} concepts mastered
 			</p>
 		</Card>
 

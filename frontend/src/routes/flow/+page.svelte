@@ -1,20 +1,91 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button } from '$lib/components/ui/button';
+	import { startSession, getNextCard, submitAnswer, markTeachSeen } from '$lib/api/flow';
+	import type { FlowCard, AnswerResponse } from '$lib/api/types';
+	import McqCard from '$lib/components/flow/McqCard.svelte';
+	import TeachCard from '$lib/components/flow/TeachCard.svelte';
+	import LoadingCard from '$lib/components/flow/LoadingCard.svelte';
 
 	let loading = $state(true);
+	let sessionId = $state(0);
 	let streak = $state(0);
 	let conceptsMastered = $state(0);
 	let totalConcepts = $state(0);
 	let cardsAnswered = $state(0);
 	let cefr = $state('A1');
 
-	let cardHtml = $state('');
+	let currentCard = $state<FlowCard | null>(null);
+	let conceptName = $state('');
+	let cardStartTime = $state(0);
+	let loadingCard = $state(false);
+	let showCelebration = $state(false);
+	let celebrationText = $state('');
+
+	const CELEBRATION_MILESTONES = [5, 10, 15, 20, 25, 50];
 
 	onMount(async () => {
-		// TODO: initialize flow session via API
-		loading = false;
+		try {
+			const session = await startSession();
+			sessionId = session.session_id;
+			streak = session.streak;
+			conceptsMastered = session.concepts_mastered;
+			totalConcepts = session.total_concepts;
+			cardsAnswered = session.cards_answered;
+			cefr = session.cefr;
+			loading = false;
+			await loadNextCard();
+		} catch (e) {
+			console.error('Failed to start session:', e);
+			loading = false;
+		}
 	});
+
+	async function loadNextCard() {
+		loadingCard = true;
+		currentCard = null;
+
+		let retries = 0;
+		while (retries < 4) {
+			const res = await getNextCard(sessionId, retries);
+			if (res.status === 'ok' && res.card) {
+				currentCard = res.card;
+				conceptName = res.concept_name ?? '';
+				cardStartTime = Date.now();
+				loadingCard = false;
+				return;
+			}
+			if (res.status === 'loading') {
+				retries = res.retry ?? retries + 1;
+				await new Promise(r => setTimeout(r, 400));
+				continue;
+			}
+			break;
+		}
+		loadingCard = false;
+	}
+
+	async function handleAnswer(chosenOption: string): Promise<AnswerResponse> {
+		const res = await submitAnswer(sessionId, chosenOption, currentCard!, cardStartTime);
+
+		streak = res.streak;
+		cardsAnswered = res.cards_answered;
+		conceptsMastered = res.concepts_mastered;
+		totalConcepts = res.total_concepts;
+
+		if (CELEBRATION_MILESTONES.includes(res.streak)) {
+			celebrationText = `${res.streak} streak!`;
+			showCelebration = true;
+			setTimeout(() => { showCelebration = false; }, 1500);
+		}
+
+		return res;
+	}
+
+	async function handleTeachSeen() {
+		if (!currentCard) return;
+		await markTeachSeen(sessionId, currentCard.concept_id);
+		await loadNextCard();
+	}
 </script>
 
 <svelte:head>
@@ -48,23 +119,35 @@
 
 	<!-- Card slot -->
 	<div class="w-full">
-		{#if loading}
-			<div class="flex items-center justify-center py-20">
-				<div class="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
-			</div>
+		{#if loading || loadingCard}
+			<LoadingCard />
+		{:else if currentCard?.card_type === 'teach'}
+			<TeachCard card={currentCard} {conceptName} onContinue={handleTeachSeen} />
+		{:else if currentCard}
+			<McqCard
+				card={currentCard}
+				{conceptName}
+				onAnswer={handleAnswer}
+				onNext={loadNextCard}
+			/>
 		{:else}
 			<div class="rounded-2xl bg-[#1a2d35] p-6 shadow-lg shadow-black/20 text-center">
-				<p class="text-slate-400 mb-4">Flow session ready</p>
-				<p class="text-sm text-slate-500">Card rendering will be wired to the FastAPI backend</p>
+				<p class="text-slate-400 mb-2">No more cards right now</p>
+				<p class="text-sm text-slate-500">Come back later for more practice</p>
+				<a href="/" class="mt-4 inline-block rounded-xl bg-emerald-500 px-6 py-2.5 font-bold text-emerald-950">
+					Back Home
+				</a>
 			</div>
 		{/if}
 	</div>
 
 	<!-- Celebration overlay -->
-	<div id="celebration-overlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-sm">
-		<div class="text-center animate-bounce">
-			<p class="text-6xl">🔥</p>
-			<p class="mt-4 text-3xl font-black text-amber-400"></p>
+	{#if showCelebration}
+		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+			<div class="text-center animate-bounce">
+				<p class="text-6xl">🔥</p>
+				<p class="mt-4 text-3xl font-black text-amber-400">{celebrationText}</p>
+			</div>
 		</div>
-	</div>
+	{/if}
 </div>
