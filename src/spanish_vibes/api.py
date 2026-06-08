@@ -730,3 +730,16 @@ def api_conversation_skip(
         )
         conn.commit()
     return {"ok": True}
+
+
+# ── Dev / Reset ────────────────────────────────────────────────
+
+
+@router.post("/dev/reset-progress")
+def api_reset_progress():
+    """Reset all learning progress to fresh state."""
+    from .db import reset_learning_progress
+
+    reset_learning_progress()
+    invalidate_user_level_cache()
+    return {"ok": True, "message": "Progress reset"}
